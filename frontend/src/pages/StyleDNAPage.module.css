@@ -1,0 +1,335 @@
+.page {
+  width: 100%;
+  max-width: 720px;
+}
+
+/* ─── Nav ─────────────────────────────────────────────── */
+.nav {
+  margin-bottom: var(--space-10);
+}
+
+.backBtn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 400;
+  color: var(--color-text-tertiary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.15s;
+}
+
+.backBtn:hover {
+  color: var(--color-text-primary);
+}
+
+/* ─── Hero ────────────────────────────────────────────── */
+.hero {
+  margin-bottom: var(--space-14);
+}
+
+.heroLabel {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+  color: var(--color-text-tertiary);
+  margin-bottom: var(--space-3);
+}
+
+.heroHeadline {
+  font-family: var(--font-display);
+  font-size: 52px;
+  font-weight: 400;
+  font-style: italic;
+  color: var(--color-text-primary);
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--leading-tight);
+}
+
+/* ─── Shared section ──────────────────────────────────── */
+.section {
+  margin-bottom: var(--space-14);
+}
+
+.sectionLabel {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+  color: var(--color-text-tertiary);
+  margin-bottom: var(--space-5);
+}
+
+/* ─── 1. Palette ──────────────────────────────────────── */
+.paletteRow {
+  display: flex;
+  gap: var(--space-8);
+  flex-wrap: wrap;
+}
+
+.paletteItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.paletteCircle {
+  display: block;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.paletteHex {
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: var(--tracking-wide);
+  color: var(--color-text-tertiary);
+  text-transform: uppercase;
+}
+
+/* ─── 2. Aesthetic keywords ───────────────────────────── */
+.aestheticRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.aestheticPill {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 400;
+  font-style: italic;
+  color: var(--color-text-primary);
+  background: var(--color-bg-secondary);
+  border: var(--border-thin);
+  border-radius: var(--radius-pill);
+  padding: var(--space-2) var(--space-6);
+  letter-spacing: var(--tracking-tight);
+}
+
+/* ─── 3. Wardrobe breakdown ───────────────────────────── */
+.breakdownList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.breakdownRow {
+  display: grid;
+  grid-template-columns: 110px 1fr 28px;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.breakdownLabel {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 400;
+  color: var(--color-text-secondary);
+}
+
+.breakdownTrack {
+  height: 2px;
+  background: var(--color-border-light);
+  border-radius: 1px;
+  overflow: hidden;
+}
+
+.breakdownBar {
+  height: 100%;
+  background: var(--color-text-primary);
+  border-radius: 1px;
+}
+
+.breakdownCount {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: 300;
+  color: var(--color-text-tertiary);
+  text-align: right;
+}
+
+/* ─── 4. Signature pieces ─────────────────────────────── */
+.signatureRow {
+  display: flex;
+  gap: var(--space-5);
+  flex-wrap: wrap;
+}
+
+.signatureCard {
+  width: 160px;
+  text-decoration: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  transition: opacity 0.15s;
+}
+
+.signatureCard:hover {
+  opacity: 0.75;
+}
+
+.signatureImg {
+  width: 160px;
+  height: 200px;
+  background: var(--color-bg-tertiary);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.signaturePhoto {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.signatureName {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--color-text-primary);
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--leading-snug);
+}
+
+.signatureCategory {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: 300;
+  color: var(--color-text-tertiary);
+  text-transform: capitalize;
+}
+
+/* ─── 5. Style gaps ───────────────────────────────────── */
+.gapList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.gapItem {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 300;
+  color: var(--color-text-secondary);
+  line-height: var(--leading-normal);
+}
+
+.gapArrow {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--color-text-tertiary);
+  flex-shrink: 0;
+}
+
+/* ─── 6. Stylist's take ───────────────────────────────── */
+.stylistSection {
+  text-align: center;
+  padding: var(--space-14) 0;
+  border-top: var(--border-thin);
+  border-bottom: var(--border-thin);
+}
+
+.stylistSection .sectionLabel {
+  text-align: center;
+}
+
+.stylistParagraph {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 400;
+  font-style: italic;
+  color: var(--color-text-primary);
+  line-height: var(--leading-relaxed);
+  letter-spacing: var(--tracking-tight);
+  max-width: 580px;
+  margin: 0 auto;
+}
+
+/* ─── Regenerate ──────────────────────────────────────── */
+.regenWrap {
+  padding: var(--space-12) 0 var(--space-16);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.errorText {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 300;
+  color: var(--color-error);
+}
+
+.regenBtn {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 400;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: var(--border-default);
+  border-radius: var(--radius-pill);
+  padding: var(--space-3) var(--space-7);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.regenBtn:hover:not(:disabled) {
+  border-color: var(--color-border-dark);
+  color: var(--color-text-primary);
+}
+
+.regenBtn:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+/* ─── Loading / empty ─────────────────────────────────── */
+.loadingState,
+.emptyState {
+  padding: var(--space-16) 0;
+}
+
+.loadingText,
+.emptyText {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 300;
+  color: var(--color-text-tertiary);
+}
+
+.backLink {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 400;
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  display: block;
+  margin-top: var(--space-4);
+  transition: color 0.15s;
+}
+
+.backLink:hover {
+  color: var(--color-text-primary);
+}

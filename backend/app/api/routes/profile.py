@@ -1,11 +1,12 @@
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Request
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
-from app.models.user import User
+from app.models.user import User, StyleDNA
 from app.models.item import WardrobeItem
 from app.api.deps import get_current_user
-from app.services.claude_service import analyze_style_dna
+from app.services.claude_service import analyze_style_dna, CATEGORY_LABELS
 
 router = APIRouter()
 limiter = Limiter(key_func=get_remote_address)
@@ -32,4 +33,24 @@ async def analyze_style(
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
-    return {"success": True, "data": result, "message": "Style DNA analyzed"}
+    # Compute category breakdown directly from wardrobe
+    breakdown: dict[str, int] = {}
+    for item in wardrobe:
+        label = CATEGORY_LABELS.get(item.category, item.category.capitalize())
+        breakdown[label] = breakdown.get(label, 0) + 1
+
+    style_dna = StyleDNA(
+        headline=result.get("headline", ""),
+        color_palette=result.get("color_palette", []),
+        style_keywords=result.get("style_keywords", []),
+        category_breakdown=breakdown,
+        signature_piece_ids=result.get("signature_piece_ids", []),
+        style_gaps=result.get("style_gaps", []),
+        stylist_paragraph=result.get("stylist_paragraph", ""),
+        generated_at=datetime.utcnow(),
+    )
+
+    current_user.style_dna = style_dna
+    await current_user.save()
+
+    return {"success": True, "data": style_dna.model_dump(), "message": "Style DNA analyzed"}

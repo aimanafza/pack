@@ -11,6 +11,7 @@ import TripsPage from './pages/TripsPage.jsx'
 import NewTripPage from './pages/NewTripPage.jsx'
 import TripDetailPage from './pages/TripDetailPage.jsx'
 import ProfilePage from './pages/ProfilePage.jsx'
+import StyleDNAPage from './pages/StyleDNAPage.jsx'
 import PackingPage from './pages/PackingPage.jsx'
 import SwipeReviewPage from './pages/SwipeReviewPage.jsx'
 import WardrobeItemDetailPage from './pages/WardrobeItemDetailPage.jsx'
@@ -47,6 +48,7 @@ export default function App() {
         <Route path="/trips/new" element={<WithLayout><NewTripPage /></WithLayout>} />
         <Route path="/trips/:id" element={<WithLayout><TripDetailPage /></WithLayout>} />
         <Route path="/profile" element={<WithLayout><ProfilePage /></WithLayout>} />
+        <Route path="/profile/style-dna" element={<WithLayout><StyleDNAPage /></WithLayout>} />
         {/* Swipe review + packing: no sidebar, distraction-free full-width */}
         <Route path="/trips/:id/review" element={<PrivateRoute><SwipeReviewPage /></PrivateRoute>} />
         <Route path="/trips/:id/pack" element={<PrivateRoute><PackingPage /></PrivateRoute>} />

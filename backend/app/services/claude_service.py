@@ -99,10 +99,22 @@ async def analyze_vibe(image_urls: list[str]) -> dict:
     return parsed
 
 
+CATEGORY_LABELS = {
+    "top": "Tops",
+    "bottom": "Bottoms",
+    "dress": "Dresses",
+    "outerwear": "Layers",
+    "shoes": "Shoes",
+    "bag": "Bags",
+    "accessory": "Accessories",
+}
+
+
 async def analyze_style_dna(wardrobe: list[WardrobeItem]) -> dict:
     """Synthesize personal style DNA from wardrobe metadata."""
     wardrobe_context = [
         {
+            "id": str(item.id),
             "name": item.name,
             "category": item.category,
             "color": item.color,
@@ -115,25 +127,24 @@ async def analyze_style_dna(wardrobe: list[WardrobeItem]) -> dict:
         for item in wardrobe
     ]
 
-    user_message = f"""Analyze this wardrobe of {len(wardrobe)} items and identify the wearer's personal style DNA.
+    user_message = f"""Analyze this wardrobe of {len(wardrobe)} items and return the wearer's style DNA.
 
 Wardrobe:
 {json.dumps(wardrobe_context, indent=2)}
 
-Return ONLY this JSON — no preamble:
+Return ONLY this JSON — no preamble, no markdown:
 {{
   "headline": "3-5 word style archetype, e.g. 'Quiet Luxury Minimalist'",
-  "summary": "2-3 sentences describing their overall aesthetic, signature silhouettes, and what sets their style apart",
-  "style_keywords": ["5-7 precise style keywords"],
-  "color_palette": ["4-6 specific colors they gravitate toward, written as CSS-compatible color names or hex"],
-  "formality_level": "their typical formality register",
-  "most_worn_category": "the category they have the most of",
-  "avoid": ["2-3 things notably absent or avoided in their wardrobe"]
+  "color_palette": ["exactly 5 hex color codes dominant in this wardrobe, e.g. '#C4A882'"],
+  "style_keywords": ["3-5 evocative style descriptors, e.g. 'Quiet Luxury', 'Effortless Bohemian'"],
+  "signature_piece_ids": ["2-3 item IDs from the wardrobe that are most defining or versatile"],
+  "style_gaps": ["1-3 short observations about what is missing, e.g. 'No formal pieces in your wardrobe'"],
+  "stylist_paragraph": "2-3 sentences written as a stylist describing this person's aesthetic — warm, editorial, specific to their actual items"
 }}"""
 
     response = await client.messages.create(
         model="claude-haiku-4-5-20251001",
-        max_tokens=800,
+        max_tokens=900,
         system=[
             {
                 "type": "text",
@@ -151,6 +162,37 @@ Return ONLY this JSON — no preamble:
             inner = inner[4:]
         raw = inner.split("```")[0]
     return json.loads(raw.strip())
+
+
+async def regenerate_style_dna_for_user(user_id: str) -> None:
+    """Background task: re-run style DNA analysis and persist to user document."""
+    from app.models.user import User, StyleDNA
+    from datetime import datetime
+    try:
+        user = await User.get(user_id)
+        if not user:
+            return
+        wardrobe = await WardrobeItem.find(WardrobeItem.user_id == user_id).to_list()
+        if len(wardrobe) < 3:
+            return
+        result = await analyze_style_dna(wardrobe)
+        breakdown: dict[str, int] = {}
+        for item in wardrobe:
+            label = CATEGORY_LABELS.get(item.category, item.category.capitalize())
+            breakdown[label] = breakdown.get(label, 0) + 1
+        user.style_dna = StyleDNA(
+            headline=result.get("headline", ""),
+            color_palette=result.get("color_palette", []),
+            style_keywords=result.get("style_keywords", []),
+            category_breakdown=breakdown,
+            signature_piece_ids=result.get("signature_piece_ids", []),
+            style_gaps=result.get("style_gaps", []),
+            stylist_paragraph=result.get("stylist_paragraph", ""),
+            generated_at=datetime.utcnow(),
+        )
+        await user.save()
+    except Exception:
+        pass  # background task — fail silently
 
 
 def build_preferences_briefing(prefs: dict) -> str:
