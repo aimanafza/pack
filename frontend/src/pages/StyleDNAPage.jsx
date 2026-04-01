@@ -26,6 +26,7 @@ export default function StyleDNAPage() {
   const [error, setError] = useState('')
 
   useEffect(() => {
+    window.scrollTo(0, 0)
     fetchWardrobe()
     if (!styleDNA) {
       api.get('/api/v1/auth/me').then(({ data }) => {

@@ -65,7 +65,8 @@ async def add_item(
         cloudinary_public_id=upload_result["public_id"],
     )
     await item.insert()
-    background_tasks.add_task(regenerate_style_dna_for_user, str(current_user.id))
+    # TODO: auto-regenerate style DNA on wardrobe change (re-enable later)
+    # background_tasks.add_task(regenerate_style_dna_for_user, str(current_user.id))
     return {"success": True, "data": item.model_dump(), "message": "Item added"}
 
 
@@ -99,5 +100,6 @@ async def delete_item(
         raise HTTPException(status_code=404, detail="Item not found")
     await delete_wardrobe_item(item.cloudinary_public_id)
     await item.delete()
-    background_tasks.add_task(regenerate_style_dna_for_user, str(current_user.id))
+    # TODO: auto-regenerate style DNA on wardrobe change (re-enable later)
+    # background_tasks.add_task(regenerate_style_dna_for_user, str(current_user.id))
     return {"success": True, "data": None, "message": "Item deleted"}

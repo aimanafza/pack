@@ -33,7 +33,7 @@ export default function LandingPage() {
     <div className={styles.page}>
       {/* Nav */}
       <nav className={styles.nav}>
-        <span className={styles.wordmark}>PACK</span>
+        <span className={styles.wordmark}>pack</span>
         <Link to="/auth" className={styles.navSignIn}>Sign in</Link>
       </nav>
 

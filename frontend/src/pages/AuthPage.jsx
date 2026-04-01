@@ -16,7 +16,7 @@ export default function AuthPage() {
   return (
     <div className={styles.page}>
       <div className={styles.left}>
-        <p className={styles.wordmark}>PACK</p>
+        <p className={styles.wordmark}>pack</p>
         <p className={styles.tagline}>Your personal stylist, in your pocket.</p>
       </div>
 

@@ -13,13 +13,13 @@ limiter = Limiter(key_func=get_remote_address)
 
 
 @router.post("/analyze-style")
-@limiter.limit("3/hour")
+@limiter.limit("5/hour")
 async def analyze_style(
     request: Request,
     current_user: User = Depends(get_current_user),
 ):
     wardrobe = await WardrobeItem.find(
-        WardrobeItem.user_id == str(current_user.id)
+        WardrobeItem.user_id == current_user.id
     ).to_list()
 
     if len(wardrobe) < 3:
@@ -33,7 +33,6 @@ async def analyze_style(
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
-    # Compute category breakdown directly from wardrobe
     breakdown: dict[str, int] = {}
     for item in wardrobe:
         label = CATEGORY_LABELS.get(item.category, item.category.capitalize())

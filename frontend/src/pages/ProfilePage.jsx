@@ -86,23 +86,24 @@ export default function ProfilePage() {
     }).catch(() => {})
   }, [])
 
-  // Auto-analyze if no persisted DNA and wardrobe is ready
-  useEffect(() => {
-    if (wardrobe.length >= 3 && !styleDNA && !analyzedRef.current) {
-      analyzedRef.current = true
-      runAnalysis()
-    }
-  }, [wardrobe.length, styleDNA])
+  // TODO: auto-analyze when wardrobe reaches 3+ items (re-enable later)
+  // useEffect(() => {
+  //   if (wardrobe.length >= 3 && !styleDNA && !analyzedRef.current) {
+  //     analyzedRef.current = true
+  //     runAnalysis()
+  //   }
+  // }, [wardrobe.length, styleDNA])
 
   async function runAnalysis() {
     setDnaLoading(true)
     setDnaError('')
     try {
-      const { data } = await api.post('/api/v1/profile/analyze-style')
-      setStyleDNA(data.data)
-      updateUser({ style_dna: data.data })
+      const res = await api.post('/api/v1/profile/analyze-style')
+      setStyleDNA(res.data.data)
+      updateUser({ style_dna: res.data.data })
     } catch (err) {
-      setDnaError(err.response?.data?.detail || 'Could not analyze style right now.')
+      const detail = err.response?.data?.detail || err.response?.data?.error
+      setDnaError(detail || 'Could not reach the server. Is the backend running?')
     } finally {
       setDnaLoading(false)
     }
@@ -339,7 +340,9 @@ export default function ProfilePage() {
 
       {/* Style DNA */}
       <section className={styles.section}>
-        <p className={styles.sectionLabel}>YOUR STYLE DNA</p>
+        <div className={styles.sectionTop}>
+          <p className={styles.sectionLabel}>YOUR STYLE DNA</p>
+        </div>
         {wardrobeItems < 3 ? (
           <p className={styles.emptyState}>
             Add at least 3 items to unlock your Style DNA.{' '}
@@ -399,7 +402,14 @@ export default function ProfilePage() {
           <div className={`${styles.dnaCard} ${styles.dnaCardPulse}`}>
             <p className={styles.dnaLoading}>Analyzing your wardrobe...</p>
           </div>
-        ) : null}
+        ) : (
+          <div className={styles.dnaCard}>
+            <p className={styles.emptyState}>Generate your Style DNA to see your palette, aesthetic, and a stylist's read on your wardrobe.</p>
+            <button className={styles.reanalyzeLink} onClick={reanalyze} type="button" disabled={dnaLoading}>
+              Generate →
+            </button>
+          </div>
+        )}
       </section>
 
       {/* Approved Looks */}
