@@ -1,0 +1,407 @@
+.page {}
+
+/* ─── Frosted hero (returning user) ──────────────────── */
+.heroSection {
+  width: 100%;
+  min-height: 320px;
+  background: var(--color-bg-tertiary);
+  background-size: cover;
+  background-position: center;
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  margin-bottom: var(--space-12);
+  overflow: hidden;
+  position: relative;
+}
+
+.frostCard {
+  position: relative;
+  z-index: 1;
+  margin: var(--space-8);
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: var(--border-thin);
+  border-radius: var(--radius-xl);
+  padding: var(--space-8);
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.welcomeBack {
+  font-family: var(--font-display);
+  font-size: 36px;
+  font-weight: 400;
+  color: var(--color-text-primary);
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--leading-tight);
+}
+
+.welcomeStats {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 300;
+  color: var(--color-text-secondary);
+  line-height: var(--leading-normal);
+}
+
+.actionCards {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.actionCard {
+  width: 120px;
+  background: var(--color-bg-primary);
+  border: var(--border-thin);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.actionCard:hover {
+  border-color: var(--color-border-medium);
+}
+
+.actionIcon {
+  color: var(--color-text-secondary);
+  display: flex;
+}
+
+.actionLabel {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  color: var(--color-text-secondary);
+}
+
+.continueBtn {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  color: var(--color-text-inverse);
+  background: var(--color-text-primary);
+  border: none;
+  padding: var(--space-3) var(--space-6);
+  cursor: pointer;
+  transition: opacity 0.15s;
+  width: fit-content;
+  border-radius: 0;
+}
+
+.continueBtn:hover {
+  opacity: 0.8;
+}
+
+/* ─── Fresh user state ────────────────────────────────── */
+.freshState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  text-align: center;
+  gap: var(--space-4);
+}
+
+.freshHeadline {
+  font-family: var(--font-display);
+  font-size: 36px;
+  font-weight: 300;
+  font-style: italic;
+  color: var(--color-text-primary);
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--leading-tight);
+}
+
+.freshSubhead {
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 300;
+  color: var(--color-text-secondary);
+  line-height: var(--leading-normal);
+  margin-bottom: var(--space-2);
+}
+
+.freshCta {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  color: var(--color-text-inverse);
+  background: var(--color-text-primary);
+  border: none;
+  padding: var(--space-4) var(--space-8);
+  cursor: pointer;
+  transition: opacity 0.15s;
+  border-radius: 0;
+  margin-top: var(--space-2);
+}
+
+.freshCta:hover {
+  opacity: 0.8;
+}
+
+.tourLink {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 400;
+  color: var(--color-text-tertiary);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.tourLink:hover {
+  color: var(--color-text-secondary);
+}
+
+/* ─── Header (returning user) ─────────────────────────── */
+.header {
+  margin-bottom: var(--space-12);
+}
+
+.pageLabel {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+  color: var(--color-text-tertiary);
+  margin-bottom: var(--space-2);
+}
+
+.headline {
+  font-family: var(--font-display);
+  font-size: 52px;
+  font-weight: 300;
+  color: var(--color-text-primary);
+  letter-spacing: var(--tracking-tight);
+  line-height: 1.1;
+  margin-bottom: var(--space-3);
+}
+
+.subhead {
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 300;
+  color: var(--color-text-secondary);
+  line-height: var(--leading-normal);
+}
+
+/* ─── Sections ────────────────────────────────────────── */
+.section {
+  margin-bottom: var(--space-12);
+}
+
+.sectionLabel {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+  color: var(--color-text-tertiary);
+  margin-bottom: var(--space-5);
+}
+
+/* ─── Trip scroll row ─────────────────────────────────── */
+.tripScroll {
+  display: flex;
+  gap: var(--space-4);
+  overflow-x: auto;
+  padding-bottom: var(--space-2);
+  scrollbar-width: none;
+}
+
+.tripScroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* ─── DashTripCard ────────────────────────────────────── */
+.tripCard {
+  flex-shrink: 0;
+  width: 280px;
+  border: var(--border-thin);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  cursor: pointer;
+  background: var(--color-bg-primary);
+}
+
+.tripCardImage {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background: var(--color-bg-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.tripCardImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.tripCardDestInitial {
+  font-family: var(--font-display);
+  font-size: 64px;
+  font-weight: 300;
+  color: var(--color-bg-secondary);
+  line-height: 1;
+  user-select: none;
+}
+
+.tripCardBody {
+  padding: var(--space-4) var(--space-4) var(--space-5);
+}
+
+.tripCardName {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 400;
+  color: var(--color-text-primary);
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--leading-tight);
+  margin-bottom: var(--space-1);
+}
+
+.tripCardDest {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-1);
+}
+
+.tripCardDates {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 300;
+  color: var(--color-text-tertiary);
+  margin-bottom: var(--space-3);
+}
+
+.tripCardStatus {
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-text-tertiary);
+  background: var(--color-bg-tertiary);
+  border: var(--border-thin);
+  border-radius: var(--radius-pill);
+  padding: 2px var(--space-2);
+}
+
+.status_packed {
+  color: var(--color-text-primary);
+  border-color: var(--color-text-primary);
+}
+
+/* ─── New trip card ───────────────────────────────────── */
+.newTripCard {
+  flex-shrink: 0;
+  width: 280px;
+  min-height: 220px;
+  border: 1.5px dashed var(--color-border-medium);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  background: transparent;
+}
+
+.newTripCard:hover {
+  border-color: var(--color-border-dark);
+  background: var(--color-bg-secondary);
+}
+
+.newTripPlus {
+  font-family: var(--font-body);
+  font-size: 28px;
+  font-weight: 200;
+  color: var(--color-text-tertiary);
+  line-height: 1;
+}
+
+.newTripLabel {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+  color: var(--color-text-tertiary);
+}
+
+/* ─── Wardrobe snapshot ───────────────────────────────── */
+.wardrobeRow {
+  display: flex;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.wardrobeThumb {
+  width: 100px;
+  height: 100px;
+  border: var(--border-thin);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--color-bg-secondary);
+  flex-shrink: 0;
+}
+
+.wardrobeThumbImg {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.viewAll {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 400;
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.viewAll:hover {
+  color: var(--color-text-primary);
+}
+
+.emptySnap {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 300;
+  color: var(--color-text-tertiary);
+}
+
+.emptyLink {
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.emptyLink:hover {
+  color: var(--color-text-primary);
+}

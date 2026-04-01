@@ -1,0 +1,27 @@
+# Secrets — never commit
+.env
+.env.local
+.env.production
+.env.development
+backend/.env
+frontend/.env
+
+# Python
+backend/venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# Claude Code local config
+.claude/
+
+# Vite cache
+.vite/
+backend/.vite/
+
+# OS
+.DS_Store

@@ -1,0 +1,586 @@
+.page {
+  width: 100%;
+}
+
+/* ─── Header ──────────────────────────────────────────── */
+.header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  padding-top: var(--space-10);
+  padding-bottom: var(--space-10);
+  border-bottom: var(--border-thin);
+  margin-bottom: var(--space-10);
+  text-align: center;
+}
+
+/* Clickable avatar wrapper */
+.avatarWrap {
+  position: relative;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.avatarWrap:disabled {
+  cursor: default;
+}
+
+.avatar {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background: var(--color-bg-tertiary);
+  border: var(--border-thin);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: filter 0.2s;
+}
+
+.avatarWrap:hover:not(:disabled) .avatar {
+  filter: brightness(0.85);
+}
+
+.avatarOverlay {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.2s;
+  pointer-events: none;
+}
+
+.avatarWrap:hover:not(:disabled) .avatarOverlay {
+  opacity: 1;
+}
+
+.avatarInput {
+  display: none;
+}
+
+.avatarImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatarInitials {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 300;
+  color: var(--color-text-secondary);
+  line-height: 1;
+}
+
+/* Upload spinner */
+.spinner {
+  animation: spin 0.8s linear infinite;
+  color: var(--color-text-tertiary);
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.name {
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 400;
+  color: var(--color-text-primary);
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--leading-tight);
+}
+
+.pillRow {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.pillBtn {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 400;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: var(--border-default);
+  border-radius: var(--radius-pill);
+  padding: var(--space-2) var(--space-5);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.pillBtn:hover {
+  border-color: var(--color-border-dark);
+  color: var(--color-text-primary);
+}
+
+/* ─── Activity Stats ──────────────────────────────────── */
+.statsRow {
+  display: flex;
+  align-items: stretch;
+  margin-bottom: var(--space-12);
+  border: var(--border-thin);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--color-bg-primary);
+}
+
+.statCell {
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+  position: relative;
+}
+
+.statDivider {
+  width: 1px;
+  background: var(--color-border-light);
+  flex-shrink: 0;
+}
+
+.statInner {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-8) var(--space-4);
+}
+
+.statNum {
+  font-family: var(--font-display);
+  font-size: 52px;
+  font-weight: 300;
+  color: var(--color-text-primary);
+  line-height: 1;
+  letter-spacing: var(--tracking-tight);
+}
+
+.statLabel {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+  color: var(--color-text-tertiary);
+  text-align: center;
+}
+
+/* ─── Sections ────────────────────────────────────────── */
+.section {
+  margin-bottom: var(--space-12);
+}
+
+.sectionTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-5);
+}
+
+.sectionLabel {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+  color: var(--color-text-tertiary);
+}
+
+.scrollControls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.seeAll {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 400;
+  color: var(--color-text-tertiary);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.seeAll:hover {
+  color: var(--color-text-primary);
+}
+
+.arrowBtn {
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--color-text-secondary);
+  background: none;
+  border: var(--border-thin);
+  border-radius: var(--radius-sm);
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+  line-height: 1;
+}
+
+.arrowBtn:hover {
+  border-color: var(--color-border-dark);
+  color: var(--color-text-primary);
+}
+
+/* ─── Horizontal scroll row ───────────────────────────── */
+.hScroll {
+  display: flex;
+  gap: var(--space-4);
+  overflow-x: auto;
+  padding-bottom: var(--space-2);
+  scrollbar-width: none;
+}
+
+.hScroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* ─── Trip card ───────────────────────────────────────── */
+.tripCard {
+  flex-shrink: 0;
+  width: 220px;
+  border: var(--border-thin);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--color-bg-primary);
+  text-decoration: none;
+  display: block;
+  transition: border-color 0.15s;
+}
+
+.tripCard:hover {
+  border-color: var(--color-border-medium);
+}
+
+.tripCardImg {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background: var(--color-bg-tertiary);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tripCardPhoto {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.tripCardInitial {
+  font-family: var(--font-display);
+  font-size: 52px;
+  font-weight: 300;
+  color: var(--color-bg-secondary);
+  line-height: 1;
+  user-select: none;
+}
+
+.tripCardBody {
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tripCardName {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 400;
+  color: var(--color-text-primary);
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--leading-tight);
+}
+
+.tripCardDest {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 400;
+  color: var(--color-text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tripCardDates {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: 300;
+  color: var(--color-text-tertiary);
+}
+
+/* ─── New Trip card ───────────────────────────────────── */
+.newTripCard {
+  flex-shrink: 0;
+  width: 220px;
+  aspect-ratio: unset;
+  min-height: 190px;
+  border: var(--border-thin);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-secondary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  padding: 0;
+}
+
+.newTripCard:hover {
+  border-color: var(--color-border-dark);
+  background: var(--color-bg-tertiary);
+}
+
+.newTripPlus {
+  font-family: var(--font-display);
+  font-size: 36px;
+  font-weight: 300;
+  color: var(--color-text-tertiary);
+  line-height: 1;
+}
+
+.newTripLabel {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+  color: var(--color-text-tertiary);
+}
+
+/* ─── Past trip card ──────────────────────────────────── */
+.tripCardPast {
+  opacity: 0.55;
+}
+
+.tripCardPast:hover {
+  opacity: 0.8;
+}
+
+/* ─── Style DNA card ──────────────────────────────────── */
+.dnaCard {
+  background: var(--color-bg-secondary);
+  border: var(--border-thin);
+  border-radius: var(--radius-xl);
+  padding: var(--space-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  position: relative;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.dnaCardPulse {
+  animation: pulse 1.8s ease-in-out infinite;
+}
+
+.dnaLoading {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 300;
+  color: var(--color-text-tertiary);
+}
+
+.dnaHeadline {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 400;
+  font-style: italic;
+  color: var(--color-text-primary);
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--leading-snug);
+}
+
+.dnaSummary {
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 300;
+  color: var(--color-text-secondary);
+  line-height: var(--leading-normal);
+  max-width: 600px;
+}
+
+.keywordRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.keyword {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  color: var(--color-text-secondary);
+  background: var(--color-bg-primary);
+  border: var(--border-thin);
+  border-radius: var(--radius-pill);
+  padding: var(--space-1) var(--space-3);
+}
+
+.paletteRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.colorChip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.colorCircle {
+  display: block;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: var(--border-thin);
+  flex-shrink: 0;
+}
+
+.colorName {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 300;
+  color: var(--color-text-secondary);
+}
+
+.dnaMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+}
+
+.dnaMetaItem {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 400;
+  color: var(--color-text-secondary);
+}
+
+.dnaMetaTertiary {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: 300;
+  color: var(--color-text-tertiary);
+}
+
+.reanalyzeLink {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 400;
+  color: var(--color-text-tertiary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+  align-self: flex-end;
+  transition: color 0.15s;
+}
+
+.reanalyzeLink:hover {
+  color: var(--color-text-primary);
+}
+
+/* ─── Approved looks card ─────────────────────────────── */
+.lookCard {
+  flex-shrink: 0;
+  width: 200px;
+  border: var(--border-thin);
+  border-radius: var(--radius-md);
+  padding: var(--space-4) var(--space-4) var(--space-5);
+  background: var(--color-bg-primary);
+  text-decoration: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  transition: border-color 0.15s;
+}
+
+.lookCard:hover {
+  border-color: var(--color-border-medium);
+}
+
+.lookName {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  line-height: var(--leading-snug);
+}
+
+.lookTrip {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: 300;
+  color: var(--color-text-tertiary);
+}
+
+.lookOccasion {
+  margin-top: var(--space-2);
+  display: inline-block;
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  color: var(--color-text-tertiary);
+  background: var(--color-bg-tertiary);
+  border-radius: var(--radius-pill);
+  padding: 2px var(--space-2);
+  width: fit-content;
+}
+
+.lookCount {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: 300;
+  color: var(--color-text-tertiary);
+  margin-top: auto;
+  padding-top: var(--space-2);
+}
+
+/* ─── Empty + utility ─────────────────────────────────── */
+.emptyState {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 300;
+  color: var(--color-text-tertiary);
+}
+
+.emptyLink {
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.emptyLink:hover {
+  color: var(--color-text-primary);
+}
