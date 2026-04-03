@@ -1,7 +1,11 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { AnimatePresence } from 'framer-motion'
 import { useTrips } from '../hooks/useTrips.js'
+import { useWardrobe } from '../hooks/useWardrobe.js'
+import { useNewTrip } from '../hooks/useNewTrip.js'
 import TripCard from '../components/trips/TripCard.jsx'
+import WardrobeGateModal from '../components/trips/WardrobeGateModal.jsx'
 import styles from './TripsPage.module.css'
 
 function isUpcoming(trip) {
@@ -12,10 +16,13 @@ function isUpcoming(trip) {
 
 export default function TripsPage() {
   const { trips, loading, fetchTrips, deleteTrip } = useTrips()
+  const { fetchWardrobe } = useWardrobe()
   const navigate = useNavigate()
+  const { goToNewTrip, gateOpen, missing, closeGate } = useNewTrip()
 
   useEffect(() => {
     fetchTrips()
+    fetchWardrobe()
   }, [])
 
   async function handleDelete(id) {
@@ -43,7 +50,7 @@ export default function TripsPage() {
               {trips.length} {trips.length === 1 ? 'trip' : 'trips'}
             </span>
           )}
-          <button className={styles.btnAdd} onClick={() => navigate('/trips/new')}>
+          <button className={styles.btnAdd} onClick={goToNewTrip}>
             New Trip
           </button>
         </div>
@@ -82,6 +89,12 @@ export default function TripsPage() {
           )}
         </>
       )}
+
+      <AnimatePresence>
+        {gateOpen && (
+          <WardrobeGateModal missing={missing} onClose={closeGate} />
+        )}
+      </AnimatePresence>
     </>
   )
 }

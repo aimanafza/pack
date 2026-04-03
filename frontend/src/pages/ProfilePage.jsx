@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import useStore from '../store/index.js'
 import { useTrips } from '../hooks/useTrips.js'
 import { useWardrobe } from '../hooks/useWardrobe.js'
+import { useNewTrip } from '../hooks/useNewTrip.js'
 import api from '../utils/api.js'
 import styles from './ProfilePage.module.css'
 import PreferencesModal from '../components/profile/PreferencesModal.jsx'
+import WardrobeGateModal from '../components/trips/WardrobeGateModal.jsx'
 
 function IconArrowRight() {
   return (
@@ -62,6 +64,7 @@ export default function ProfilePage() {
   const { trips, fetchTrips } = useTrips()
   const { wardrobe, fetchWardrobe } = useWardrobe()
   const navigate = useNavigate()
+  const { goToNewTrip, gateOpen, missing, closeGate } = useNewTrip()
   const [styleDNA, setStyleDNA] = useState(null)
   const [dnaLoading, setDnaLoading] = useState(false)
   const [dnaError, setDnaError] = useState('')
@@ -259,7 +262,7 @@ export default function ProfilePage() {
           <button
             type="button"
             className={styles.newTripCard}
-            onClick={() => navigate('/trips/new')}
+            onClick={goToNewTrip}
             aria-label="Plan a new trip"
           >
             <span className={styles.newTripPlus}>+</span>
@@ -397,6 +400,7 @@ export default function ProfilePage() {
                 See full analysis <IconArrowRight />
               </Link>
             </div>
+
           </motion.div>
         ) : dnaLoading ? (
           <div className={`${styles.dnaCard} ${styles.dnaCardPulse}`}>
@@ -458,6 +462,12 @@ export default function ProfilePage() {
           </div>
         )}
       </section>
+
+      <AnimatePresence>
+        {gateOpen && (
+          <WardrobeGateModal missing={missing} onClose={closeGate} />
+        )}
+      </AnimatePresence>
     </div>
   )
 }

@@ -25,6 +25,8 @@ img {
   display: block;
   max-width: 100%;
   object-fit: cover;
+  /* Inherit cursor so images inside clickable containers show the hand */
+  cursor: inherit;
 }
 
 button {
@@ -45,6 +47,17 @@ a {
   color: inherit;
   text-decoration: none;
 }
+
+/* Pointer cursor on all interactive elements — !important needed to
+   override CSS module class selectors which always win on specificity.
+   The child selector (*) catches img and other descendants that reset
+   cursor via the UA stylesheet (e.g. img { cursor: auto }). */
+a[href],
+a[href] *,
+button:not(:disabled),
+button:not(:disabled) *,
+[role="button"],
+[role="button"] * { cursor: pointer !important; }
 
 ul,
 ol {

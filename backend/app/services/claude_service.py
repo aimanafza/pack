@@ -220,6 +220,8 @@ def build_preferences_briefing(prefs: dict) -> str:
 
 async def generate_packing_list(trip: Trip, wardrobe: list[WardrobeItem], style_prefs: dict, preferences: dict = None) -> dict:
     """Generate outfit-based packing list using wardrobe + vibe context."""
+    prefs = preferences or {}
+
     wardrobe_context = [
         {
             "id": str(item.id),
@@ -231,14 +233,23 @@ async def generate_packing_list(trip: Trip, wardrobe: list[WardrobeItem], style_
             "occasions": item.occasions,
             "season": item.season,
             "notes": item.notes,
+            "weight_kg": round(item.weight_grams / 1000, 2),
         }
         for item in wardrobe
     ]
+    wardrobe_json = json.dumps(wardrobe_context, separators=(',', ':'))
 
-    vibe_context = ""
+    available_weight_kg = round(trip.available_clothing_weight_grams / 1000, 2)
+    num_outfits = max(trip.duration_days, len(trip.occasions), 1)
+    month = trip.start_date.strftime("%B")
+    dates_str = f"{trip.start_date} to {trip.end_date} ({trip.duration_days} days)"
+    occasions_str = ", ".join(trip.occasions) if trip.occasions else "general travel"
+
+    # Inspiration vibe block (injected into system prompt if available)
+    vibe_block = ""
     if trip.vibe_analysis:
-        vibe_context = f"""
-INSPIRATION VIBE (from user's moodboard — honor this above all else):
+        vibe_block = f"""
+INSPIRATION VIBE (from user moodboard — honor this above all else):
 Summary: {trip.vibe_analysis.summary}
 Style keywords: {", ".join(trip.vibe_analysis.style_keywords)}
 Color palette: {", ".join(trip.vibe_analysis.color_palette)}
@@ -246,73 +257,109 @@ Formality: {trip.vibe_analysis.formality_level}
 Avoid: {", ".join(trip.vibe_analysis.avoid)}
 """
 
-    style_context = ""
-    if style_prefs.get("notes"):
-        style_context = f"\nUser style notes: {style_prefs['notes']}"
-    if style_prefs.get("avoid"):
-        style_context += f"\nUser always avoids: {', '.join(style_prefs['avoid'])}"
+    system_prompt = f"""You are a senior fashion editor and stylist. You have 15 years of experience at Vogue, 10 Magazine, and Net-a-Porter. You have dressed people for editorial shoots, styled capsule travel wardrobes for high-profile clients, and consulted for minimalist luxury brands.
 
-    # Build bag context string
-    if trip.bags:
-        bag_lines = ", ".join(
-            f"{b.label} ({b.available_grams / 1000:.1f}kg available)"
-            for b in trip.bags
-        )
-        total_kg = trip.available_clothing_weight_grams / 1000
-        bag_context = f"\nBags: {bag_lines} — {total_kg:.1f}kg total for clothing"
-    else:
-        bag_context = "\nBags: carry-on only (default)"
+YOUR APPROACH:
+- You think in complete outfits, never individual items
+- You understand proportion: volume on top needs a slim base, a structured piece needs something fluid to breathe
+- You find the unexpected combination — not the obvious one
+- You know that one strong detail (a texture, a print, a silhouette) does more than many competing ones
+- You understand occasion dressing — appropriateness is part of style
+- You never apologize for a small wardrobe — constraints are where craft shows
+- Every outfit you create has a point of view and tells a story
 
-    preferences_briefing = build_preferences_briefing(preferences or {})
+STYLIST BRIEFING — read before generating any outfit:
+Style aesthetics: {", ".join(prefs.get("style_aesthetics", [])) or "not specified"}
+Fit preference: {prefs.get("fit_preference") or "not specified"}
+Colors to avoid: {", ".join(prefs.get("colors_to_avoid", [])) or "none"}
+Dresses for: {", ".join(prefs.get("dresses_for", [])) or "not specified"}
+Climate preference: {prefs.get("climate_preference") or "not specified"}
+Always remember: {prefs.get("stylist_notes") or "nothing additional"}{vibe_block}
 
-    user_message = f"""Trip: {trip.name}
+WARDROBE — these are the ONLY items you may use:
+{wardrobe_json}
+
+CRITICAL RULES — non-negotiable:
+1. You may ONLY select items from the wardrobe list above
+2. Every id you reference must exactly match an id in the wardrobe
+3. Do NOT invent, suggest, or hallucinate any item not in the list
+4. Each item id may appear only ONCE within a single outfit
+5. Avoid repeating the same statement/focal piece across multiple outfits. Track item usage across all outfits. Avoid repeating the same item as a focal piece in more than one outfit.
+6. If the wardrobe lacks something essential (shoes, outerwear), note it in style_gaps — never invent it as an outfit item
+7. Return ONLY valid JSON. No preamble, no explanation outside the JSON.
+
+TRIP CONTEXT:
 Destination: {trip.destination}
-Dates: {trip.start_date} to {trip.end_date} ({trip.duration_days} days)
-Climate: {trip.climate}
-Occasions: {", ".join(trip.occasions)}
-Notes from user: {trip.notes or "None"}
-{bag_context}{preferences_briefing}{vibe_context}{style_context}
-Wardrobe ({len(wardrobe)} items):
-{json.dumps(wardrobe_context, separators=(',', ':'))}
+Travel dates: {dates_str}
+Occasions: {occasions_str}
+Available bag weight: {available_weight_kg}kg (after reserved items deducted)
+Number of outfits requested: {num_outfits}
 
-Build the complete packing list for this trip. When an item is from the wardrobe, use its exact id in wardrobe_item_id and set in_wardrobe to true.
+YOUR TASK:
+Before selecting items, reason through each outfit:
+1. OCCASION: What does this specific day/occasion demand? What impression should this person make?
+2. WEATHER: What does {trip.destination} feel like in {month}? What does that mean for layering?
+3. SILHOUETTE: What proportion works for this person's preferences?
+4. COLOR STORY: What palette serves this outfit?
+5. THEN select items. Every choice must be intentional.
 
-Return ONLY this JSON structure with no preamble:
+When writing styling_notes: write like a Vogue fashion editor. Be specific, visual, and opinionated. Reference the mood, the tension in the combination, why this works. 2-3 sentences maximum. Sharp, not verbose.
+
+When writing design_rationale: be precise about the craft decisions.
+- silhouette: the proportion logic
+- color_story: the palette and why it works
+- occasion_fit: what this outfit handles and how
+- the_detail: the one element that elevates the whole look
+
+OUTPUT FORMAT — return this exact JSON structure:
 {{
-  "stylist_note": "one confident paragraph — name the destination, reference the vibe from their moodboard if provided, set the tone for the packing strategy",
   "outfits": [
     {{
-      "name": "Day 1 — Arrival",
-      "occasion": "travel",
+      "outfit_id": "outfit_1",
+      "day_label": "DAY 1 — OCCASION NAME IN CAPS",
+      "occasion_tag": "OCCASION TYPE / ACTIVITY",
       "items": [
         {{
-          "wardrobe_item_id": "exact_id_from_wardrobe_or_null",
-          "name": "White linen shirt",
-          "category": "top",
-          "in_wardrobe": true,
-          "checked": false
+          "id": "exact_id_from_wardrobe",
+          "name": "item name",
+          "category": "category",
+          "estimated_weight_kg": 0.0
         }}
       ],
-      "styling_note": "one sentence — the specific logic behind this outfit"
+      "total_weight": 0.0,
+      "styling_notes": "Editorial styling note written as a senior Vogue stylist would. Specific, visual, opinionated.",
+      "design_rationale": {{
+        "silhouette": "proportion logic",
+        "color_story": "palette description",
+        "occasion_fit": "what this handles",
+        "the_detail": "the one thing that makes this work"
+      }},
+      "style_gaps": [
+        "Item not in wardrobe but would complete this look: e.g. ankle boots"
+      ]
     }}
   ],
-  "essentials": ["universal adapter", "laundry bag", "travel umbrella"],
-  "raw_items": ["deduplicated flat list of all item names"]
-}}
+  "packing_summary": "2-3 sentence overview of the full packing strategy for this trip, written editorially"
+}}"""
 
-raw_items must be a flat deduplicated list of every item across all outfits. Keep raw_items as a simple list of item name strings, not objects."""
+    user_message = f"""Generate {num_outfits} outfits for this trip.
+
+Wardrobe ({len(wardrobe)} items):
+{wardrobe_json}
+
+Trip: {trip.destination}, {dates_str}
+Occasions by day: {occasions_str}
+Available bag weight: {available_weight_kg}kg
+Preferred aesthetics: {", ".join(prefs.get("style_aesthetics", [])) or "not specified"}
+
+Remember: ONLY use item IDs from the wardrobe above. No invented items. No duplicate item IDs within one outfit. Return valid JSON only."""
 
     response = await client.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=4096,
-        system=[
-            {
-                "type": "text",
-                "text": STYLIST_SYSTEM_PROMPT,
-                "cache_control": {"type": "ephemeral"},
-            }
-        ],
+        model="claude-sonnet-4-5",
+        max_tokens=4000,
+        temperature=1.0,
         messages=[{"role": "user", "content": user_message}],
+        system=system_prompt,
     )
 
     raw = response.content[0].text.strip()

@@ -210,6 +210,7 @@
   color: var(--color-text-tertiary);
   text-decoration: none;
   transition: color 0.15s;
+  cursor: pointer;
 }
 
 .seeAll:hover {
@@ -263,6 +264,7 @@
   text-decoration: none;
   display: block;
   transition: border-color 0.15s;
+  cursor: pointer;
 }
 
 .tripCard:hover {
@@ -493,6 +495,26 @@
   color: var(--color-text-primary);
 }
 
+.dnaFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: var(--space-2);
+}
+
+.fullAnalysisLink {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 400;
+  color: var(--color-text-tertiary);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.fullAnalysisLink:hover {
+  color: var(--color-text-primary);
+}
+
 /* ─── Approved looks card ─────────────────────────────── */
 .lookCard {
   flex-shrink: 0;
@@ -506,6 +528,7 @@
   flex-direction: column;
   gap: var(--space-1);
   transition: border-color 0.15s;
+  cursor: pointer;
 }
 
 .lookCard:hover {
