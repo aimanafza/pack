@@ -14,9 +14,12 @@ class Settings(BaseSettings):
     CLOUDINARY_API_SECRET: str = ""
     FRONTEND_URL: str = "http://localhost:5173"
 
+    FAL_API_KEY: str = ""
+
     class Config:
         env_file = ".env"
         env_ignore_empty = True
+        extra = "ignore"
 
 
 settings = Settings()

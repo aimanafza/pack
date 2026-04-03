@@ -27,16 +27,33 @@ class PackingItem(BaseModel):
     in_wardrobe: bool = False
 
 
+class DesignRationale(BaseModel):
+    silhouette: str = ""    # proportion logic
+    color_story: str = ""   # palette and why it works
+    occasion_fit: str = ""  # what this outfit handles
+    the_detail: str = ""    # the one element that elevates the whole look
+
+
 class Outfit(BaseModel):
-    name: str
-    occasion: str
+    name: str                                    # display name (maps from day_label)
+    occasion: str = ""                           # occasion type (maps from occasion_tag)
     items: List[PackingItem] = []
-    styling_note: str = ""
+    styling_note: str = ""                       # kept for backward compat
+    # new fields
+    outfit_id: str = ""
+    day_label: str = ""                          # e.g. "DAY 1 — ARRIVAL & SETTLING IN"
+    occasion_tag: str = ""                       # e.g. "TRAVEL / CASUAL SIGHTSEEING"
+    styling_notes: str = ""                      # elevated editorial version
+    design_rationale: Optional[DesignRationale] = None
+    style_gaps: List[str] = []                   # items not in wardrobe that would complete the look
+    total_weight: float = 0.0
+    generated_image_url: Optional[str] = None
 
 
 class PackingList(BaseModel):
     generated_at: datetime = Field(default_factory=datetime.utcnow)
-    stylist_note: str = ""
+    stylist_note: str = ""           # kept for backward compat
+    packing_summary: str = ""        # editorial overview of the full packing strategy
     outfits: List[Outfit] = []
     essentials: List[str] = []
     raw_items: List[PackingItem] = []

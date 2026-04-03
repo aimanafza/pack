@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import useStore from '../store/index.js'
 import { useTrips } from '../hooks/useTrips.js'
 import { useWardrobe } from '../hooks/useWardrobe.js'
+import { useNewTrip } from '../hooks/useNewTrip.js'
 import UploadModal from '../components/wardrobe/UploadModal.jsx'
+import WardrobeGateModal from '../components/trips/WardrobeGateModal.jsx'
 import styles from './DashboardPage.module.css'
 
 function greeting(name) {
@@ -73,15 +75,14 @@ function DashTripCard({ trip }) {
   )
 }
 
-function NewTripCard() {
-  const navigate = useNavigate()
+function NewTripCard({ onClick }) {
   return (
     <div
       className={styles.newTripCard}
-      onClick={() => navigate('/trips/new')}
+      onClick={onClick}
       role="button"
       tabIndex={0}
-      onKeyDown={(e) => e.key === 'Enter' && navigate('/trips/new')}
+      onKeyDown={(e) => e.key === 'Enter' && onClick()}
     >
       <span className={styles.newTripPlus}>+</span>
       <span className={styles.newTripLabel}>Plan a trip</span>
@@ -94,6 +95,7 @@ export default function DashboardPage() {
   const { trips, fetchTrips } = useTrips()
   const { wardrobe, fetchWardrobe } = useWardrobe()
   const navigate = useNavigate()
+  const { goToNewTrip, gateOpen, missing, closeGate } = useNewTrip()
   const [showUpload, setShowUpload] = useState(false)
 
   useEffect(() => {
@@ -135,7 +137,7 @@ export default function DashboardPage() {
             <div className={styles.actionCards}>
               <button
                 className={styles.actionCard}
-                onClick={() => navigate('/trips/new')}
+                onClick={goToNewTrip}
                 type="button"
               >
                 <span className={styles.actionIcon}><IconTrip /></span>
@@ -197,7 +199,7 @@ export default function DashboardPage() {
               {sorted.map((trip) => (
                 <DashTripCard key={trip.id} trip={trip} />
               ))}
-              <NewTripCard />
+              <NewTripCard onClick={goToNewTrip} />
             </div>
           </section>
 
@@ -227,6 +229,12 @@ export default function DashboardPage() {
       )}
 
       {showUpload && <UploadModal onClose={() => setShowUpload(false)} />}
+
+      <AnimatePresence>
+        {gateOpen && (
+          <WardrobeGateModal missing={missing} onClose={closeGate} />
+        )}
+      </AnimatePresence>
     </div>
   )
 }

@@ -176,24 +176,32 @@ export default function SwipeReviewPage() {
             tripId={id}
           />
         ) : (
-          <AnimatePresence custom={exitDir} mode="wait">
-            <motion.div
-              key={currentIndex}
-              custom={exitDir}
-              variants={cardVariants}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-              className={styles.cardWrapper}
-            >
-              <SwipeCard
-                outfit={currentOutfit}
-                wardrobeById={wardrobeById}
-                onApprove={handleApprove}
-                onReject={handleReject}
-              />
-            </motion.div>
-          </AnimatePresence>
+          <div className={styles.cardColumn}>
+            {/* Packing summary — editorial intro, shown once above the card stack */}
+            {trip.packing_list?.packing_summary && (
+              <p className={styles.packingSummary}>
+                {trip.packing_list.packing_summary}
+              </p>
+            )}
+            <AnimatePresence custom={exitDir} mode="wait">
+              <motion.div
+                key={currentIndex}
+                custom={exitDir}
+                variants={cardVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                className={styles.cardWrapper}
+              >
+                <SwipeCard
+                  outfit={currentOutfit}
+                  wardrobeById={wardrobeById}
+                  onApprove={handleApprove}
+                  onReject={handleReject}
+                />
+              </motion.div>
+            </AnimatePresence>
+          </div>
         )}
       </main>
 
