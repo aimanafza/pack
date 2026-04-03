@@ -65,7 +65,7 @@ export default function Sidebar() {
 
   return (
     <aside className={styles.sidebar}>
-      <p className={styles.wordmark}>PACK</p>
+      <p className={styles.wordmark}>pack</p>
 
       <nav className={styles.nav}>
         {navItems.map(({ to, label, Icon }) => (

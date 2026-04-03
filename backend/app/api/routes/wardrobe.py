@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Body
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile, File, Form, Body
 from pydantic import BaseModel
 from typing import List, Optional
 from app.models.user import User
 from app.models.item import WardrobeItem
 from app.api.deps import get_current_user
 from app.services.cloudinary_service import upload_wardrobe_item, delete_wardrobe_item
+from app.services.claude_service import regenerate_style_dna_for_user
 import json
 
 router = APIRouter()
@@ -31,6 +32,7 @@ async def get_wardrobe(current_user: User = Depends(get_current_user)):
 
 @router.post("/")
 async def add_item(
+    background_tasks: BackgroundTasks,
     name: str = Form(...),
     category: str = Form(...),
     subcategory: str = Form(""),
@@ -63,6 +65,8 @@ async def add_item(
         cloudinary_public_id=upload_result["public_id"],
     )
     await item.insert()
+    # TODO: auto-regenerate style DNA on wardrobe change (re-enable later)
+    # background_tasks.add_task(regenerate_style_dna_for_user, str(current_user.id))
     return {"success": True, "data": item.model_dump(), "message": "Item added"}
 
 
@@ -86,10 +90,16 @@ async def update_item(item_id: str, body: ItemUpdateBody, current_user: User = D
 
 
 @router.delete("/{item_id}")
-async def delete_item(item_id: str, current_user: User = Depends(get_current_user)):
+async def delete_item(
+    item_id: str,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
+):
     item = await WardrobeItem.get(item_id)
     if not item or item.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Item not found")
     await delete_wardrobe_item(item.cloudinary_public_id)
     await item.delete()
+    # TODO: auto-regenerate style DNA on wardrobe change (re-enable later)
+    # background_tasks.add_task(regenerate_style_dna_for_user, str(current_user.id))
     return {"success": True, "data": None, "message": "Item deleted"}

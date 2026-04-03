@@ -8,6 +8,14 @@ import api from '../utils/api.js'
 import styles from './ProfilePage.module.css'
 import PreferencesModal from '../components/profile/PreferencesModal.jsx'
 
+function IconArrowRight() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 6h8M6 2l4 4-4 4" />
+    </svg>
+  )
+}
+
 function IconCamera() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -68,33 +76,40 @@ export default function ProfilePage() {
   useEffect(() => {
     fetchTrips()
     fetchWardrobe()
+    // Fetch full user to get persisted style_dna
+    api.get('/api/v1/auth/me').then(({ data }) => {
+      updateUser(data.data)
+      if (data.data.style_dna) {
+        setStyleDNA(data.data.style_dna)
+        analyzedRef.current = true
+      }
+    }).catch(() => {})
   }, [])
 
-  // Analyze once wardrobe loads and has 3+ items
-  useEffect(() => {
-    if (wardrobe.length >= 3 && !analyzedRef.current) {
-      analyzedRef.current = true
-      runAnalysis()
-    }
-  }, [wardrobe.length])
+  // TODO: auto-analyze when wardrobe reaches 3+ items (re-enable later)
+  // useEffect(() => {
+  //   if (wardrobe.length >= 3 && !styleDNA && !analyzedRef.current) {
+  //     analyzedRef.current = true
+  //     runAnalysis()
+  //   }
+  // }, [wardrobe.length, styleDNA])
 
   async function runAnalysis() {
     setDnaLoading(true)
     setDnaError('')
     try {
-      const { data } = await api.post('/api/v1/profile/analyze-style')
-      setStyleDNA(data.data)
+      const res = await api.post('/api/v1/profile/analyze-style')
+      setStyleDNA(res.data.data)
+      updateUser({ style_dna: res.data.data })
     } catch (err) {
-      setDnaError(err.response?.data?.detail || 'Could not analyze style right now.')
+      const detail = err.response?.data?.detail || err.response?.data?.error
+      setDnaError(detail || 'Could not reach the server. Is the backend running?')
     } finally {
       setDnaLoading(false)
     }
   }
 
   function reanalyze() {
-    analyzedRef.current = false
-    setStyleDNA(null)
-    analyzedRef.current = true
     runAnalysis()
   }
 
@@ -325,17 +340,15 @@ export default function ProfilePage() {
 
       {/* Style DNA */}
       <section className={styles.section}>
-        <p className={styles.sectionLabel}>YOUR STYLE DNA</p>
+        <div className={styles.sectionTop}>
+          <p className={styles.sectionLabel}>YOUR STYLE DNA</p>
+        </div>
         {wardrobeItems < 3 ? (
           <p className={styles.emptyState}>
             Add at least 3 items to unlock your Style DNA.{' '}
             <Link to="/wardrobe" className={styles.emptyLink}>Go to wardrobe →</Link>
           </p>
-        ) : dnaLoading ? (
-          <div className={`${styles.dnaCard} ${styles.dnaCardPulse}`}>
-            <p className={styles.dnaLoading}>Analyzing your wardrobe...</p>
-          </div>
-        ) : dnaError ? (
+        ) : dnaError && !styleDNA ? (
           <div className={styles.dnaCard}>
             <p className={styles.emptyState}>{dnaError}</p>
             <button className={styles.reanalyzeLink} onClick={reanalyze} type="button">
@@ -344,49 +357,59 @@ export default function ProfilePage() {
           </div>
         ) : styleDNA ? (
           <motion.div
-            className={styles.dnaCard}
+            className={`${styles.dnaCard} ${dnaLoading ? styles.dnaCardPulse : ''}`}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
           >
-            <h3 className={styles.dnaHeadline}>{styleDNA.headline}</h3>
-            <p className={styles.dnaSummary}>{styleDNA.summary}</p>
+            {styleDNA.color_palette?.length > 0 && (
+              <div className={styles.swatchRow}>
+                {styleDNA.color_palette.map((hex) => (
+                  <span
+                    key={hex}
+                    className={styles.swatch}
+                    style={{ background: hex }}
+                    title={hex}
+                  />
+                ))}
+              </div>
+            )}
             {styleDNA.style_keywords?.length > 0 && (
               <div className={styles.keywordRow}>
-                {styleDNA.style_keywords.map((kw) => (
+                {styleDNA.style_keywords.slice(0, 3).map((kw) => (
                   <span key={kw} className={styles.keyword}>{kw}</span>
                 ))}
               </div>
             )}
-            {styleDNA.color_palette?.length > 0 && (
-              <div className={styles.paletteRow}>
-                {styleDNA.color_palette.map((color) => (
-                  <div key={color} className={styles.colorChip}>
-                    <span
-                      className={styles.colorCircle}
-                      style={{ background: color }}
-                      title={color}
-                    />
-                    <span className={styles.colorName}>{color}</span>
-                  </div>
-                ))}
-              </div>
+            {styleDNA.stylist_paragraph && (
+              <p className={styles.stylistParagraph}>{styleDNA.stylist_paragraph}</p>
             )}
-            <div className={styles.dnaMeta}>
-              {styleDNA.most_worn_category && (
-                <span className={styles.dnaMetaItem}>
-                  Most worn: {styleDNA.most_worn_category}
-                </span>
-              )}
-              <span className={styles.dnaMetaTertiary}>
-                Based on {wardrobeItems} items
-              </span>
+            <div className={styles.dnaFooter}>
+              <button
+                className={styles.reanalyzeLink}
+                onClick={reanalyze}
+                type="button"
+                disabled={dnaLoading}
+              >
+                {dnaLoading ? 'Regenerating...' : 'Regenerate'}
+              </button>
+              <Link to="/profile/style-dna" className={styles.seeFullLink}>
+                See full analysis <IconArrowRight />
+              </Link>
             </div>
-            <button className={styles.reanalyzeLink} onClick={reanalyze} type="button">
-              Re-analyze →
-            </button>
           </motion.div>
-        ) : null}
+        ) : dnaLoading ? (
+          <div className={`${styles.dnaCard} ${styles.dnaCardPulse}`}>
+            <p className={styles.dnaLoading}>Analyzing your wardrobe...</p>
+          </div>
+        ) : (
+          <div className={styles.dnaCard}>
+            <p className={styles.emptyState}>Generate your Style DNA to see your palette, aesthetic, and a stylist's read on your wardrobe.</p>
+            <button className={styles.reanalyzeLink} onClick={reanalyze} type="button" disabled={dnaLoading}>
+              Generate →
+            </button>
+          </div>
+        )}
       </section>
 
       {/* Approved Looks */}

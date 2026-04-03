@@ -1,7 +1,7 @@
 from beanie import Document, Indexed
 from pydantic import BaseModel, Field
 from datetime import datetime
-from typing import List, Annotated, Optional
+from typing import List, Dict, Annotated, Optional
 
 
 class StylePreferences(BaseModel):
@@ -20,6 +20,17 @@ class UserPreferences(BaseModel):
     stylist_notes: str = ""
 
 
+class StyleDNA(BaseModel):
+    headline: str = ""
+    color_palette: List[str] = []           # hex codes
+    style_keywords: List[str] = []          # 3-5 descriptors
+    category_breakdown: Dict[str, int] = {} # e.g. {"Tops": 8, "Bottoms": 4}
+    signature_piece_ids: List[str] = []     # wardrobe item IDs
+    style_gaps: List[str] = []              # 1-3 observations
+    stylist_paragraph: str = ""             # 2-3 sentence editorial description
+    generated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
 class User(Document):
     email: Annotated[str, Indexed(unique=True)]
     password_hash: str
@@ -28,6 +39,7 @@ class User(Document):
     style_preferences: StylePreferences = Field(default_factory=StylePreferences)
     profile_picture: Optional[str] = None
     preferences: UserPreferences = Field(default_factory=UserPreferences)
+    style_dna: Optional[StyleDNA] = None
     reset_code: Optional[str] = None
     reset_code_expires: Optional[datetime] = None
 
