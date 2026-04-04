@@ -2,11 +2,20 @@ import anthropic
 import httpx
 import base64
 import json
+import asyncio
 from app.core.config import settings
 from app.models.trip import Trip
 from app.models.item import WardrobeItem
 
 client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
+
+# Image magic bytes for content-type detection
+_MAGIC = {
+    b"\xff\xd8\xff": "image/jpeg",
+    b"\x89PNG": "image/png",
+    b"RIFF": "image/webp",
+    b"GIF8": "image/gif",
+}
 
 STYLIST_SYSTEM_PROMPT = """You are PACK's personal stylist. You are exceptionally good at your job.
 
@@ -34,35 +43,67 @@ Your job is to extract the precise aesthetic language from these images. Be spec
 Respond ONLY with valid JSON. No preamble, no markdown fences."""
 
 
-async def analyze_vibe(image_urls: list[str]) -> dict:
-    """Analyze inspiration images with Claude vision to extract style vibe."""
-    image_contents = []
-    # Detect media type from magic bytes, not URL extension (Cloudinary URLs are unreliable)
-    MAGIC = {
-        b"\xff\xd8\xff": "image/jpeg",
-        b"\x89PNG": "image/png",
-        b"RIFF": "image/webp",
-        b"GIF8": "image/gif",
-    }
-
+async def _fetch_image_content_blocks(urls: list[str], limit: int = 5) -> list:
+    """Fetch images from URLs and return Claude image content blocks."""
+    blocks = []
     async with httpx.AsyncClient() as http:
-        for url in image_urls[:5]:
+        for url in urls[:limit]:
             r = await http.get(url)
             content_type = r.headers.get("content-type", "").split(";")[0].strip()
             if content_type.startswith("image/"):
                 media_type = content_type
             else:
-                # Fall back to magic bytes
                 header = r.content[:4]
                 media_type = next(
-                    (mt for sig, mt in MAGIC.items() if header[:len(sig)] == sig),
+                    (mt for sig, mt in _MAGIC.items() if header[:len(sig)] == sig),
                     "image/jpeg",
                 )
             b64 = base64.standard_b64encode(r.content).decode("utf-8")
-            image_contents.append({
+            blocks.append({
                 "type": "image",
                 "source": {"type": "base64", "media_type": media_type, "data": b64}
             })
+    return blocks
+
+
+_AVATAR_ANALYSE_SYSTEM = """You are analysing reference photos to build a fashion avatar.
+Study all photos carefully. Return ONLY valid JSON, no preamble.
+{
+  "hair_length": "string",
+  "hair_texture": "string",
+  "hair_color": "string",
+  "skin_tone": "string",
+  "face_shape": "string",
+  "body_silhouette": "string",
+  "notable_features": "string",
+  "photo_quality": "good | acceptable | poor"
+}"""
+
+
+async def analyse_avatar_photos(photo_urls: list[str]) -> dict:
+    """Analyse reference photos with Claude vision to extract physical appearance."""
+    image_blocks = await _fetch_image_content_blocks(photo_urls)
+    image_blocks.append({"type": "text", "text": "Analyse these reference photos."})
+
+    response = await client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=600,
+        system=_AVATAR_ANALYSE_SYSTEM,
+        messages=[{"role": "user", "content": image_blocks}],
+    )
+
+    raw = response.content[0].text.strip()
+    if raw.startswith("```"):
+        inner = raw[3:]
+        if inner.startswith("json"):
+            inner = inner[4:]
+        raw = inner.split("```")[0]
+    return json.loads(raw.strip())
+
+
+async def analyze_vibe(image_urls: list[str]) -> dict:
+    """Analyze inspiration images with Claude vision to extract style vibe."""
+    image_contents = await _fetch_image_content_blocks(image_urls, limit=5)
 
     image_contents.append({
         "type": "text",
@@ -311,6 +352,42 @@ When writing design_rationale: be precise about the craft decisions.
 - occasion_fit: what this outfit handles and how
 - the_detail: the one element that elevates the whole look
 
+WEIGHT ESTIMATION RULES:
+Every item in the wardrobe has an estimated_weight_kg field.
+If an item's weight is 0 or null, estimate it yourself using these fashion industry averages:
+
+Top / shirt / blouse: 0.25kg
+Sweater / knitwear: 0.5kg
+Jacket / blazer: 0.75kg
+Heavy coat / parka: 1.4kg
+Jeans / trousers: 0.6kg
+Dress (light): 0.3kg
+Dress (heavy/formal): 0.65kg
+Skirt (light): 0.25kg
+Shoes (flat/sneaker): 0.5kg
+Shoes (boots): 0.95kg
+Bag (small crossbody): 0.4kg
+Bag (tote/large): 0.65kg
+Accessories (belt/scarf): 0.15kg
+
+Add estimated_weight_kg to every item in your output, whether the original data had it or not.
+
+WEIGHT BUDGET RULES:
+Available bag weight: {available_weight_kg}kg (already deducted: empty bag weight + reserved items)
+
+For each outfit:
+1. Sum the estimated_weight_kg of all selected items — this is total_weight
+2. Track a running total of UNIQUE items across all outfits (same item shared across outfits counts once)
+3. Combined weight of all unique items must not exceed {available_weight_kg}kg
+
+If you cannot fit all requested outfits within the weight limit:
+- Prioritize fewer, more versatile items
+- Favour lighter items unless heavier ones are essential
+- Note in packing_summary how you managed the weight constraint
+- NEVER exceed the available_weight limit
+
+weight_status must be 'under' or 'at_limit'. If it would be 'over', restructure outfits until it is not.
+
 OUTPUT FORMAT — return this exact JSON structure:
 {{
   "outfits": [
@@ -327,6 +404,7 @@ OUTPUT FORMAT — return this exact JSON structure:
         }}
       ],
       "total_weight": 0.0,
+      "weight_note": "1.4kg — lightest outfit, ideal for travel days",
       "styling_notes": "Editorial styling note written as a senior Vogue stylist would. Specific, visual, opinionated.",
       "design_rationale": {{
         "silhouette": "proportion logic",
@@ -339,6 +417,10 @@ OUTPUT FORMAT — return this exact JSON structure:
       ]
     }}
   ],
+  "packing_weight_total": 0.0,
+  "weight_budget": {available_weight_kg},
+  "weight_remaining": 0.0,
+  "weight_status": "under",
   "packing_summary": "2-3 sentence overview of the full packing strategy for this trip, written editorially"
 }}"""
 
@@ -369,3 +451,101 @@ Remember: ONLY use item IDs from the wardrobe above. No invented items. No dupli
             inner = inner[4:]
         raw = inner.split("```")[0]
     return json.loads(raw.strip())
+
+
+_AVATAR_PROMPT_SYSTEM = """You are a professional fashion photographer and AI image generation prompt engineer. Write a single detailed paragraph prompt for Nano Banana Pro to generate a photorealistic base avatar.
+
+Requirements for the avatar:
+- Photorealistic, full body head to toe visible
+- Wearing: plain white fitted t-shirt, straight-leg white jeans
+- Arms slightly away from body (clothing visible on all sides)
+- Front-facing neutral pose, weight evenly distributed
+- Clean light grey studio background (#F2F2F2)
+- Soft even lighting, no harsh shadows
+- 9:16 portrait orientation
+
+Vibe guide:
+- realistic: exact natural appearance, no idealization
+- polished: natural but slightly editorial, great posture
+- idealized: fashion model quality treatment, same person elevated
+
+Be extremely specific about every physical detail.
+Return ONLY the prompt string. No JSON, no explanation."""
+
+
+async def generate_avatar_prompt(data: dict) -> str:
+    """Have Claude write the Nano Banana prompt from user data."""
+    appearance = data.get("appearance", {})
+    fit = data.get("fit_profile", {})
+    prefs = data.get("preferences", {})
+    photo_urls = data.get("photo_urls", [])
+    feedback = data.get("feedback")
+    previous_prompt = data.get("previous_prompt")
+
+    if feedback and previous_prompt:
+        user_message = f"""Previous prompt:
+{previous_prompt}
+
+User feedback: '{feedback}'
+
+Rewrite the prompt incorporating this feedback while preserving all other confirmed physical details.
+Return ONLY the new prompt string."""
+        response = await client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=800,
+            system=_AVATAR_PROMPT_SYSTEM,
+            messages=[{"role": "user", "content": user_message}],
+        )
+    else:
+        hijab_line = "Wearing hijab — preserve in all generations." if prefs.get("hijab") else ""
+        features = ", ".join(prefs.get("features_to_preserve", [])) or "none"
+
+        user_text = f"""Write the avatar prompt for this person:
+
+APPEARANCE (confirmed by user):
+Hair: {appearance.get('hair_color', '')}, {appearance.get('hair_texture', '')}, {appearance.get('hair_length', '')}
+{hijab_line}
+Skin tone: {appearance.get('skin_tone', '')}
+Face shape: {appearance.get('face_shape', '')}
+Body silhouette: {appearance.get('body_silhouette', '')}
+Notable features: {appearance.get('notable_features', '')}
+Features to preserve: {features}
+
+FIT PROFILE:
+Shirt: {fit.get('shirt_size', 'not specified')}, Waist: {fit.get('waist_size', 'not specified')}, Dress: {fit.get('dress_size', 'not specified')}, Height: {fit.get('height', 'not specified')}, Inseam: {fit.get('inseam', 'not specified')}
+
+Makeup: {prefs.get('makeup', 'natural')}
+Vibe: {prefs.get('vibe', 'realistic')}
+
+Reference photos attached — study them and incorporate what you see."""
+
+        content_blocks = await _fetch_image_content_blocks(photo_urls)
+        content_blocks.append({"type": "text", "text": user_text})
+
+        response = await client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=800,
+            system=_AVATAR_PROMPT_SYSTEM,
+            messages=[{"role": "user", "content": content_blocks}],
+        )
+
+    return response.content[0].text.strip()
+
+
+async def run_fal_generation(prompt: str, photo_urls: list[str]) -> list[str]:
+    """Call fal.ai nano-banana-pro and return variation URLs."""
+    import fal_client
+    import os
+    os.environ["FAL_KEY"] = settings.FAL_API_KEY
+
+    result = await asyncio.to_thread(
+        fal_client.run,
+        "fal-ai/nano-banana-pro/edit",
+        arguments={
+            "prompt": prompt,
+            "image_urls": photo_urls,
+            "num_images": 3,
+            "image_size": "portrait_9_16",
+        },
+    )
+    return [img["url"] for img in result["images"]]

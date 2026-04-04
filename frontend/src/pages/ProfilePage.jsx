@@ -151,8 +151,8 @@ export default function ProfilePage() {
     }
   }
 
-  // Avatar — prefer uploaded picture, then wardrobe item, then initials
-  const avatarImg = user?.profile_picture || avatarPreview
+  // Avatar — prefer built avatar, then profile picture, then initials
+  const avatarImg = user?.avatar?.base_url || user?.profile_picture || avatarPreview
   const initials = user?.name
     ? user.name
         .split(' ')
@@ -207,6 +207,18 @@ export default function ProfilePage() {
           onChange={handleAvatarChange}
         />
         <h1 className={styles.name}>{user?.name}</h1>
+
+        {/* Avatar builder prompt / update link */}
+        {!user?.avatar?.base_url ? (
+          <Link to="/profile/build-avatar" className={styles.avatarBuilderLink}>
+            Build your avatar to unlock trip planning →
+          </Link>
+        ) : (
+          <Link to="/profile/build-avatar" className={styles.avatarUpdateLink}>
+            Update avatar
+          </Link>
+        )}
+
         <div className={styles.pillRow}>
           <button className={styles.pillBtn} type="button" onClick={() => setShowPreferences(true)}>Preferences</button>
           <button className={styles.pillBtn} type="button">Settings</button>

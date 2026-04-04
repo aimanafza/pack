@@ -31,6 +31,41 @@ class StyleDNA(BaseModel):
     generated_at: datetime = Field(default_factory=datetime.utcnow)
 
 
+class AvatarAppearance(BaseModel):
+    hair_color: str = ""
+    hair_texture: str = ""
+    hair_length: str = ""
+    skin_tone: str = ""
+    face_shape: str = ""
+    body_silhouette: str = ""
+    notable_features: str = ""
+    hijab: bool = False
+
+
+class AvatarFitProfile(BaseModel):
+    shirt_size: str = ""
+    waist_size: str = ""
+    dress_size: str = ""
+    height: str = ""
+    inseam: str = ""
+
+
+class AvatarPreferences(BaseModel):
+    makeup: str = ""
+    vibe: str = ""
+    features_to_preserve: List[str] = []
+
+
+class Avatar(BaseModel):
+    base_url: str = ""
+    variation_urls: List[str] = []
+    generated_at: datetime = Field(default_factory=datetime.utcnow)
+    generation_prompt: str = ""
+    fit_profile: AvatarFitProfile = Field(default_factory=AvatarFitProfile)
+    appearance: AvatarAppearance = Field(default_factory=AvatarAppearance)
+    preferences: AvatarPreferences = Field(default_factory=AvatarPreferences)
+
+
 class User(Document):
     email: Annotated[str, Indexed(unique=True)]
     password_hash: str
@@ -40,6 +75,7 @@ class User(Document):
     profile_picture: Optional[str] = None
     preferences: UserPreferences = Field(default_factory=UserPreferences)
     style_dna: Optional[StyleDNA] = None
+    avatar: Optional[Avatar] = None
     reset_code: Optional[str] = None
     reset_code_expires: Optional[datetime] = None
 

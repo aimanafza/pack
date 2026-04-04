@@ -48,6 +48,45 @@ async def delete_inspiration_image(public_id: str) -> None:
     cloudinary.uploader.destroy(public_id)
 
 
+async def upload_avatar_permanent(url: str, user_id: str) -> dict:
+    """Download a fal.ai URL and upload to Cloudinary for permanent storage."""
+    import httpx
+    async with httpx.AsyncClient() as http:
+        r = await http.get(url)
+        image_data = r.content
+    result = cloudinary.uploader.upload(
+        image_data,
+        folder="pack/avatars",
+        public_id=f"avatar_{user_id}",
+        overwrite=True,
+        transformation=[
+            {"quality": "auto"},
+            {"fetch_format": "auto"},
+        ],
+    )
+    return {
+        "url": result["secure_url"],
+        "public_id": result["public_id"],
+    }
+
+
+async def upload_avatar_ref(file, user_id: str, slot: str) -> dict:
+    result = cloudinary.uploader.upload(
+        file,
+        folder=f"pack/avatar_refs/{user_id}",
+        public_id=f"{slot}_{user_id}",
+        overwrite=True,
+        transformation=[
+            {"quality": "auto"},
+            {"fetch_format": "auto"},
+        ],
+    )
+    return {
+        "url": result["secure_url"],
+        "public_id": result["public_id"],
+    }
+
+
 async def upload_profile_picture(file, user_id: str) -> dict:
     result = cloudinary.uploader.upload(
         file,

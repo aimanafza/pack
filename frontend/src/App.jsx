@@ -15,6 +15,7 @@ import StyleDNAPage from './pages/StyleDNAPage.jsx'
 import PackingPage from './pages/PackingPage.jsx'
 import SwipeReviewPage from './pages/SwipeReviewPage.jsx'
 import WardrobeItemDetailPage from './pages/WardrobeItemDetailPage.jsx'
+import AvatarBuilder from './pages/AvatarBuilder.jsx'
 
 function PrivateRoute({ children }) {
   const token = useStore((s) => s.token)
@@ -49,6 +50,7 @@ export default function App() {
         <Route path="/trips/:id" element={<WithLayout><TripDetailPage /></WithLayout>} />
         <Route path="/profile" element={<WithLayout><ProfilePage /></WithLayout>} />
         <Route path="/profile/style-dna" element={<WithLayout><StyleDNAPage /></WithLayout>} />
+        <Route path="/profile/build-avatar" element={<PrivateRoute><AvatarBuilder /></PrivateRoute>} />
         {/* Swipe review + packing: no sidebar, distraction-free full-width */}
         <Route path="/trips/:id/review" element={<PrivateRoute><SwipeReviewPage /></PrivateRoute>} />
         <Route path="/trips/:id/pack" element={<PrivateRoute><PackingPage /></PrivateRoute>} />

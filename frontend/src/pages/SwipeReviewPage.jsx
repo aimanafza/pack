@@ -174,6 +174,7 @@ export default function SwipeReviewPage() {
             approvedCount={approvedNames.size}
             totalItems={totalItems}
             tripId={id}
+            packingList={trip.packing_list}
           />
         ) : (
           <div className={styles.cardColumn}>
@@ -196,6 +197,7 @@ export default function SwipeReviewPage() {
                 <SwipeCard
                   outfit={currentOutfit}
                   wardrobeById={wardrobeById}
+                  packingList={trip.packing_list}
                   onApprove={handleApprove}
                   onReject={handleReject}
                 />
@@ -242,10 +244,26 @@ export default function SwipeReviewPage() {
   )
 }
 
-function CompletionState({ approvedCount, totalItems, tripId }) {
+function CompletionState({ approvedCount, totalItems, tripId, packingList }) {
   const navigate = useNavigate()
+  const hasWeight = packingList?.weight_budget > 0 && packingList?.packing_weight_total != null
+  const weightStatus = packingList?.weight_status
   return (
     <div className={styles.completion}>
+      {hasWeight && (
+        <div className={styles.completionWeight}>
+          <p className={styles.completionWeightLabel}>TOTAL PACKED WEIGHT</p>
+          <p className={styles.completionWeightValue}>
+            {packingList.packing_weight_total?.toFixed(1)}
+            <span className={styles.completionWeightBudget}> / {packingList.weight_budget}kg</span>
+          </p>
+          <p className={styles.completionWeightNote}>
+            {weightStatus === 'over'
+              ? 'Over limit — review your bag'
+              : `${packingList.weight_remaining?.toFixed(1)}kg remaining`}
+          </p>
+        </div>
+      )}
       <h1 className={styles.completionHeadline}>Your bag is packed.</h1>
       <p className={styles.completionSummary}>
         You approved {approvedCount} outfit{approvedCount !== 1 ? 's' : ''},{' '}

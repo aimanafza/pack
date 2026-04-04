@@ -15,10 +15,17 @@ import useStore from '../store/index.js'
 export function useNewTrip() {
   const navigate = useNavigate()
   const wardrobe = useStore((s) => s.wardrobe)
+  const user = useStore((s) => s.user)
   const [gateOpen, setGateOpen] = useState(false)
   const [missing, setMissing] = useState([])
 
   function goToNewTrip() {
+    // Avatar gate — must build avatar before planning a trip
+    if (!user?.avatar?.base_url) {
+      navigate('/profile/build-avatar')
+      return
+    }
+
     const missingItems = []
 
     const hasShoes = wardrobe.some((item) => item.category === 'shoes')

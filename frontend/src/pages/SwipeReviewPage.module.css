@@ -142,6 +142,45 @@
   padding-top: var(--space-12);
 }
 
+.completionWeight {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-bottom: var(--space-5);
+  border-bottom: var(--border-thin);
+}
+
+.completionWeightLabel {
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+  margin: 0;
+}
+
+.completionWeightValue {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-weight: 300;
+  color: var(--color-text-primary);
+  margin: 0;
+  line-height: 1;
+}
+
+.completionWeightBudget {
+  font-size: var(--text-base);
+  color: var(--color-text-tertiary);
+}
+
+.completionWeightNote {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--color-text-tertiary);
+  margin: 0;
+}
+
 .completionHeadline {
   font-family: var(--font-display);
   font-size: var(--text-2xl);

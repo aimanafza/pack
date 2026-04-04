@@ -42,6 +42,9 @@ export default function ItemScrollRow({ items, wardrobeById }) {
             {(activeWardrobe?.formality || activeItem.formality) && (
               <span className={styles.tag}>{activeWardrobe?.formality || activeItem.formality}</span>
             )}
+            {activeItem.estimated_weight_kg > 0 && (
+              <span className={styles.tag}>{activeItem.estimated_weight_kg}kg</span>
+            )}
           </div>
           {(activeWardrobe?.notes || activeItem.notes) && (
             <p className={styles.notes}>{activeWardrobe?.notes || activeItem.notes}</p>

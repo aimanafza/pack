@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 
 from app.core.config import settings
 from app.core.database import init_db
-from app.api.routes import auth, wardrobe, trips, pack, inspiration, profile
+from app.api.routes import auth, wardrobe, trips, pack, inspiration, profile, avatar
 
 
 @asynccontextmanager
@@ -44,3 +44,4 @@ app.include_router(trips.router, prefix="/api/v1/trips", tags=["trips"])
 app.include_router(pack.router, prefix="/api/v1/pack", tags=["pack"])
 app.include_router(inspiration.router, prefix="/api/v1/trips", tags=["inspiration"])
 app.include_router(profile.router, prefix="/api/v1/profile", tags=["profile"])
+app.include_router(avatar.router, prefix="/api/v1/users", tags=["avatar"])
