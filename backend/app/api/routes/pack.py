@@ -74,12 +74,17 @@ async def suggest_packing_list(
     # ── Build validated outfit list ────────────────────────────────────────
 
     def make_packing_item(raw_item: dict, wardrobe_by_id: dict) -> Optional[PackingItem]:
-        """Convert a Claude outfit item dict to a PackingItem, injecting image_url."""
+        """Convert a Claude outfit item dict to a PackingItem, injecting image_url and weight."""
         if not isinstance(raw_item, dict):
             return None
         try:
             item_id = str(raw_item.get("id") or raw_item.get("wardrobe_item_id") or "")
             wardrobe_item = wardrobe_by_id.get(item_id)
+            # Prefer actual wardrobe weight; fall back to Claude's estimate
+            if wardrobe_item and wardrobe_item.weight_grams:
+                weight_kg = round(wardrobe_item.weight_grams / 1000, 3)
+            else:
+                weight_kg = float(raw_item.get("estimated_weight_kg", 0.0))
             return PackingItem(
                 wardrobe_item_id=item_id if wardrobe_item else None,
                 name=raw_item.get("name", ""),
@@ -87,6 +92,7 @@ async def suggest_packing_list(
                 image_url=wardrobe_item.image_url if wardrobe_item else None,
                 checked=False,
                 in_wardrobe=bool(wardrobe_item),
+                estimated_weight_kg=weight_kg,
             )
         except Exception:
             return None
@@ -150,6 +156,46 @@ async def suggest_packing_list(
         built_outfits.append(outfit)
 
     packing_summary = raw.get("packing_summary", raw.get("stylist_note", ""))
+    available_weight_kg = round(trip.available_clothing_weight_grams / 1000, 2)
+
+    # ── Server-side unique-item weight calculation ─────────────────────────
+    # Each item counted ONCE regardless of how many outfits it appears in.
+    # Wardrobe items deduped by wardrobe_item_id; non-wardrobe items always counted.
+    seen_wardrobe_ids: set[str] = set()
+    item_outfit_counts: dict[str, int] = {}   # wardrobe_item_id → outfit count
+    unique_items: list[PackingItem] = []
+
+    for outfit in built_outfits:
+        for item in outfit.items:
+            wid = item.wardrobe_item_id or ""
+            if wid:
+                item_outfit_counts[wid] = item_outfit_counts.get(wid, 0) + 1
+                if wid not in seen_wardrobe_ids:
+                    seen_wardrobe_ids.add(wid)
+                    unique_items.append(item)
+            else:
+                unique_items.append(item)
+
+    packing_weight_total = round(sum(i.estimated_weight_kg for i in unique_items), 2)
+    weight_remaining = round(available_weight_kg - packing_weight_total, 2)
+    weight_status = (
+        "over" if packing_weight_total > available_weight_kg
+        else "at_limit" if packing_weight_total >= available_weight_kg * 0.95
+        else "under"
+    )
+    unique_item_count = len(unique_items)
+
+    # Build versatility note from the most-reused item
+    versatility_note = ""
+    if item_outfit_counts:
+        top_id, top_count = max(item_outfit_counts.items(), key=lambda x: x[1])
+        if top_count >= 2:
+            top_item = wardrobe_by_id.get(top_id)
+            item_name = top_item.name if top_item else "one piece"
+            versatility_note = (
+                f"Your {item_name.lower()} works across {top_count} outfits, "
+                f"so you're packing {unique_item_count} items that create {len(built_outfits)} complete looks."
+            )
 
     packing_list = PackingList(
         generated_at=datetime.utcnow(),
@@ -158,6 +204,12 @@ async def suggest_packing_list(
         outfits=built_outfits,
         essentials=raw.get("essentials", []),
         raw_items=[],
+        packing_weight_total=packing_weight_total,
+        weight_budget=available_weight_kg,
+        weight_remaining=weight_remaining,
+        weight_status=weight_status,
+        unique_item_count=unique_item_count,
+        versatility_note=versatility_note,
     )
 
     trip.packing_list = packing_list

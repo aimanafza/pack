@@ -1,9 +1,13 @@
-import anthropic
-import httpx
+import asyncio
 import base64
 import json
-import asyncio
+import logging
+import httpx
+import anthropic
+from typing import Optional
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 from app.models.trip import Trip
 from app.models.item import WardrobeItem
 
@@ -372,19 +376,31 @@ Accessories (belt/scarf): 0.15kg
 
 Add estimated_weight_kg to every item in your output, whether the original data had it or not.
 
+WEIGHT CALCULATION — read this carefully:
+- Each outfit has its own total_weight (sum of ALL its items) — this shows the user what they wear that day
+- packing_weight_total = weight of UNIQUE items only, deduplicated by item id across ALL outfits
+- An item appearing in 3 outfits still only weighs its weight ONCE in packing_weight_total
+- This is intentional — versatile pieces that work across multiple outfits are a GOOD thing, they save pack weight
+- The weight budget check is against packing_weight_total only
+
+Example:
+  Outfit 1: jeans 0.6kg + sweater 0.5kg + loafers 0.5kg → total_weight = 1.6kg
+  Outfit 2: jeans 0.6kg + silk top 0.2kg + loafers 0.5kg → total_weight = 1.3kg
+  packing_weight_total = 0.6 + 0.5 + 0.5 + 0.2 = 1.8kg (jeans and loafers counted once)
+  NOT 1.6 + 1.3 = 2.9kg
+
 WEIGHT BUDGET RULES:
 Available bag weight: {available_weight_kg}kg (already deducted: empty bag weight + reserved items)
 
 For each outfit:
-1. Sum the estimated_weight_kg of all selected items — this is total_weight
-2. Track a running total of UNIQUE items across all outfits (same item shared across outfits counts once)
-3. Combined weight of all unique items must not exceed {available_weight_kg}kg
+1. Sum ALL selected item weights → this is total_weight (what they're wearing that day)
+2. Separately track UNIQUE item ids across ALL outfits — the combined weight of unique items only must not exceed {available_weight_kg}kg
 
 If you cannot fit all requested outfits within the weight limit:
-- Prioritize fewer, more versatile items
+- Prioritize fewer, more versatile items — items that work in multiple outfits save weight
 - Favour lighter items unless heavier ones are essential
 - Note in packing_summary how you managed the weight constraint
-- NEVER exceed the available_weight limit
+- NEVER let packing_weight_total exceed the available_weight limit
 
 weight_status must be 'under' or 'at_limit'. If it would be 'over', restructure outfits until it is not.
 
@@ -421,6 +437,8 @@ OUTPUT FORMAT — return this exact JSON structure:
   "weight_budget": {available_weight_kg},
   "weight_remaining": 0.0,
   "weight_status": "under",
+  "unique_item_count": 0,
+  "versatility_note": "e.g. Your dark jeans work across 3 outfits — smart packing",
   "packing_summary": "2-3 sentence overview of the full packing strategy for this trip, written editorially"
 }}"""
 
@@ -442,6 +460,103 @@ Remember: ONLY use item IDs from the wardrobe above. No invented items. No dupli
         temperature=1.0,
         messages=[{"role": "user", "content": user_message}],
         system=system_prompt,
+    )
+
+    raw = response.content[0].text.strip()
+    if raw.startswith("```"):
+        inner = raw[3:]
+        if inner.startswith("json"):
+            inner = inner[4:]
+        raw = inner.split("```")[0]
+    return json.loads(raw.strip())
+
+
+async def generate_restyle_outfit(
+    trip: Trip,
+    wardrobe: list[WardrobeItem],
+    kept_item_ids: list[str],
+    preferences: dict,
+    approved_item_ids: set[str],
+) -> dict:
+    """Generate a single restyled outfit built around kept anchor pieces."""
+    prefs = preferences or {}
+
+    wardrobe_context = [
+        {
+            "id": str(item.id),
+            "name": item.name,
+            "category": item.category,
+            "color": item.color,
+            "fabric": item.fabric,
+            "formality": item.formality,
+            "weight_kg": round(item.weight_grams / 1000, 2),
+        }
+        for item in wardrobe
+    ]
+    wardrobe_json = json.dumps(wardrobe_context, separators=(',', ':'))
+
+    kept_items = [item for item in wardrobe if str(item.id) in kept_item_ids]
+    kept_context = [
+        {"id": str(i.id), "name": i.name, "category": i.category, "color": i.color}
+        for i in kept_items
+    ]
+
+    available_weight_kg = round(trip.available_clothing_weight_grams / 1000, 2)
+    occasions_str = ", ".join(trip.occasions) if trip.occasions else "general travel"
+
+    system = f"""You are a senior Vogue fashion editor. A user rejected an outfit but kept specific anchor pieces. Your job is to build the most impressive possible new outfit around exactly those pieces.
+
+Think harder than last time. The user already rejected one option — surprise them with an unexpected but perfectly coherent combination.
+
+STYLIST BRIEFING:
+Style aesthetics: {", ".join(prefs.get("style_aesthetics", [])) or "not specified"}
+Fit preference: {prefs.get("fit_preference") or "not specified"}
+Colors to avoid: {", ".join(prefs.get("colors_to_avoid", [])) or "none"}
+
+WARDROBE (only choose from these):
+{wardrobe_json}
+
+RULES — non-negotiable:
+1. You MUST include every kept piece by their exact IDs
+2. You may only use item IDs from the wardrobe list above
+3. Do not repeat the exact combination that was rejected
+4. Return ONLY valid JSON — a single outfit object
+
+Return this exact JSON structure:
+{{
+  "outfit_id": "restyle_1",
+  "day_label": "RESTYLED LOOK",
+  "occasion_tag": "appropriate occasion",
+  "items": [
+    {{"id": "exact_wardrobe_id", "name": "item name", "category": "category", "estimated_weight_kg": 0.0}}
+  ],
+  "total_weight": 0.0,
+  "weight_note": "e.g. 1.4kg — the lightest way to wear this",
+  "styling_notes": "2-3 sentence editorial styling note, written as a Vogue stylist",
+  "design_rationale": {{
+    "silhouette": "proportion logic",
+    "color_story": "palette description",
+    "occasion_fit": "what this handles",
+    "the_detail": "the one thing that elevates this look"
+  }},
+  "style_gaps": []
+}}"""
+
+    user_msg = f"""KEPT ANCHOR PIECES (must include all of these):
+{json.dumps(kept_context, indent=2)}
+
+Trip: {trip.destination}
+Occasions: {occasions_str}
+Weight budget: {available_weight_kg}kg
+
+Build the best possible outfit around the kept pieces. Return ONLY valid JSON."""
+
+    response = await client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=1500,
+        temperature=1.0,
+        messages=[{"role": "user", "content": user_msg}],
+        system=system,
     )
 
     raw = response.content[0].text.strip()
@@ -549,3 +664,114 @@ async def run_fal_generation(prompt: str, photo_urls: list[str]) -> list[str]:
         },
     )
     return [img["url"] for img in result["images"]]
+
+
+_OUTFIT_PROMPT_SYSTEM = """You write image generation prompts for a fashion AI. Given an outfit and a person's appearance, write a single prompt for nano-banana-pro that will generate a full-body editorial fashion photo of that person wearing the outfit.
+
+Rules:
+- Start with the person's physical description (skin tone, hair, silhouette)
+- List every item in the outfit by name, color, and category
+- Include the setting (destination, climate, occasion)
+- Describe the aesthetic mood in 3-5 words (e.g. "quiet luxury minimalist", "coastal elevated casual")
+- Keep the total prompt under 200 words
+- Write in present tense, no bullet points, one cohesive paragraph
+- Do not use the word "photograph" — say "editorial fashion image"
+- Respond with ONLY the prompt text, nothing else"""
+
+
+async def generate_outfit_image_prompt(outfit, user_avatar, trip, style_aesthetics: list[str]) -> str:
+    """Use Claude Haiku with vision to generate a Nano Banana image prompt for one outfit."""
+    item_image_urls = [
+        item.image_url for item in outfit.items if item.image_url
+    ]
+
+    appearance = getattr(user_avatar, "appearance", None)
+    fit = getattr(user_avatar, "fit_profile", None)
+
+    avatar_desc_parts = []
+    if appearance:
+        if getattr(appearance, "skin_tone", None):
+            avatar_desc_parts.append(f"skin tone: {appearance.skin_tone}")
+        if getattr(appearance, "hair_color", None):
+            avatar_desc_parts.append(f"hair: {appearance.hair_color}")
+        if getattr(appearance, "hair_texture", None):
+            avatar_desc_parts.append(f"texture: {appearance.hair_texture}")
+        if getattr(appearance, "body_silhouette", None):
+            avatar_desc_parts.append(f"silhouette: {appearance.body_silhouette}")
+    if fit and getattr(fit, "height", None):
+        avatar_desc_parts.append(f"height: {fit.height}cm")
+
+    avatar_desc = ", ".join(avatar_desc_parts) if avatar_desc_parts else "not specified"
+
+    item_lines = "\n".join(
+        f"- {item.name} ({item.category})" for item in outfit.items
+    )
+    aesthetics = ", ".join(style_aesthetics) if style_aesthetics else "classic, elevated"
+    climate = getattr(trip, "climate", "") or "mild"
+    destination = getattr(trip, "destination", "") or "travel"
+    occasion = outfit.occasion_tag or outfit.occasion or "casual"
+
+    user_text = f"""Person: {avatar_desc}
+Style aesthetics: {aesthetics}
+
+Outfit: {outfit.name}
+Occasion: {occasion}
+Destination: {destination}, {climate} climate
+Items:
+{item_lines}
+
+Styling note: {outfit.styling_notes or outfit.styling_note}
+
+Write the image generation prompt."""
+
+    content: list = []
+    if item_image_urls:
+        image_blocks = await _fetch_image_content_blocks(item_image_urls, limit=4)
+        content.extend(image_blocks)
+    content.append({"type": "text", "text": user_text})
+
+    response = await client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=300,
+        system=_OUTFIT_PROMPT_SYSTEM,
+        messages=[{"role": "user", "content": content}],
+    )
+    return response.content[0].text.strip()
+
+
+async def generate_single_outfit_image(outfit, user_avatar, trip, style_aesthetics: list[str]) -> Optional[str]:
+    """Generate one outfit editorial image via fal.ai. Returns the image URL or None on failure."""
+    import fal_client
+    import os
+    os.environ["FAL_KEY"] = settings.FAL_API_KEY
+
+    prompt = await generate_outfit_image_prompt(outfit, user_avatar, trip, style_aesthetics)
+
+    # Use avatar base_url as the reference image if available; else use item images
+    reference_urls: list[str] = []
+    if user_avatar and getattr(user_avatar, "base_url", None):
+        reference_urls.append(user_avatar.base_url)
+
+    item_image_urls = [item.image_url for item in outfit.items if item.image_url]
+    reference_urls.extend(item_image_urls[:3])
+
+    if not reference_urls:
+        logger.warning(f"No reference URLs for outfit '{outfit.name}' — skipping image generation")
+        return None
+
+    logger.info(f"Generating image for outfit '{outfit.name}' with {len(reference_urls)} reference(s)")
+    result = await asyncio.to_thread(
+        fal_client.run,
+        "fal-ai/nano-banana-pro/edit",
+        arguments={
+            "prompt": prompt,
+            "image_urls": reference_urls,
+            "num_images": 1,
+            "image_size": "portrait_9_16",
+        },
+    )
+    images = result.get("images", [])
+    if not images:
+        logger.warning(f"fal.ai returned no images for outfit '{outfit.name}'. Result: {result}")
+        return None
+    return images[0]["url"]

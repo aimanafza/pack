@@ -79,5 +79,10 @@ export function useTrips() {
     return data.data
   }
 
-  return { trips, loading, error, fetchTrips, fetchTrip, createTrip, editTrip, deleteTrip, checkItem, approveOutfit, rejectOutfit }
+  async function restyleOutfit(tripId, body) {
+    const { data } = await api.post(`/api/v1/trips/${tripId}/outfits/restyle`, body)
+    return data.data  // returns the new outfit object (not the full trip)
+  }
+
+  return { trips, loading, error, fetchTrips, fetchTrip, createTrip, editTrip, deleteTrip, checkItem, approveOutfit, rejectOutfit, restyleOutfit }
 }
