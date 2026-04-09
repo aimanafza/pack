@@ -1,7 +1,9 @@
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import styles from './TripDetail.module.css'
 import ConfirmModal from '../ui/ConfirmModal.jsx'
+import LookbookSection from '../LookbookSection.jsx'
 
 const OCCASIONS = [
   'Sightseeing', 'Business meetings', 'Casual days', 'Dinners out',
@@ -107,12 +109,133 @@ function VibeSection({ trip }) {
   )
 }
 
+/* ─── Regenerate Modal ────────────────────────────────────────── */
+function RegenerateModal({ trip, onRegenerateAll, onRegenerateSelected, onClose, loading }) {
+  const [mode, setMode] = useState('all') // 'all' | 'select'
+  const [selected, setSelected] = useState(new Set())
+
+  const approvedOutfits = trip.packing_list?.outfits?.filter(
+    (o) => trip.approved_outfits?.includes(o.name)
+  ) ?? []
+
+  function toggleOutfit(name) {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      next.has(name) ? next.delete(name) : next.add(name)
+      return next
+    })
+  }
+
+  function handleConfirm() {
+    if (mode === 'all') {
+      onRegenerateAll()
+    } else {
+      onRegenerateSelected([...selected])
+    }
+  }
+
+  const canConfirm = mode === 'all' || selected.size > 0
+  const btnLabel = mode === 'all'
+    ? 'Regenerate all looks'
+    : selected.size > 0
+    ? `Regenerate ${selected.size} look${selected.size !== 1 ? 's' : ''}`
+    : 'Select looks to regenerate'
+
+  function handleOverlayClick(e) {
+    if (e.target === e.currentTarget) onClose()
+  }
+
+  return createPortal(
+    <div className={styles.regenOverlay} onClick={handleOverlayClick}>
+      <div className={styles.regenModal}>
+        <h2 className={styles.regenTitle}>Regenerate outfits</h2>
+        <p className={styles.regenSubtitle}>Choose which looks to redo</p>
+
+        <div className={styles.regenModeRow}>
+          <button
+            type="button"
+            className={`${styles.regenModeBtn} ${mode === 'all' ? styles.regenModeBtnActive : ''}`}
+            onClick={() => setMode('all')}
+          >
+            All outfits
+          </button>
+          <button
+            type="button"
+            className={`${styles.regenModeBtn} ${mode === 'select' ? styles.regenModeBtnActive : ''}`}
+            onClick={() => setMode('select')}
+          >
+            Select looks
+          </button>
+        </div>
+
+        {mode === 'select' && approvedOutfits.length > 0 && (
+          <div className={styles.regenGrid}>
+            {approvedOutfits.map((outfit) => {
+              const isSelected = selected.has(outfit.name)
+              return (
+                <button
+                  key={outfit.outfit_id || outfit.name}
+                  type="button"
+                  className={`${styles.regenCard} ${isSelected ? styles.regenCardSelected : ''}`}
+                  onClick={() => toggleOutfit(outfit.name)}
+                >
+                  {isSelected && <span className={styles.regenCheck}>✓</span>}
+                  <div className={styles.regenCardImg}>
+                    {(outfit.generated_image_url || outfit.lookbook_image_url) ? (
+                      <img src={outfit.generated_image_url || outfit.lookbook_image_url} alt={outfit.name} className={styles.regenCardPhoto} />
+                    ) : (
+                      <div className={styles.regenCardPlaceholder} />
+                    )}
+                  </div>
+                  <p className={styles.regenCardLabel}>
+                    {outfit.day_label || outfit.name}
+                  </p>
+                </button>
+              )
+            })}
+          </div>
+        )}
+
+        {loading && (
+          <p className={styles.regenLoading}>Generating new outfits...</p>
+        )}
+
+        <div className={styles.regenActions}>
+          <button type="button" className={styles.regenCancel} onClick={onClose} disabled={loading}>
+            Cancel
+          </button>
+          <button
+            type="button"
+            className={styles.regenConfirm}
+            onClick={handleConfirm}
+            disabled={!canConfirm || loading}
+          >
+            {btnLabel}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  )
+}
+
 /* ─── Right column — packing ──────────────────────────────────── */
-function PackingColumn({ trip, onGeneratePacking, packingLoading, packingError }) {
+function PackingColumn({ trip, onGeneratePacking, onUnapproveOutfits, packingLoading, packingError, regenOpen, setRegenOpen }) {
   const navigate = useNavigate()
   const hasVibe = !!trip.vibe_analysis
   const hasPacking = !!trip.packing_list
   const hasApproved = trip.approved_outfits?.length > 0
+
+  function handleRegenerateAll() {
+    onGeneratePacking()
+    // modal closes after navigate (triggered inside handleGeneratePacking)
+    setRegenOpen(false)
+  }
+
+  function handleRegenerateSelected(outfitNames) {
+    setRegenOpen(false)
+    onUnapproveOutfits(outfitNames)
+  }
 
   return (
     <div className={styles.packingCol}>
@@ -157,24 +280,28 @@ function PackingColumn({ trip, onGeneratePacking, packingLoading, packingError }
         </div>
       )}
 
-      {hasPacking && !packingLoading && (
+      {hasPacking && (
         <button
           className={styles.btnRegenerate}
-          onClick={onGeneratePacking}
-          disabled={packingLoading}
+          onClick={() => setRegenOpen(true)}
           type="button"
         >
           Regenerate with AI
         </button>
       )}
 
-      {packingLoading && (
-        <p className={styles.thinkingNote}>
-          Matching your wardrobe to {trip.destination}...
-        </p>
-      )}
       {packingError && (
         <p className={styles.packingError}>{packingError}</p>
+      )}
+
+      {regenOpen && (
+        <RegenerateModal
+          trip={trip}
+          onRegenerateAll={handleRegenerateAll}
+          onRegenerateSelected={handleRegenerateSelected}
+          onClose={() => setRegenOpen(false)}
+          loading={packingLoading}
+        />
       )}
     </div>
   )
@@ -270,10 +397,12 @@ function EditTripForm({ trip, onSave, onCancel }) {
 }
 
 /* ─── Main TripDetail ─────────────────────────────────────────── */
-export default function TripDetail({ trip, onGeneratePacking, onEditTrip, onDeleteTrip, packingLoading, packingError }) {
+export default function TripDetail({ trip, onGeneratePacking, onUnapproveOutfits, onEditTrip, onDeleteTrip, packingLoading, packingError }) {
   const [editing, setEditing] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [regenPrompt, setRegenPrompt] = useState(false) // post-edit regen nudge
+  const [regenOpen, setRegenOpen] = useState(false)     // full regen modal
 
   async function handleDelete() {
     setDeleting(true)
@@ -283,12 +412,15 @@ export default function TripDetail({ trip, onGeneratePacking, onEditTrip, onDele
   async function handleSave(updates) {
     await onEditTrip(trip.id, updates)
     setEditing(false)
+    if (trip.packing_list) {
+      setRegenPrompt(true)
+    }
   }
 
   return (
     <div className={styles.detail}>
       {/* Trip header */}
-      <div className={styles.tripHeader}>
+      <div className={`${styles.tripHeader} ${editing ? styles.tripHeaderEditing : ''} ${regenPrompt ? styles.tripHeaderNudge : ''}`}>
         <p className={styles.headerLabel}>Your Trip</p>
         <h1 className={styles.tripName}>{trip.name}</h1>
         <div className={styles.tripMeta}>
@@ -330,35 +462,74 @@ export default function TripDetail({ trip, onGeneratePacking, onEditTrip, onDele
       {editing ? (
         <EditTripForm trip={trip} onSave={handleSave} onCancel={() => setEditing(false)} />
       ) : (
-        /* Two-column body */
-        <div className={styles.body}>
-          {/* Left column */}
-          <div className={styles.leftCol}>
-            <div className={styles.infoTags}>
-              {trip.climate && <span className={styles.infoTag}>{trip.climate}</span>}
-              <span className={styles.infoTag}>{trip.duration_days} days</span>
-              {trip.occasions.map((occ) => (
-                <span key={occ} className={styles.infoTag}>{occ}</span>
-              ))}
+        <>
+          {/* Post-edit regen nudge */}
+          {regenPrompt && (
+            <div className={styles.regenNudge}>
+              <p className={styles.regenNudgeText}>Trip updated. Want to refresh your looks?</p>
+              <div className={styles.regenNudgeActions}>
+                <button
+                  type="button"
+                  className={styles.regenNudgeYes}
+                  onClick={() => { setRegenPrompt(false); setRegenOpen(true) }}
+                >
+                  Refresh looks
+                </button>
+                <button
+                  type="button"
+                  className={styles.regenNudgeNo}
+                  onClick={() => setRegenPrompt(false)}
+                >
+                  Keep as is
+                </button>
+              </div>
+            </div>
+          )}
+          {regenPrompt && <hr className={styles.regenNudgeDivider} />}
+
+          {/* Two-column body */}
+          <div className={styles.body}>
+            {/* Left column */}
+            <div className={styles.leftCol}>
+              <div className={styles.infoTags}>
+                {trip.climate && <span className={styles.infoTag}>{trip.climate}</span>}
+                <span className={styles.infoTag}>{trip.duration_days} days</span>
+                {trip.occasions.map((occ) => (
+                  <span key={occ} className={styles.infoTag}>{occ}</span>
+                ))}
+              </div>
+
+              {trip.notes && (
+                <p className={styles.tripNotes}>{trip.notes}</p>
+              )}
+
+              <VibeSection trip={trip} />
             </div>
 
-            {trip.notes && (
-              <p className={styles.tripNotes}>{trip.notes}</p>
-            )}
-
-            <VibeSection trip={trip} />
+            {/* Right column */}
+            <div className={styles.rightCol}>
+              <PackingColumn
+                trip={trip}
+                onGeneratePacking={onGeneratePacking}
+                onUnapproveOutfits={onUnapproveOutfits}
+                packingLoading={packingLoading}
+                packingError={packingError}
+                regenOpen={regenOpen}
+                setRegenOpen={setRegenOpen}
+              />
+            </div>
           </div>
 
-          {/* Right column */}
-          <div className={styles.rightCol}>
-            <PackingColumn
-              trip={trip}
-              onGeneratePacking={onGeneratePacking}
-              packingLoading={packingLoading}
-              packingError={packingError}
-            />
-          </div>
-        </div>
+          {/* Lookbook — full width, below both columns */}
+          {(() => {
+            const approvedOutfits = trip.packing_list?.outfits?.filter(
+              (o) => trip.approved_outfits?.includes(o.name)
+            ) ?? []
+            return approvedOutfits.length > 0 ? (
+              <LookbookSection trip={trip} outfits={approvedOutfits} />
+            ) : null
+          })()}
+        </>
       )}
     </div>
   )

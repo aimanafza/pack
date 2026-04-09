@@ -196,10 +196,10 @@ export default function DashboardPage() {
           <section className={styles.section}>
             <p className={styles.sectionLabel}>Upcoming Trips</p>
             <div className={styles.tripScroll}>
+              <NewTripCard onClick={goToNewTrip} />
               {sorted.map((trip) => (
                 <DashTripCard key={trip.id} trip={trip} />
               ))}
-              <NewTripCard onClick={goToNewTrip} />
             </div>
           </section>
 

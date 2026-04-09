@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import useStore from './store/index.js'
 import PageWrapper from './components/layout/PageWrapper.jsx'
+import ScrollToTop from './components/ScrollToTop.jsx'
 
 import LandingPage from './pages/LandingPage.jsx'
 import AuthPage from './pages/AuthPage.jsx'
@@ -34,6 +35,7 @@ function WithLayout({ children }) {
 export default function App() {
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/auth" element={<AuthPage />} />

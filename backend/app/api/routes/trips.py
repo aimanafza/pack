@@ -10,7 +10,7 @@ from app.models.user import User
 from app.models.item import WardrobeItem
 from app.models.trip import Trip, ReservedItem, BagEntry, PackingItem, DesignRationale, Outfit
 from app.api.deps import get_current_user
-from app.services.claude_service import generate_restyle_outfit, generate_single_outfit_image
+from app.services.claude_service import generate_restyle_outfit, generate_single_outfit_image, generate_lookbook_image
 
 router = APIRouter()
 
@@ -72,6 +72,10 @@ class RestyleBody(BaseModel):
     rejected_outfit_id: str
 
 
+class UnapproveOutfitsBody(BaseModel):
+    outfit_names: List[str]
+
+
 @router.get("/")
 async def get_trips(current_user: User = Depends(get_current_user)):
     trips = await Trip.find(Trip.user_id == current_user.id).to_list()
@@ -117,6 +121,10 @@ async def update_trip(trip_id: str, body: TripUpdateBody, current_user: User = D
     if not trip or trip.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Trip not found")
     updates = body.model_dump(exclude_none=True)
+    # Recalculate duration_days if either date changed
+    start = updates.get('start_date', trip.start_date)
+    end = updates.get('end_date', trip.end_date)
+    updates['duration_days'] = (end - start).days
     if updates:
         await trip.set(updates)
     return {"success": True, "data": trip.model_dump(), "message": "Trip updated"}
@@ -296,6 +304,70 @@ async def generate_outfit_images(trip_id: str, current_user: User = Depends(get_
     await trip.save()
 
     return {"success": True, "data": trip.model_dump(), "message": "Outfit images generated"}
+
+
+@router.patch("/{trip_id}/unapprove-outfits")
+async def unapprove_outfits(
+    trip_id: str,
+    body: UnapproveOutfitsBody,
+    current_user: User = Depends(get_current_user),
+):
+    trip = await Trip.get(trip_id)
+    if not trip or trip.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Trip not found")
+
+    name_set = set(body.outfit_names)
+    trip.approved_outfits = [n for n in trip.approved_outfits if n not in name_set]
+    trip.rejected_outfits = [n for n in trip.rejected_outfits if n not in name_set]
+
+    if trip.packing_list:
+        for outfit in trip.packing_list.outfits:
+            if outfit.name in name_set:
+                outfit.lookbook_image_url = None
+
+    trip.status = "reviewing" if trip.approved_outfits else "planning"
+    await trip.save()
+    return {"success": True, "data": trip.model_dump(), "message": "Outfits unapproved"}
+
+
+@router.post("/{trip_id}/outfits/{outfit_id}/lookbook-image")
+async def generate_outfit_lookbook_image(
+    trip_id: str,
+    outfit_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    trip = await Trip.get(trip_id)
+    if not trip or trip.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Trip not found")
+
+    if not trip.packing_list:
+        raise HTTPException(status_code=404, detail="No packing list on this trip")
+
+    outfit = next(
+        (o for o in trip.packing_list.outfits if o.outfit_id == outfit_id), None
+    )
+    if not outfit:
+        raise HTTPException(status_code=404, detail="Outfit not found")
+
+    # Already generated — return immediately, never regenerate
+    if outfit.lookbook_image_url:
+        return {"lookbook_image_url": outfit.lookbook_image_url}
+
+    user = await User.get(str(current_user.id))
+    style_aesthetics = (
+        user.preferences.style_aesthetics
+        if user.preferences and user.preferences.style_aesthetics
+        else []
+    )
+
+    url = await generate_lookbook_image(
+        outfit, user.avatar, trip, style_aesthetics
+    )
+    if url:
+        outfit.lookbook_image_url = url
+        await trip.save()
+
+    return {"lookbook_image_url": url}
 
 
 @router.patch("/{trip_id}/check-item")

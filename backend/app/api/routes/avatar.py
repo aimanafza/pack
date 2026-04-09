@@ -151,3 +151,33 @@ async def save_avatar(
         "data": {"base_url": permanent["url"]},
         "message": "Avatar saved.",
     }
+
+
+class SelectAvatarBody(BaseModel):
+    base_url: str
+    vibe: Optional[str] = None  # "Polished" | "Realistic" | "Idealized"
+
+
+@router.patch("/me/avatar/select")
+async def select_avatar_variant(
+    body: SelectAvatarBody,
+    current_user: User = Depends(get_current_user),
+):
+    """Switch the active avatar to one of the existing variation_urls."""
+    if not current_user.avatar:
+        raise HTTPException(status_code=400, detail="No avatar exists")
+
+    all_urls = [current_user.avatar.base_url] + (current_user.avatar.variation_urls or [])
+    if body.base_url not in all_urls:
+        raise HTTPException(status_code=400, detail="URL not in existing variants")
+
+    current_user.avatar.base_url = body.base_url
+    if body.vibe:
+        current_user.avatar.preferences.vibe = body.vibe
+    await current_user.save()
+
+    return {
+        "success": True,
+        "user": current_user.model_dump(),
+        "message": "Avatar updated.",
+    }

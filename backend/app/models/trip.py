@@ -50,6 +50,7 @@ class Outfit(BaseModel):
     total_weight: float = 0.0
     weight_note: str = ""              # e.g. "1.4kg — lightest outfit, ideal for travel days"
     generated_image_url: Optional[str] = None
+    lookbook_image_url: Optional[str] = None
 
 
 class PackingList(BaseModel):

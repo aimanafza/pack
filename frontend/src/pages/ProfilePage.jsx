@@ -171,6 +171,22 @@ export default function ProfilePage() {
     }))
   )
 
+  // All approved outfits across all trips, each tagged with trip name + look index
+  const allLookbookCards = trips
+    .filter((t) => t.approved_outfits?.length > 0 && t.packing_list?.outfits?.length > 0)
+    .sort((a, b) => new Date(b.start_date) - new Date(a.start_date))
+    .flatMap((t) => {
+      const approved = t.packing_list.outfits.filter((o) =>
+        t.approved_outfits.includes(o.name)
+      )
+      return approved.map((outfit, i) => ({
+        outfit,
+        tripName: t.destination || t.name,
+        tripId: t.id,
+        lookIndex: i,
+      }))
+    })
+
   function scrollRef(ref, dir) {
     ref.current?.scrollBy({ left: dir * 320, behavior: 'smooth' })
   }
@@ -428,47 +444,45 @@ export default function ProfilePage() {
         )}
       </section>
 
-      {/* Approved Looks */}
+      {/* Lookbook grid */}
       <section className={styles.section}>
         <div className={styles.sectionTop}>
           <p className={styles.sectionLabel}>APPROVED LOOKS</p>
-          <div className={styles.scrollControls}>
-            <button
-              className={styles.arrowBtn}
-              onClick={() => scrollRef(looksScrollRef, -1)}
-              type="button"
-              aria-label="Scroll left"
-            >
-              ←
-            </button>
-            <button
-              className={styles.arrowBtn}
-              onClick={() => scrollRef(looksScrollRef, 1)}
-              type="button"
-              aria-label="Scroll right"
-            >
-              →
-            </button>
-          </div>
         </div>
-        {approvedLooks.length === 0 ? (
+        {allLookbookCards.length === 0 ? (
           <p className={styles.emptyState}>
-            Approve outfits from a trip to see your looks here.
+            Approve outfits from a trip to see your lookbook here.
           </p>
         ) : (
-          <div className={styles.hScroll} ref={looksScrollRef}>
-            {approvedLooks.map((look, i) => (
+          <div className={styles.lookbookGrid}>
+            {allLookbookCards.map(({ outfit, tripName, tripId, lookIndex }) => (
               <Link
-                key={`${look.tripId}-${i}`}
-                to={`/trips/${look.tripId}`}
-                className={styles.lookCard}
+                key={`${tripId}-${outfit.outfit_id}`}
+                to={`/trips/${tripId}`}
+                state={{ initialLook: lookIndex }}
+                className={styles.lookbookCard}
               >
-                <p className={styles.lookName}>{look.name}</p>
-                <p className={styles.lookTrip}>{look.tripName}</p>
-                {look.occasion && (
-                  <span className={styles.lookOccasion}>{look.occasion}</span>
-                )}
-                <p className={styles.lookCount}>{look.items?.length ?? 0} items</p>
+                <div className={styles.lookbookCardImg}>
+                  {(outfit.generated_image_url || outfit.lookbook_image_url) ? (
+                    <img
+                      src={outfit.generated_image_url || outfit.lookbook_image_url}
+                      alt={outfit.day_label || outfit.name}
+                      className={styles.lookbookCardPhoto}
+                    />
+                  ) : (
+                    <div className={styles.lookbookCardPlaceholder}>
+                      <span className={styles.lookbookCardPlaceholderText}>
+                        {outfit.day_label || outfit.name || 'Look'}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <div className={styles.lookbookCardFoot}>
+                  <span className={styles.lookbookCardNum}>
+                    Look {String(lookIndex + 1).padStart(2, '0')}
+                  </span>
+                  <span className={styles.lookbookCardTrip}>{tripName}</span>
+                </div>
               </Link>
             ))}
           </div>

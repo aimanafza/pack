@@ -671,11 +671,13 @@ _OUTFIT_PROMPT_SYSTEM = """You write image generation prompts for a fashion AI. 
 Rules:
 - Start with the person's physical description (skin tone, hair, silhouette)
 - List every item in the outfit by name, color, and category
-- Include the setting (destination, climate, occasion)
+- Background must always be plain white or very light neutral — no locations, no streets, no landscapes, no environments
+- Lighting: clean studio editorial lighting, soft and even
 - Describe the aesthetic mood in 3-5 words (e.g. "quiet luxury minimalist", "coastal elevated casual")
 - Keep the total prompt under 200 words
 - Write in present tense, no bullet points, one cohesive paragraph
 - Do not use the word "photograph" — say "editorial fashion image"
+- Never mention a city, country, street, setting, season, or weather
 - Respond with ONLY the prompt text, nothing else"""
 
 
@@ -716,13 +718,12 @@ Style aesthetics: {aesthetics}
 
 Outfit: {outfit.name}
 Occasion: {occasion}
-Destination: {destination}, {climate} climate
 Items:
 {item_lines}
 
 Styling note: {outfit.styling_notes or outfit.styling_note}
 
-Write the image generation prompt."""
+Write the image generation prompt. Plain white background, studio lighting only."""
 
     content: list = []
     if item_image_urls:
@@ -737,6 +738,138 @@ Write the image generation prompt."""
         messages=[{"role": "user", "content": content}],
     )
     return response.content[0].text.strip()
+
+
+async def generate_all_lookbook_images(trip, user) -> None:
+    """Background task — pre-generates lookbook images for all outfits in a packing list.
+    Called once after pack/suggest so images are ready by the time the user finishes review."""
+    style_aesthetics = (
+        user.preferences.style_aesthetics
+        if user.preferences and user.preferences.style_aesthetics
+        else []
+    )
+    if not trip.packing_list:
+        return
+    changed = False
+    for outfit in trip.packing_list.outfits:
+        if outfit.lookbook_image_url:
+            continue
+        try:
+            url = await generate_lookbook_image(outfit, user.avatar, trip, style_aesthetics)
+            if url:
+                outfit.lookbook_image_url = url
+                changed = True
+                logger.info(f"Lookbook pre-generated for outfit: {outfit.outfit_id}")
+        except Exception as e:
+            logger.warning(f"Lookbook pre-generation failed for {outfit.outfit_id}: {e}")
+    if changed:
+        await trip.save()
+
+
+_LOOKBOOK_PROMPT_SYSTEM = """You write image generation prompts for a fashion AI called Nano Banana Pro.
+
+Nano Banana Pro receives reference images in this order:
+1. First image — the person's avatar body (USE THIS EXACT PERSON, do not change their face, skin tone, hair, or body)
+2. Remaining images — the clothing items, sunglasses, watches, shoes, accessories, everything the user decides and approves should be put on and dress them in
+
+Your prompt must make this explicit. Start with:
+"Dress the person from the first reference image in..."
+
+Rules:
+- Explicitly reference "the person from the first reference image"
+- List every outfit item to put ON that person by name, color, category
+- Pure white seamless studio background — no location, no props, no scenery
+- Full body head to toe visible, centered with generous negative space on all sides
+- Natural relaxed standing pose, weight slightly on one hip, arms loosely at sides, slightly posed, like how model pose, basically editorial, check the lookbook_reference and editorial_poses.png in the refernces folder so it gets an idea how to style the person, please tell it that we only want ONE pose full head to toe in an outfit
+- Soft diffused even studio lighting, completely even, no harsh shadows
+- The outfit must be clearly visible — every item readable
+- Under 150 words, one paragraph, present tense
+- Respond with ONLY the prompt text, nothing else"""
+
+
+async def generate_lookbook_image(
+    outfit, user_avatar, trip, style_aesthetics: list[str]
+) -> Optional[str]:
+    """Generate a clean studio lookbook image. Called once per outfit, result stored on outfit document."""
+    import fal_client
+    import os
+    os.environ["FAL_KEY"] = settings.FAL_API_KEY
+
+    appearance = getattr(user_avatar, "appearance", None)
+    fit = getattr(user_avatar, "fit_profile", None)
+
+    avatar_desc_parts = []
+    if appearance:
+        for attr in ["skin_tone", "hair_color", "hair_texture", "body_silhouette"]:
+            val = getattr(appearance, attr, None)
+            if val:
+                avatar_desc_parts.append(f"{attr.replace('_', ' ')}: {val}")
+    if fit and getattr(fit, "height", None):
+        avatar_desc_parts.append(f"height: {fit.height}cm")
+    avatar_desc = ", ".join(avatar_desc_parts) or "not specified"
+
+    item_lines = "\n".join(
+        f"- {item.name} ({item.category})" for item in outfit.items
+    )
+    aesthetics = ", ".join(style_aesthetics) if style_aesthetics else "classic, elevated"
+
+    user_text = f"""Person: {avatar_desc}
+Style aesthetics: {aesthetics}
+
+Outfit: {outfit.name}
+Items:
+{item_lines}
+
+Write the studio image generation prompt.
+Start with: "Dress the person from the first reference image in..."
+White background only. No location context."""
+
+    content: list = []
+    item_image_urls = [item.image_url for item in outfit.items if item.image_url]
+    if item_image_urls:
+        image_blocks = await _fetch_image_content_blocks(item_image_urls, limit=4)
+        content.extend(image_blocks)
+    content.append({"type": "text", "text": user_text})
+
+    response = await client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=250,
+        system=_LOOKBOOK_PROMPT_SYSTEM,
+        messages=[{"role": "user", "content": content}],
+    )
+    prompt = response.content[0].text.strip()
+    logger.info(f"Lookbook prompt for '{outfit.name}':\n{prompt}")
+
+    # Avatar MUST be first — Nano Banana uses image order to assign roles
+    reference_urls: list[str] = []
+    if user_avatar and getattr(user_avatar, "base_url", None):
+        reference_urls.append(user_avatar.base_url)
+    else:
+        logger.warning(
+            f"No avatar base_url for outfit '{outfit.name}' — "
+            f"lookbook will generate a generic person"
+        )
+    reference_urls.extend(item_image_urls[:3])
+
+    if not reference_urls:
+        logger.warning(f"No reference URLs at all for '{outfit.name}', skipping")
+        return None
+
+    result = await asyncio.to_thread(
+        fal_client.run,
+        "fal-ai/nano-banana-pro/edit",
+        arguments={
+            "prompt": prompt,
+            "image_urls": reference_urls,
+            "num_images": 1,
+            "image_size": "portrait_9_16",
+        },
+    )
+    images = result.get("images", [])
+    if not images:
+        logger.warning(f"fal.ai returned no images for lookbook '{outfit.name}'")
+        return None
+    return images[0]["url"]
 
 
 async def generate_single_outfit_image(outfit, user_avatar, trip, style_aesthetics: list[str]) -> Optional[str]:
