@@ -2,7 +2,7 @@ import { useState } from 'react'
 import ItemScrollRow from './ItemScrollRow.jsx'
 import styles from './SwipeCard.module.css'
 
-export default function SwipeCard({ outfit, wardrobeById, onApprove, onReject }) {
+export default function SwipeCard({ outfit, wardrobeById, packingList, onApprove, onReject }) {
   const [rationaleOpen, setRationaleOpen] = useState(false)
 
   const label = outfit.day_label || outfit.name
@@ -25,6 +25,29 @@ export default function SwipeCard({ outfit, wardrobeById, onApprove, onReject })
       <div className={styles.scrollSection}>
         <ItemScrollRow items={outfit.items} wardrobeById={wardrobeById} />
       </div>
+
+      {/* Weight bar */}
+      {packingList?.weight_budget > 0 && (
+        <div className={styles.weightSection}>
+          <p className={styles.weightLabel}>PACKING WEIGHT</p>
+          <div className={styles.weightBarTrack}>
+            <div
+              className={`${styles.weightBarFill} ${
+                packingList.weight_status === 'over'
+                  ? styles.weightBarFillRed
+                  : packingList.weight_remaining <= 0.5
+                  ? styles.weightBarFillAmber
+                  : ''
+              }`}
+              style={{ width: `${Math.min((packingList.packing_weight_total / packingList.weight_budget) * 100, 100)}%` }}
+            />
+          </div>
+          <div className={styles.weightBarMeta}>
+            <span>{packingList.packing_weight_total?.toFixed(1)}kg / {packingList.weight_budget}kg</span>
+            <span className={styles.weightRemaining}>{packingList.weight_remaining?.toFixed(1)}kg remaining</span>
+          </div>
+        </div>
+      )}
 
       {/* Style gaps — items missing from wardrobe */}
       {gaps.length > 0 && (

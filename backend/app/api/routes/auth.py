@@ -116,6 +116,7 @@ async def me(current_user: User = Depends(get_current_user)):
             "style_preferences": current_user.style_preferences.model_dump(),
             "preferences": current_user.preferences.model_dump(),
             "style_dna": current_user.style_dna.model_dump() if current_user.style_dna else None,
+            "avatar": current_user.avatar.model_dump() if current_user.avatar else None,
         },
         "message": "",
     }

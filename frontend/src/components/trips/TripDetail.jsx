@@ -121,15 +121,10 @@ function PackingColumn({ trip, onGeneratePacking, packingLoading, packingError }
       {!hasPacking ? (
         <button
           className={styles.btnGenerate}
-          onClick={onGeneratePacking}
-          disabled={packingLoading}
+          onClick={() => navigate(`/trips/${trip.id}/review`)}
           type="button"
         >
-          {packingLoading
-            ? 'Your stylist is thinking...'
-            : hasVibe
-            ? 'Generate Outfits Based on Your Vibe'
-            : 'Generate Packing List'}
+          {hasVibe ? 'Build Outfits from Your Vibe' : 'Build My Packing List'}
         </button>
       ) : (
         <div className={styles.packingReady}>

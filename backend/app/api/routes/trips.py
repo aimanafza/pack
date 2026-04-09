@@ -1,10 +1,16 @@
+import asyncio
+import logging
 from fastapi import APIRouter, Depends, HTTPException
+
+logger = logging.getLogger(__name__)
 from pydantic import BaseModel
 from datetime import date
 from typing import List, Optional
 from app.models.user import User
-from app.models.trip import Trip, ReservedItem, BagEntry
+from app.models.item import WardrobeItem
+from app.models.trip import Trip, ReservedItem, BagEntry, PackingItem, DesignRationale, Outfit
 from app.api.deps import get_current_user
+from app.services.claude_service import generate_restyle_outfit, generate_single_outfit_image
 
 router = APIRouter()
 
@@ -59,6 +65,11 @@ class ApproveOutfitBody(BaseModel):
 class RejectOutfitBody(BaseModel):
     outfit_name: str
     kept_items: List[str] = []
+
+
+class RestyleBody(BaseModel):
+    kept_item_ids: List[str]
+    rejected_outfit_id: str
 
 
 @router.get("/")
@@ -146,6 +157,145 @@ async def reject_outfit(trip_id: str, body: RejectOutfitBody, current_user: User
     trip.status = "packed" if (total and reviewed >= total) else "reviewing"
     await trip.save()
     return {"success": True, "data": trip.model_dump(), "message": "Outfit rejected"}
+
+
+@router.post("/{trip_id}/outfits/restyle")
+async def restyle_outfit(
+    trip_id: str,
+    body: RestyleBody,
+    current_user: User = Depends(get_current_user),
+):
+    trip = await Trip.get(trip_id)
+    if not trip or trip.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Trip not found")
+
+    wardrobe = await WardrobeItem.find(WardrobeItem.user_id == current_user.id).to_list()
+    wardrobe_by_id = {str(item.id): item for item in wardrobe}
+    preferences = current_user.preferences.model_dump()
+
+    # Collect anchor item IDs from approved outfits (for Claude context)
+    approved_names = set(trip.approved_outfits or [])
+    approved_item_ids: set[str] = set()
+    if trip.packing_list:
+        for o in trip.packing_list.outfits:
+            if o.name in approved_names:
+                for item in o.items:
+                    if item.wardrobe_item_id:
+                        approved_item_ids.add(item.wardrobe_item_id)
+
+    try:
+        raw = await generate_restyle_outfit(
+            trip=trip,
+            wardrobe=wardrobe,
+            kept_item_ids=body.kept_item_ids,
+            preferences=preferences,
+            approved_item_ids=approved_item_ids,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Restyle error: {str(e)}")
+
+    # Build PackingItems from Claude's response
+    def make_item(raw_item: dict) -> Optional[PackingItem]:
+        if not isinstance(raw_item, dict):
+            return None
+        item_id = str(raw_item.get("id") or raw_item.get("wardrobe_item_id") or "")
+        wardrobe_item = wardrobe_by_id.get(item_id)
+        weight_kg = (
+            round(wardrobe_item.weight_grams / 1000, 3)
+            if wardrobe_item and wardrobe_item.weight_grams
+            else float(raw_item.get("estimated_weight_kg", 0.0))
+        )
+        return PackingItem(
+            wardrobe_item_id=item_id if wardrobe_item else None,
+            name=raw_item.get("name", ""),
+            category=raw_item.get("category", "other"),
+            image_url=wardrobe_item.image_url if wardrobe_item else None,
+            checked=False,
+            in_wardrobe=bool(wardrobe_item),
+            estimated_weight_kg=weight_kg,
+        )
+
+    packing_items = [x for x in (make_item(i) for i in raw.get("items", [])) if x]
+
+    rationale_data = raw.get("design_rationale")
+    design_rationale = None
+    if isinstance(rationale_data, dict):
+        design_rationale = DesignRationale(
+            silhouette=rationale_data.get("silhouette", ""),
+            color_story=rationale_data.get("color_story", ""),
+            occasion_fit=rationale_data.get("occasion_fit", ""),
+            the_detail=rationale_data.get("the_detail", ""),
+        )
+
+    day_label = raw.get("day_label", "RESTYLED LOOK")
+    occasion_tag = raw.get("occasion_tag", "")
+    styling_notes = raw.get("styling_notes", "")
+
+    new_outfit = Outfit(
+        name=day_label,
+        occasion=occasion_tag,
+        styling_note=styling_notes,
+        items=packing_items,
+        outfit_id=raw.get("outfit_id", "restyle_1"),
+        day_label=day_label,
+        occasion_tag=occasion_tag,
+        styling_notes=styling_notes,
+        design_rationale=design_rationale,
+        style_gaps=raw.get("style_gaps", []),
+        total_weight=float(raw.get("total_weight", 0.0)),
+        weight_note=raw.get("weight_note", ""),
+    )
+
+    # Generate avatar image for the new outfit before returning
+    avatar = current_user.avatar if hasattr(current_user, "avatar") else None
+    style_aesthetics = []
+    if current_user.style_preferences and hasattr(current_user.style_preferences, "style_aesthetics"):
+        style_aesthetics = current_user.style_preferences.style_aesthetics or []
+    try:
+        image_url = await generate_single_outfit_image(new_outfit, avatar, trip, style_aesthetics)
+        if image_url:
+            new_outfit.generated_image_url = image_url
+    except Exception as e:
+        logger.warning(f"Image generation failed for restyled outfit: {e}")
+
+    # Append restyled outfit to the trip's packing list
+    if trip.packing_list:
+        trip.packing_list.outfits.append(new_outfit)
+        await trip.save()
+
+    return {"success": True, "data": new_outfit.model_dump(), "message": "Restyled"}
+
+
+@router.post("/{trip_id}/generate-outfit-images")
+async def generate_outfit_images(trip_id: str, current_user: User = Depends(get_current_user)):
+    trip = await Trip.get(trip_id)
+    if not trip or trip.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    if not trip.packing_list or not trip.packing_list.outfits:
+        raise HTTPException(status_code=400, detail="No outfits to generate images for")
+
+    avatar = current_user.avatar if hasattr(current_user, "avatar") else None
+    style_aesthetics = []
+    if current_user.style_preferences and hasattr(current_user.style_preferences, "style_aesthetics"):
+        style_aesthetics = current_user.style_preferences.style_aesthetics or []
+
+    async def _generate_for_outfit(outfit):
+        # Skip if image already generated
+        if outfit.generated_image_url:
+            return
+        try:
+            url = await generate_single_outfit_image(outfit, avatar, trip, style_aesthetics)
+            if url:
+                outfit.generated_image_url = url
+            else:
+                logger.warning(f"generate_single_outfit_image returned None for outfit: {outfit.name}")
+        except Exception as e:
+            logger.error(f"Image generation failed for outfit '{outfit.name}': {e}", exc_info=True)
+
+    await asyncio.gather(*[_generate_for_outfit(o) for o in trip.packing_list.outfits])
+    await trip.save()
+
+    return {"success": True, "data": trip.model_dump(), "message": "Outfit images generated"}
 
 
 @router.patch("/{trip_id}/check-item")

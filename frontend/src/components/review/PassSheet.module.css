@@ -1,0 +1,78 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 20;
+}
+
+.sheet {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--color-bg-primary);
+  border-top: var(--border-default);
+  padding: var(--space-4) 0 var(--space-8);
+  z-index: 21;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.handle {
+  width: 32px;
+  height: 3px;
+  background: var(--color-border-medium);
+  border-radius: 2px;
+  margin: 0 auto var(--space-6);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-style: italic;
+  font-weight: 400;
+  color: var(--color-text-secondary);
+  margin: 0 0 var(--space-5);
+  padding: 0 var(--space-6);
+  line-height: var(--leading-snug);
+}
+
+.options {
+  display: flex;
+  flex-direction: column;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4) var(--space-6);
+  background: none;
+  border: none;
+  border-top: var(--border-thin);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.option:hover {
+  background: var(--color-bg-secondary);
+}
+
+.optionLabel {
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  color: var(--color-text-primary);
+}
+
+.optionArrow {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--color-text-tertiary);
+  flex-shrink: 0;
+}
+
+.optionMuted .optionLabel {
+  color: var(--color-text-tertiary);
+}

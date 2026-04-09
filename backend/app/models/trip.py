@@ -25,6 +25,7 @@ class PackingItem(BaseModel):
     image_url: Optional[str] = None
     checked: bool = False
     in_wardrobe: bool = False
+    estimated_weight_kg: float = 0.0   # weight of this item for dedup calculation
 
 
 class DesignRationale(BaseModel):
@@ -47,6 +48,7 @@ class Outfit(BaseModel):
     design_rationale: Optional[DesignRationale] = None
     style_gaps: List[str] = []                   # items not in wardrobe that would complete the look
     total_weight: float = 0.0
+    weight_note: str = ""              # e.g. "1.4kg — lightest outfit, ideal for travel days"
     generated_image_url: Optional[str] = None
 
 
@@ -57,6 +59,13 @@ class PackingList(BaseModel):
     outfits: List[Outfit] = []
     essentials: List[str] = []
     raw_items: List[PackingItem] = []
+    # Weight totals — calculated server-side from unique items across all outfits
+    packing_weight_total: float = 0.0  # sum of UNIQUE item weights (deduped by wardrobe_item_id)
+    weight_budget: float = 0.0         # available_clothing_weight_grams / 1000
+    weight_remaining: float = 0.0
+    weight_status: str = "under"       # under | at_limit | over
+    unique_item_count: int = 0         # how many physical items to actually pack
+    versatility_note: str = ""         # e.g. "Your jeans work across 3 outfits"
 
 
 class InspirationImage(BaseModel):
