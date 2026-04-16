@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 import random
 import string
 from app.models.user import User, UserPreferences
+from app.models.waitlist import WaitlistEntry
 from app.core.security import hash_password, verify_password
 from app.services.auth_service import create_access_token
 from app.services.cloudinary_service import upload_profile_picture
@@ -16,6 +17,7 @@ class RegisterBody(BaseModel):
     email: str
     password: str
     name: str
+    invite_token: str
 
 
 class LoginBody(BaseModel):
@@ -35,6 +37,14 @@ class ResetPasswordBody(BaseModel):
 
 @router.post("/register")
 async def register(body: RegisterBody):
+    waitlist_entry = await WaitlistEntry.find_one(WaitlistEntry.invite_token == body.invite_token)
+    if not waitlist_entry:
+        raise HTTPException(status_code=400, detail="Invalid invite link.")
+    if waitlist_entry.status != "approved":
+        raise HTTPException(status_code=400, detail="This invite has not been approved.")
+    if waitlist_entry.token_used:
+        raise HTTPException(status_code=400, detail="This invite link has already been used.")
+
     existing = await User.find_one(User.email == body.email)
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -44,6 +54,10 @@ async def register(body: RegisterBody):
         name=body.name,
     )
     await user.insert()
+
+    waitlist_entry.token_used = True
+    await waitlist_entry.save()
+
     token = create_access_token(str(user.id))
     return {
         "success": True,

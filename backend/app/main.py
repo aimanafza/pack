@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 
 from app.core.config import settings
 from app.core.database import init_db
-from app.api.routes import auth, wardrobe, trips, pack, inspiration, profile, avatar
+from app.api.routes import auth, wardrobe, trips, pack, inspiration, profile, avatar, waitlist
 
 
 @asynccontextmanager
@@ -38,6 +38,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(waitlist.router, prefix="/waitlist", tags=["waitlist"])
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
 app.include_router(wardrobe.router, prefix="/api/v1/wardrobe", tags=["wardrobe"])
 app.include_router(trips.router, prefix="/api/v1/trips", tags=["trips"])

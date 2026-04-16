@@ -4,11 +4,12 @@ from app.core.config import settings
 from app.models.user import User
 from app.models.item import WardrobeItem
 from app.models.trip import Trip
+from app.models.waitlist import WaitlistEntry
 
 
 async def init_db():
     client = AsyncIOMotorClient(settings.MONGODB_URL)
     await init_beanie(
         database=client[settings.DATABASE_NAME],
-        document_models=[User, WardrobeItem, Trip],
+        document_models=[User, WardrobeItem, Trip, WaitlistEntry],
     )

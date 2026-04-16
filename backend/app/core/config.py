@@ -16,6 +16,10 @@ class Settings(BaseSettings):
 
     FAL_API_KEY: str = ""
 
+    RESEND_API_KEY: str = ""
+    FRONTEND_URL: str = "http://localhost:5173"
+    BACKEND_URL: str = "http://localhost:8000"
+
     class Config:
         env_file = ".env"
         env_ignore_empty = True

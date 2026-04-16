@@ -17,6 +17,7 @@ import PackingPage from './pages/PackingPage.jsx'
 import SwipeReviewPage from './pages/SwipeReviewPage.jsx'
 import WardrobeItemDetailPage from './pages/WardrobeItemDetailPage.jsx'
 import AvatarBuilder from './pages/AvatarBuilder.jsx'
+import RegisterPage from './pages/RegisterPage.jsx'
 
 function PrivateRoute({ children }) {
   const token = useStore((s) => s.token)
@@ -38,6 +39,7 @@ export default function App() {
       <ScrollToTop />
       <Routes>
         <Route path="/" element={<LandingPage />} />
+        <Route path="/register" element={<RegisterPage />} />
         <Route path="/auth" element={<AuthPage />} />
         {/* Onboarding: full screen, no sidebar, private */}
         <Route

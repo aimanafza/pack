@@ -96,8 +96,10 @@
   background: var(--color-text-primary);
   padding: var(--space-4) var(--space-8);
   border-radius: 0;
+  border: none;
   text-decoration: none;
   width: fit-content;
+  cursor: pointer;
   transition: opacity 0.15s;
 }
 
@@ -105,12 +107,69 @@
   opacity: 0.8;
 }
 
-.ctaNote {
+.ctaBtn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* ─── Waitlist form ───────────────────────────────────── */
+.waitlistForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: 380px;
+}
+
+.emailInput {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 300;
+  color: var(--color-text-primary);
+  background: transparent;
+  border: var(--border-thin);
+  border-color: var(--color-border-medium);
+  padding: var(--space-4) var(--space-5);
+  border-radius: 0;
+  outline: none;
+  width: 100%;
+  transition: border-color 0.15s;
+}
+
+.emailInput::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.emailInput:focus {
+  border-color: var(--color-text-primary);
+}
+
+.emailInput:disabled {
+  opacity: 0.5;
+}
+
+.errorMsg {
   font-family: var(--font-body);
   font-size: var(--text-xs);
   font-weight: 300;
-  color: var(--color-text-tertiary);
-  margin-top: var(--space-4);
+  color: #c0392b;
+  margin: 0;
+}
+
+/* ─── Success state ───────────────────────────────────── */
+.successState {
+  max-width: 380px;
+  padding: var(--space-5);
+  border: var(--border-thin);
+  border-color: var(--color-border-medium);
+}
+
+.successText {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 300;
+  font-style: italic;
+  color: var(--color-text-primary);
+  margin: 0;
 }
 
 .heroRight {
