@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 
 logger = logging.getLogger(__name__)
 from pydantic import BaseModel
@@ -10,7 +10,7 @@ from app.models.user import User
 from app.models.item import WardrobeItem
 from app.models.trip import Trip, ReservedItem, BagEntry, PackingItem, DesignRationale, Outfit
 from app.api.deps import get_current_user
-from app.services.claude_service import generate_restyle_outfit, generate_single_outfit_image, generate_lookbook_image
+from app.services.claude_service import generate_restyle_outfit, generate_single_outfit_image, generate_lookbook_image, build_carpet_image
 
 router = APIRouter()
 
@@ -140,7 +140,12 @@ async def delete_trip(trip_id: str, current_user: User = Depends(get_current_use
 
 
 @router.patch("/{trip_id}/approve-outfit")
-async def approve_outfit(trip_id: str, body: ApproveOutfitBody, current_user: User = Depends(get_current_user)):
+async def approve_outfit(
+    trip_id: str,
+    body: ApproveOutfitBody,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
+):
     trip = await Trip.get(trip_id)
     if not trip or trip.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Trip not found")
@@ -150,6 +155,15 @@ async def approve_outfit(trip_id: str, body: ApproveOutfitBody, current_user: Us
     reviewed = len(trip.approved_outfits) + len(trip.rejected_outfits)
     trip.status = "packed" if (total and reviewed >= total) else "reviewing"
     await trip.save()
+
+    # Trigger carpet generation after the 5th distinct approved outfit across all trips,
+    # but only if the carpet hasn't been generated yet for this user.
+    if not getattr(current_user, "dashboard_carpet_url", None):
+        all_trips = await Trip.find(Trip.user_id == current_user.id).to_list()
+        total_approved = sum(len(t.approved_outfits) for t in all_trips)
+        if total_approved >= 5:
+            background_tasks.add_task(build_carpet_image, current_user)
+
     return {"success": True, "data": trip.model_dump(), "message": "Outfit approved"}
 
 

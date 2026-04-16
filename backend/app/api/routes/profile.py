@@ -1,12 +1,13 @@
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
 from app.models.user import User, StyleDNA
 from app.models.item import WardrobeItem
+from app.models.trip import Trip
 from app.api.deps import get_current_user
-from app.services.claude_service import analyze_style_dna, CATEGORY_LABELS
+from app.services.claude_service import analyze_style_dna, build_carpet_image, CATEGORY_LABELS
 
 router = APIRouter()
 limiter = Limiter(key_func=get_remote_address)
@@ -57,3 +58,37 @@ async def analyze_style(
     await current_user.save()
 
     return {"success": True, "data": style_dna.model_dump(), "message": "Style DNA analyzed"}
+
+
+@router.post("/generate-carpet")
+async def generate_carpet(
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
+):
+    """Trigger carpet image generation for the current user.
+
+    Returns immediately if already generated. Checks that the user has 5+
+    approved outfits before kicking off the background task.
+    """
+    if current_user.dashboard_carpet_url:
+        return {
+            "success": True,
+            "data": {"dashboard_carpet_url": current_user.dashboard_carpet_url},
+            "message": "Already generated",
+        }
+
+    all_trips = await Trip.find(Trip.user_id == current_user.id).to_list()
+    total_approved = sum(len(t.approved_outfits) for t in all_trips)
+
+    if total_approved < 5:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Need at least 5 approved outfits ({total_approved} so far).",
+        )
+
+    background_tasks.add_task(build_carpet_image, current_user)
+    return {
+        "success": True,
+        "data": {"dashboard_carpet_url": None},
+        "message": "Carpet generation started",
+    }
