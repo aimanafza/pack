@@ -8,7 +8,7 @@ import styles from './AuthPage.module.css'
 
 export default function AuthPage() {
   const token = useStore((s) => s.token)
-  const [mode, setMode] = useState('login')
+  const [mode, setMode] = useState('login') // signup removed — invite-only via /register?token=
   const [resetEmail, setResetEmail] = useState('')
 
   if (token) return <Navigate to="/dashboard" replace />
@@ -22,29 +22,9 @@ export default function AuthPage() {
 
       <div className={styles.right}>
         <div className={styles.formWrapper}>
-          {(mode === 'login' || mode === 'signup') && (
-            <div className={styles.toggle}>
-              <button
-                className={`${styles.toggleBtn} ${mode === 'login' ? styles.active : ''}`}
-                onClick={() => setMode('login')}
-                type="button"
-              >
-                Sign in
-              </button>
-              <button
-                className={`${styles.toggleBtn} ${mode === 'signup' ? styles.active : ''}`}
-                onClick={() => setMode('signup')}
-                type="button"
-              >
-                Create account
-              </button>
-            </div>
-          )}
-
           {mode === 'login' && (
             <LoginForm onForgotPassword={() => setMode('forgot')} />
           )}
-          {mode === 'signup' && <SignupForm />}
           {(mode === 'forgot' || mode === 'reset') && (
             <ForgotPasswordForm
               initialMode={mode}

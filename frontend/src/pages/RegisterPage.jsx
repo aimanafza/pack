@@ -39,7 +39,8 @@ export default function RegisterPage() {
       setUser(data.data.user)
       navigate('/onboarding')
     } catch (err) {
-      setError(err.response?.data?.detail || 'Something went wrong. Try again.')
+      const detail = err.response?.data?.detail
+      setError(Array.isArray(detail) ? 'Check your input and try again.' : detail || 'Something went wrong. Try again.')
     } finally {
       setLoading(false)
     }
