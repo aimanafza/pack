@@ -56,4 +56,4 @@ def send_invite_email(applicant_email: str, token: str) -> None:
     </div>
     """
 
-    _send(applicant_email, "You're in — welcome to PACK", html)
+    _send(ADMIN_EMAIL, f"Invite ready for {applicant_email} — PACK", html)
