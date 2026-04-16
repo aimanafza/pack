@@ -78,6 +78,7 @@ class User(Document):
     avatar: Optional[Avatar] = None
     reset_code: Optional[str] = None
     reset_code_expires: Optional[datetime] = None
+    dashboard_carpet_url: Optional[str] = None
 
     class Settings:
         name = "users"

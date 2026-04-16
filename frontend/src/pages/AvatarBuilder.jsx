@@ -9,17 +9,26 @@ const TOTAL_STEPS = 5
 export default function AvatarBuilder() {
   const user = useStore((s) => s.user)
   const existingAvatar = user?.avatar
+  const [showHub, setShowHub] = useState(true)
 
-  // If avatar exists, show the update hub; otherwise run the 5-step build flow
-  if (existingAvatar?.base_url) {
-    return <UpdateAvatar avatar={existingAvatar} />
+  // If avatar exists and hub is shown, show update hub; otherwise build flow
+  if (existingAvatar?.base_url && showHub) {
+    return <UpdateAvatar avatar={existingAvatar} onStartBuild={() => setShowHub(false)} />
+  }
+  if (existingAvatar?.base_url && !showHub) {
+    return <BuildAvatar
+      defaultAppearance={existingAvatar.appearance}
+      defaultFitProfile={existingAvatar.fit_profile}
+      defaultPreferences={existingAvatar.preferences}
+      onBackToHub={() => { setShowHub(true); window.scrollTo(0, 0) }}
+    />
   }
   return <BuildAvatar />
 }
 
 // ─── Build flow (new avatar, 5 steps) ────────────────────────────────────────
 
-function BuildAvatar({ defaultAppearance, defaultFitProfile, defaultPreferences, startAtStep = 1 }) {
+function BuildAvatar({ defaultAppearance, defaultFitProfile, defaultPreferences, startAtStep = 1, onBackToHub }) {
   const navigate = useNavigate()
   const [currentStep, setCurrentStep] = useState(startAtStep)
 
@@ -29,30 +38,36 @@ function BuildAvatar({ defaultAppearance, defaultFitProfile, defaultPreferences,
   const [fitProfile, setFitProfile] = useState(defaultFitProfile || null)
   const [avatarPreferences, setAvatarPreferences] = useState(defaultPreferences || null)
 
+  function goToStep(step) {
+    setCurrentStep(step)
+    window.scrollTo(0, 0)
+  }
+
   function goBack() {
-    if (currentStep > 1) setCurrentStep((s) => s - 1)
+    if (currentStep > 1) goToStep(currentStep - 1)
+    else if (onBackToHub) onBackToHub()
     else navigate('/profile/build-avatar')
   }
 
   function handleStep1Complete({ photo_urls, analysis: a }) {
     setPhotoUrls(photo_urls)
     setAnalysis(a)
-    setCurrentStep(2)
+    goToStep(2)
   }
 
   function handleStep2Complete(appearance) {
     setConfirmedAppearance(appearance)
-    setCurrentStep(3)
+    goToStep(3)
   }
 
   function handleStep3Complete(fit) {
     setFitProfile(fit)
-    setCurrentStep(4)
+    goToStep(4)
   }
 
   function handleStep4Complete(prefs) {
     setAvatarPreferences(prefs)
-    setCurrentStep(5)
+    goToStep(5)
   }
 
   return (
@@ -82,78 +97,117 @@ function BuildAvatar({ defaultAppearance, defaultFitProfile, defaultPreferences,
 
 // ─── Update hub (existing avatar) ────────────────────────────────────────────
 
-function UpdateAvatar({ avatar }) {
+function UpdateAvatar({ avatar, onStartBuild }) {
   const navigate = useNavigate()
-  // mode: null | 'quick' | 'edit' | 'fresh'
+  const updateUser = useStore((s) => s.updateUser)
+  // mode: null | 'quick' | 'edit'
   const [mode, setMode] = useState(null)
 
-  if (mode === 'fresh') {
-    return (
-      <BuildAvatar
-        defaultAppearance={avatar.appearance}
-        defaultFitProfile={avatar.fit_profile}
-        defaultPreferences={avatar.preferences}
-        startAtStep={1}
-      />
-    )
+  function switchMode(m) {
+    setMode(m)
+    window.scrollTo(0, 0)
+  }
+  const [selectedUrl, setSelectedUrl] = useState(avatar.base_url)
+
+  // All variants: base + any extras from variation_urls that aren't the base
+  const allVariants = [
+    avatar.base_url,
+    ...(avatar.variation_urls || []).filter((u) => u !== avatar.base_url),
+  ]
+  const variantLabels = ['POLISHED', 'REALISTIC', 'IDEALIZED']
+
+  function handleSelectVariant(url) {
+    if (url === selectedUrl) return
+    setSelectedUrl(url)
+    const variantIdx = allVariants.indexOf(url)
+    const vibe = variantLabels[variantIdx] ?? null
+    // Persist to backend in background — don't block the UI
+    api.patch('/api/v1/users/me/avatar/select', { base_url: url, vibe })
+      .then(({ data }) => { if (data.user) updateUser(data.user) })
+      .catch((e) => console.error('Failed to persist avatar selection', e))
   }
 
   if (mode === 'quick') {
-    return <QuickRegenerate avatar={avatar} onBack={() => setMode(null)} />
+    return <QuickRegenerate avatar={avatar} onBack={() => switchMode(null)} />
   }
 
   if (mode === 'edit') {
-    return <EditDetails avatar={avatar} onBack={() => setMode(null)} />
+    return <EditDetails avatar={avatar} onBack={() => switchMode(null)} />
   }
+
+  // Put selected in center, others flank
+  const others = allVariants.filter((u) => u !== selectedUrl)
+  const displayOrder = [others[0] ?? selectedUrl, selectedUrl, others[1] ?? others[0] ?? selectedUrl]
 
   // Hub
   return (
     <div className={styles.page}>
       <div className={styles.topBar}>
         <button className={styles.backBtn} onClick={() => navigate('/profile')} type="button">← Back</button>
-        <span className={styles.stepIndicator}>UPDATE YOUR AVATAR</span>
+        <span className={styles.stepIndicator}>YOUR AVATAR</span>
         <div className={styles.topBarSpacer} />
       </div>
-      <div className={styles.content}>
-        <div className={styles.updateWrap}>
-          <img src={avatar.base_url} alt="Your avatar" className={styles.updateAvatarImg} />
-
-          <div className={styles.updateOptions}>
-            {/* Quick regenerate */}
-            <div className={styles.updateOption}>
-              <div className={styles.updateOptionHeader}>
-                <p className={styles.updateOptionTitle}>QUICK REGENERATE</p>
-                <p className={styles.updateOptionDesc}>Keep everything the same, just try again</p>
-              </div>
-              <button className={styles.btnPrimary} onClick={() => setMode('quick')} type="button">
-                Quick regenerate →
-              </button>
-            </div>
-
-            {/* Edit details */}
-            <div className={styles.updateOption}>
-              <div className={styles.updateOptionHeader}>
-                <p className={styles.updateOptionTitle}>EDIT DETAILS</p>
-                <p className={styles.updateOptionDesc}>Change something specific</p>
-              </div>
-              <button className={styles.btnPrimary} onClick={() => setMode('edit')} type="button">
-                Edit details →
-              </button>
-            </div>
-
-            {/* Start fresh */}
-            <div className={styles.updateOption}>
-              <div className={styles.updateOptionHeader}>
-                <p className={styles.updateOptionTitle}>START FRESH</p>
-                <p className={styles.updateOptionDesc}>Rebuild from new photos</p>
-                <p className={styles.updateOptionMeta}>Takes about 3 minutes</p>
-              </div>
-              <button className={styles.btnGhost} onClick={() => setMode('fresh')} type="button">
-                Start full rebuild →
-              </button>
-            </div>
+      <div className={styles.hubWrap}>
+          {/* Variant carousel — selected always center */}
+          <p className={styles.variantCount}>{allVariants.length} VARIATIONS GENERATED</p>
+          <div className={styles.variantCarousel}>
+            {displayOrder.map((url, i) => {
+              const isCenter = i === 1
+              const originalIdx = allVariants.indexOf(url)
+              return (
+                <button
+                  key={`${url}-${i}`}
+                  type="button"
+                  className={`${styles.hubThumb} ${isCenter ? styles.hubThumbCenter : styles.hubThumbSide}`}
+                  onClick={() => handleSelectVariant(url)}
+                >
+                  <img src={url} alt={`Avatar ${originalIdx + 1}`} className={styles.hubThumbImg} />
+                  {isCenter && <span className={styles.hubCheck}>✓</span>}
+                  <span className={styles.hubThumbLabel}>{variantLabels[originalIdx] ?? `OPTION ${originalIdx + 1}`}</span>
+                </button>
+              )
+            })}
           </div>
-        </div>
+          <hr className={styles.hubDivider} />
+      </div>
+
+      {/* Numbered option cards */}
+      <div className={styles.hubOptions}>
+        <button
+          type="button"
+          className={`${styles.hubOptionCard} ${styles.hubOptionCardActive}`}
+          onClick={() => switchMode('quick')}
+        >
+          <span className={styles.hubOptionNum}>01</span>
+          <p className={styles.hubOptionTitle}>QUICK REGENERATE</p>
+          <p className={styles.hubOptionDesc}>Same settings, new generation</p>
+          <hr className={styles.hubOptionDivider} />
+          <span className={styles.hubOptionMeta}>NO CHANGES NEEDED</span>
+        </button>
+
+        <button
+          type="button"
+          className={styles.hubOptionCard}
+          onClick={() => switchMode('edit')}
+        >
+          <span className={styles.hubOptionNum}>02</span>
+          <p className={styles.hubOptionTitle}>EDIT DETAILS</p>
+          <p className={styles.hubOptionDesc}>Adjust a specific feature or fit</p>
+          <hr className={styles.hubOptionDivider} />
+          <span className={styles.hubOptionMeta}>CHANGE SOMETHING SPECIFIC</span>
+        </button>
+
+        <button
+          type="button"
+          className={styles.hubOptionCard}
+          onClick={() => { window.scrollTo(0, 0); onStartBuild && onStartBuild() }}
+        >
+          <span className={styles.hubOptionNum}>03</span>
+          <p className={styles.hubOptionTitle}>START FRESH</p>
+          <p className={styles.hubOptionDesc}>Upload new photos, rebuild from scratch</p>
+          <hr className={styles.hubOptionDivider} />
+          <span className={styles.hubOptionMeta}>~3 MINUTES</span>
+        </button>
       </div>
     </div>
   )
@@ -290,7 +344,7 @@ function QuickRegenerate({ avatar, onBack }) {
                 <button className={styles.btnPrimary} onClick={handleGenerate} type="button" disabled={uploadingExtras}>
                   {uploadingExtras ? 'Uploading...' : 'Regenerate →'}
                 </button>
-                <button className={styles.cancelLink} onClick={() => navigate('/profile')} type="button">Cancel</button>
+                <button className={styles.cancelLink} onClick={onBack} type="button">Cancel</button>
               </div>
             </>
           ) : (
@@ -556,7 +610,7 @@ function EditDetails({ avatar, onBack }) {
             <button className={styles.btnPrimary} onClick={handleGenerate} type="button" disabled={!vibe}>
               Regenerate with changes →
             </button>
-            <button className={styles.cancelLink} onClick={() => navigate('/profile')} type="button">Cancel</button>
+            <button className={styles.cancelLink} onClick={onBack} type="button">Cancel</button>
           </div>
         </div>
       </div>

@@ -1,0 +1,410 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap');
+
+/* ─── Section wrapper ─────────────────────────────────────────────── */
+.section {
+  margin-top: 2rem;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.875rem;
+  max-width: 900px;
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.sectionLabel {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #999;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 400;
+}
+
+/* ─── Nav buttons (top-right) ─────────────────────────────────────── */
+.navBtns {
+  display: flex;
+  gap: 8px;
+}
+
+.navBtn {
+  background: none;
+  border: 0.5px solid rgba(0, 0, 0, 0.18);
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: #555;
+  transition: background 0.15s;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.navBtn:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+/* ─── Card (split layout) ─────────────────────────────────────────── */
+.card {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  height: 700px;
+  min-height: 700px;
+  max-width: 900px;
+  width: 100%;
+  margin: 0 auto;
+  border: 0.5px solid rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+  background: #f4f3ef;
+}
+
+/* ─── LEFT — figure ───────────────────────────────────────────────── */
+.figSide {
+  position: relative;
+  background: #eceae4;
+  height: 100%;
+  overflow: hidden;
+}
+
+.figImg {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center center;
+  display: block;
+}
+
+.figPlaceholder {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    110deg,
+    #eceae4 30%,
+    #e4e2dc 50%,
+    #eceae4 70%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s infinite linear;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.generatingText {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(0, 0, 0, 0.35);
+}
+
+.lookLabel {
+  position: absolute;
+  bottom: 18px;
+  left: 18px;
+  z-index: 2;
+}
+
+.lookNum {
+  display: block;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(0, 0, 0, 0.38);
+  margin-bottom: 3px;
+}
+
+.lookName {
+  display: block;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 18px;
+  font-style: italic;
+  font-weight: 300;
+  color: #1a1a1a;
+  line-height: 1.15;
+}
+
+/* ─── RIGHT — items ───────────────────────────────────────────────── */
+.itemsSide {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  background: #fff;
+  border-left: 0.5px solid rgba(0, 0, 0, 0.08);
+  height: 100%;
+  max-width: 450px;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+.tagRow {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.tag {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #888;
+  background: rgba(0, 0, 0, 0.05);
+  padding: 3px 9px;
+  border-radius: 20px;
+}
+
+/* ─── Item grid ───────────────────────────────────────────────────── */
+.itemGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  align-content: start;
+}
+
+.itemCard {
+  position: relative;
+  background: #fff;
+  border: 0.5px solid rgba(0, 0, 0, 0.09);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.12s;
+  text-align: left;
+  padding: 0;
+}
+
+.itemCard:hover {
+  border-color: rgba(0, 0, 0, 0.28);
+  transform: translateY(-2px);
+}
+
+.itemThumb {
+  height: 90px;
+  background: #faf9f7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 8px;
+  flex-shrink: 0;
+}
+
+.itemImg {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.itemImgPlaceholder {
+  width: 100%;
+  height: 100%;
+  background: #ece9e3;
+  border-radius: 3px;
+}
+
+.itemFoot {
+  padding: 5px 8px 6px;
+  border-top: 0.5px solid rgba(0, 0, 0, 0.06);
+}
+
+.itemName {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 9.5px;
+  color: #1a1a1a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
+  font-weight: 400;
+}
+
+.itemCat {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 8.5px;
+  color: #aaa;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 2px 0 0;
+  font-weight: 300;
+}
+
+.itemArrow {
+  position: absolute;
+  top: 6px;
+  right: 7px;
+  opacity: 0;
+  font-size: 9px;
+  color: #999;
+  transition: opacity 0.15s;
+}
+
+.itemCard:hover .itemArrow {
+  opacity: 1;
+}
+
+/* ─── Styling note ────────────────────────────────────────────────── */
+.stylingNote {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 13px;
+  font-style: italic;
+  font-weight: 300;
+  color: #666;
+  line-height: 1.65;
+  border-top: 0.5px solid rgba(0, 0, 0, 0.07);
+  padding-top: 12px;
+  margin: 0;
+}
+
+/* ─── Look counter ────────────────────────────────────────────────── */
+.lookCounter {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: #999;
+  text-align: center;
+  margin-top: 12px;
+  max-width: 900px;
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ─── Item Drawer ─────────────────────────────────────────────────── */
+.drawerOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 400;
+  display: flex;
+  align-items: flex-end;
+}
+
+.drawer {
+  background: #fff;
+  border-radius: 16px 16px 0 0;
+  width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
+  position: relative;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.drawerClose {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  color: #888;
+  z-index: 1;
+  padding: 4px;
+  line-height: 1;
+}
+
+.drawerImgWrap {
+  background: #f4f3ef;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  max-height: 280px;
+  overflow: hidden;
+}
+
+.drawerImg {
+  max-height: 240px;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+.drawerBody {
+  padding: 20px 20px 12px;
+}
+
+.drawerName {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 22px;
+  font-weight: 300;
+  color: #1a1a1a;
+  margin: 0 0 6px;
+  line-height: 1.2;
+}
+
+.drawerMeta {
+  margin-bottom: 14px;
+}
+
+.drawerMetaRow {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  color: #888;
+  font-weight: 300;
+}
+
+.drawerDetail {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-top: 0.5px solid rgba(0, 0, 0, 0.07);
+}
+
+.drawerDetailLabel {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #aaa;
+  font-weight: 400;
+}
+
+.drawerDetailVal {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 11px;
+  color: #1a1a1a;
+  font-weight: 300;
+  text-align: right;
+  max-width: 60%;
+}
+
+.drawerCta {
+  display: block;
+  width: calc(100% - 40px);
+  margin: 4px 20px 20px;
+  padding: 13px;
+  background: #1a1a1a;
+  color: #fff;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: none;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: opacity 0.15s;
+  text-align: center;
+}
+
+.drawerCta:hover {
+  opacity: 0.85;
+}

@@ -62,9 +62,9 @@ export default function TripDetailPage() {
     setPackingLoading(true)
     setPackingError(null)
     try {
-      const { data } = await api.post('/api/v1/pack/suggest', { trip_id: id })
-      // pack/suggest returns the packing list, not the full trip — refetch
+      await api.post('/api/v1/pack/suggest', { trip_id: id })
       await fetchTrip(id)
+      navigate(`/trips/${id}/review`)
     } catch (err) {
       console.error('Pack suggest error:', err?.response?.data || err)
       setPackingError(
@@ -72,6 +72,17 @@ export default function TripDetailPage() {
       )
     } finally {
       setPackingLoading(false)
+    }
+  }
+
+  async function handleUnapproveOutfits(outfitNames) {
+    try {
+      const { data } = await api.patch(`/api/v1/trips/${id}/unapprove-outfits`, { outfit_names: outfitNames })
+      updateTrip(data.data)
+      setActiveTrip(data.data)
+      navigate(`/trips/${id}/review`)
+    } catch (err) {
+      console.error('Unapprove outfits error:', err?.response?.data || err)
     }
   }
 
@@ -100,6 +111,7 @@ export default function TripDetailPage() {
       <TripDetail
         trip={activeTrip}
         onGeneratePacking={handleGeneratePacking}
+        onUnapproveOutfits={handleUnapproveOutfits}
         onEditTrip={editTrip}
         onDeleteTrip={async () => { await deleteTrip(id); navigate('/trips') }}
         packingLoading={packingLoading}

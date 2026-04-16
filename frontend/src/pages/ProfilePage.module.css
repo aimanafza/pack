@@ -622,3 +622,87 @@
 .emptyLink:hover {
   color: var(--color-text-primary);
 }
+
+/* ─── Lookbook grid ───────────────────────────────────────── */
+.lookbookGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.lookbookCard {
+  text-decoration: none;
+  display: flex;
+  flex-direction: column;
+  border: 0.5px solid rgba(0, 0, 0, 0.09);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.12s;
+}
+
+.lookbookCard:hover {
+  border-color: rgba(0, 0, 0, 0.22);
+  transform: translateY(-2px);
+}
+
+.lookbookCardImg {
+  width: 100%;
+  height: calc((100vh - 160px) / 2);
+  overflow: hidden;
+  background: #eceae4;
+}
+
+.lookbookCardPhoto {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: top center;
+  display: block;
+}
+
+.lookbookCardPlaceholder {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(110deg, #eceae4 30%, #e4e2dc 50%, #eceae4 70%);
+  background-size: 200% 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lookbookCardPlaceholderText {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(0, 0, 0, 0.3);
+  text-align: center;
+  padding: 0 12px;
+}
+
+.lookbookCardFoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px 11px;
+  border-top: 0.5px solid rgba(0, 0, 0, 0.06);
+}
+
+.lookbookCardNum {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 400;
+  color: #1a1a1a;
+  letter-spacing: 0.02em;
+}
+
+.lookbookCardTrip {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 10px;
+  font-weight: 300;
+  color: #aaa;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}

@@ -87,6 +87,28 @@ async def upload_avatar_ref(file, user_id: str, slot: str) -> dict:
     }
 
 
+async def upload_carpet_image(url: str, user_id: str) -> dict:
+    """Download a fal.ai carpet URL and upload to Cloudinary for permanent storage."""
+    import httpx
+    async with httpx.AsyncClient() as http:
+        r = await http.get(url)
+        image_data = r.content
+    result = cloudinary.uploader.upload(
+        image_data,
+        folder="pack/carpets",
+        public_id=f"carpet_{user_id}",
+        overwrite=True,
+        transformation=[
+            {"quality": "auto"},
+            {"fetch_format": "auto"},
+        ],
+    )
+    return {
+        "url": result["secure_url"],
+        "public_id": result["public_id"],
+    }
+
+
 async def upload_profile_picture(file, user_id: str) -> dict:
     result = cloudinary.uploader.upload(
         file,

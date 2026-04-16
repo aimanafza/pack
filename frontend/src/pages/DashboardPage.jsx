@@ -7,6 +7,7 @@ import { useWardrobe } from '../hooks/useWardrobe.js'
 import { useNewTrip } from '../hooks/useNewTrip.js'
 import UploadModal from '../components/wardrobe/UploadModal.jsx'
 import WardrobeGateModal from '../components/trips/WardrobeGateModal.jsx'
+import api from '../utils/api.js'
 import styles from './DashboardPage.module.css'
 
 function greeting(name) {
@@ -92,6 +93,7 @@ function NewTripCard({ onClick }) {
 
 export default function DashboardPage() {
   const user = useStore((s) => s.user)
+  const setUser = useStore((s) => s.setUser)
   const { trips, fetchTrips } = useTrips()
   const { wardrobe, fetchWardrobe } = useWardrobe()
   const navigate = useNavigate()
@@ -104,15 +106,32 @@ export default function DashboardPage() {
   }, [])
 
   const sorted = [...trips].sort((a, b) => new Date(a.start_date) - new Date(b.start_date))
-  const snapshotItems = [...wardrobe].slice(0, 6)
-  // Fresh state only when: never logged in before AND nothing in the account yet.
-  // Once pack_returning is set (set on every login), we always show the welcome-back hero.
+  const snapshotItems = [...wardrobe].slice(0, 8)
   const isReturning = localStorage.getItem('pack_returning') === 'true'
   const isFreshUser = !isReturning && trips.length === 0 && wardrobe.length === 0
   const outfitsApproved = trips.reduce((n, t) => n + (t.approved_outfits?.length ?? 0), 0)
 
-  // Hero background: most recently added wardrobe item
-  const heroBgUrl = wardrobe[0]?.image_url
+  // Trigger carpet generation once trips are loaded and user qualifies
+  useEffect(() => {
+    if (trips.length === 0) return
+    if (user?.dashboard_carpet_url) return
+    if (outfitsApproved < 5) return
+    // Fire and forget — carpet is generated in the background on the server.
+    // Poll /auth/me every 10s until the URL appears, then update the store.
+    api.post('/api/v1/profile/generate-carpet').catch(() => {})
+    const interval = setInterval(() => {
+      api.get('/api/v1/auth/me').then(({ data }) => {
+        if (data.data?.dashboard_carpet_url) {
+          setUser(data.data)
+          clearInterval(interval)
+        }
+      }).catch(() => {})
+    }, 10000)
+    return () => clearInterval(interval)
+  }, [trips, outfitsApproved, user?.dashboard_carpet_url])
+
+  // Hero background: carpet image if generated, otherwise most recent wardrobe item
+  const heroBgUrl = user?.dashboard_carpet_url || wardrobe[0]?.image_url
 
   return (
     <div className={styles.page}>
@@ -120,9 +139,11 @@ export default function DashboardPage() {
       {/* ── RETURNING USER STATE ── */}
       {!isFreshUser && (
         <div
-          className={styles.heroSection}
-          style={heroBgUrl ? { backgroundImage: `url(${heroBgUrl})` } : {}}
+          className={`${styles.heroSection}${user?.dashboard_carpet_url ? ` ${styles.hasCarpet}` : ''}`}
         >
+          {heroBgUrl && (
+            <img src={heroBgUrl} alt="" className={styles.heroBgImg} aria-hidden="true" />
+          )}
           <div className={styles.frostCard}>
             <h2 className={styles.welcomeBack}>
               Welcome back, {user?.name?.split(' ')[0]}.
@@ -196,15 +217,22 @@ export default function DashboardPage() {
           <section className={styles.section}>
             <p className={styles.sectionLabel}>Upcoming Trips</p>
             <div className={styles.tripScroll}>
+              <NewTripCard onClick={goToNewTrip} />
               {sorted.map((trip) => (
                 <DashTripCard key={trip.id} trip={trip} />
               ))}
-              <NewTripCard onClick={goToNewTrip} />
             </div>
           </section>
 
           <section className={styles.section}>
-            <p className={styles.sectionLabel}>Your Wardrobe</p>
+            <div className={styles.sectionHeader}>
+              <p className={styles.sectionLabel}>Your Wardrobe</p>
+              {wardrobe.length > 0 && (
+                <Link to="/wardrobe" className={styles.viewAll}>
+                  View all {wardrobe.length} items →
+                </Link>
+              )}
+            </div>
             {wardrobe.length === 0 ? (
               <p className={styles.emptySnap}>
                 No items yet.{' '}
@@ -214,14 +242,11 @@ export default function DashboardPage() {
               <>
                 <div className={styles.wardrobeRow}>
                   {snapshotItems.map((item) => (
-                    <div key={item.id} className={styles.wardrobeThumb}>
+                    <Link key={item.id} to={`/wardrobe/${item.id}`} className={styles.wardrobeThumb}>
                       <img src={item.image_url} alt={item.name} className={styles.wardrobeThumbImg} />
-                    </div>
+                    </Link>
                   ))}
                 </div>
-                <Link to="/wardrobe" className={styles.viewAll}>
-                  View all {wardrobe.length} items →
-                </Link>
               </>
             )}
           </section>
