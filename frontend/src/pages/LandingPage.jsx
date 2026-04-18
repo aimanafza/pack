@@ -1,42 +1,43 @@
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import useStore from '../store/index.js'
-import api from '../utils/api.js'
 import styles from './LandingPage.module.css'
+
+const STEPS = [
+  {
+    num: '01',
+    head: 'Build Your Wardrobe',
+    body: 'Upload your clothes once. PACK learns your style.',
+  },
+  {
+    num: '02',
+    head: 'Set the Vibe',
+    body: 'Drop your Pinterest inspo. Your stylist reads the aesthetic.',
+  },
+  {
+    num: '03',
+    head: 'Pack Smarter',
+    body: 'Swipe through AI-generated outfits. Approve what you love.',
+  },
+]
 
 export default function LandingPage() {
   const token = useStore((s) => s.token)
   const navigate = useNavigate()
 
-  const [email, setEmail] = useState('')
-  const [status, setStatus] = useState('idle') // idle | loading | success | error
-  const [errorMsg, setErrorMsg] = useState('')
-
   useEffect(() => {
     if (token) navigate('/dashboard', { replace: true })
   }, [token, navigate])
 
-  async function handleSubmit(e) {
-    e.preventDefault()
-    if (!email.trim()) return
-    setStatus('loading')
-    setErrorMsg('')
-    try {
-      await api.post('/waitlist', { email: email.trim() })
-      setStatus('success')
-    } catch (err) {
-      setErrorMsg(err.response?.data?.detail || 'Something went wrong. Try again.')
-      setStatus('error')
-    }
-  }
-
   return (
     <div className={styles.page}>
+      {/* Nav */}
       <nav className={styles.nav}>
         <span className={styles.wordmark}>pack</span>
-        <a href="/auth" className={styles.navSignIn}>Sign in</a>
+        <Link to="/auth" className={styles.navSignIn}>Sign in</Link>
       </nav>
 
+      {/* Section 1 — Hero */}
       <section className={styles.hero}>
         <div className={styles.heroLeft}>
           <p className={styles.heroLabel}>INTRODUCING PACK</p>
@@ -44,48 +45,19 @@ export default function LandingPage() {
           <p className={styles.heroSubhead}>
             Your AI personal stylist. Every trip, perfectly packed.
           </p>
-
-          {status === 'success' ? (
-            <div className={styles.successState}>
-              <p className={styles.successText}>You're on the list. We'll be in touch.</p>
-            </div>
-          ) : (
-            <form className={styles.waitlistForm} onSubmit={handleSubmit}>
-              <input
-                type="email"
-                required
-                placeholder="your@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className={styles.emailInput}
-                disabled={status === 'loading'}
-              />
-              <button
-                type="submit"
-                className={styles.ctaBtn}
-                disabled={status === 'loading'}
-              >
-                {status === 'loading' ? 'Joining...' : 'Join the waitlist'}
-              </button>
-              {status === 'error' && (
-                <p className={styles.errorMsg}>{errorMsg}</p>
-              )}
-            </form>
-          )}
+          <Link to="/auth" className={styles.ctaBtn}>Start Packing</Link>
+          <p className={styles.ctaNote}>Free to use. No credit card required.</p>
         </div>
         <div className={styles.heroRight} aria-hidden="true">
           <div className={styles.heroPhotoPlaceholder} />
         </div>
       </section>
 
+      {/* Section 2 — How It Works */}
       <section className={styles.howSection}>
         <p className={styles.sectionLabel}>HOW IT WORKS</p>
         <div className={styles.stepsGrid}>
-          {[
-            { num: '01', head: 'Build Your Wardrobe', body: 'Upload your clothes once. PACK learns your style.' },
-            { num: '02', head: 'Set the Vibe', body: 'Drop your Pinterest inspo. Your stylist reads the aesthetic.' },
-            { num: '03', head: 'Pack Smarter', body: 'Swipe through AI-generated outfits. Approve what you love.' },
-          ].map(({ num, head, body }) => (
+          {STEPS.map(({ num, head, body }) => (
             <div key={num} className={styles.step}>
               <span className={styles.stepNum}>{num}</span>
               <h3 className={styles.stepHead}>{head}</h3>
@@ -93,6 +65,12 @@ export default function LandingPage() {
             </div>
           ))}
         </div>
+      </section>
+
+      {/* Section 3 — Bottom CTA */}
+      <section className={styles.bottomCta}>
+        <h2 className={styles.bottomHeadline}>Every trip deserves the right wardrobe.</h2>
+        <Link to="/auth" className={styles.ctaBtn}>Create Your Account</Link>
       </section>
 
       <footer className={styles.footer}>
