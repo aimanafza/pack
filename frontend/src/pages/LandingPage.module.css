@@ -50,8 +50,8 @@
 .heroLeft {
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
-  padding: 120px var(--space-12) var(--space-20);
+  justify-content: center;
+  padding: 140px var(--space-12) var(--space-20);
 }
 
 .heroLabel {
@@ -82,7 +82,7 @@
   color: var(--color-text-secondary);
   line-height: var(--leading-normal);
   max-width: 420px;
-  margin-bottom: var(--space-10);
+  margin-bottom: var(--space-6);
 }
 
 .ctaBtn {
@@ -110,6 +110,14 @@
 .ctaBtn:disabled {
   opacity: 0.5;
   cursor: default;
+}
+
+.ctaNote {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: 300;
+  color: var(--color-text-tertiary);
+  margin-top: var(--space-6);
 }
 
 /* ─── Waitlist form ───────────────────────────────────── */
