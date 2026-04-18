@@ -50,8 +50,8 @@
 .heroLeft {
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  padding: 140px var(--space-12) var(--space-20);
+  justify-content: flex-start;
+  padding: 120px var(--space-12) var(--space-20);
 }
 
 .heroLabel {
