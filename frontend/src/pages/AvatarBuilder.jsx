@@ -46,7 +46,7 @@ function BuildAvatar({ defaultAppearance, defaultFitProfile, defaultPreferences,
   function goBack() {
     if (currentStep > 1) goToStep(currentStep - 1)
     else if (onBackToHub) onBackToHub()
-    else navigate('/profile/build-avatar')
+    else navigate('/profile')
   }
 
   function handleStep1Complete({ photo_urls, analysis: a }) {
@@ -676,12 +676,11 @@ function StepUpload({ onNext }) {
       if (photos.angle) fd.append('angle', photos.angle)
       if (photos.side) fd.append('side', photos.side)
 
-      const { data } = await api.post('/api/v1/users/me/avatar/analyse', fd, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      })
+      const { data } = await api.post('/api/v1/users/me/avatar/analyse', fd)
       onNext(data.data)
     } catch (err) {
-      setError(err.response?.data?.detail || 'Analysis failed. Check your connection and try again.')
+      console.error('Avatar analyse error:', err)
+      setError(err.response?.data?.detail || err.message || 'Analysis failed. Check your connection and try again.')
     } finally {
       setLoading(false)
     }

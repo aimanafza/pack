@@ -21,8 +21,11 @@ async def analyse_avatar(
     for slot, upload in [("front", front), ("angle", angle), ("side", side)]:
         if upload and upload.filename:
             data = await upload.read()
-            result = await upload_avatar_ref(data, str(current_user.id), slot)
-            photo_urls.append(result["url"])
+            try:
+                result = await upload_avatar_ref(data, str(current_user.id), slot)
+                photo_urls.append(result["url"])
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"Photo upload failed: {str(e)}")
 
     if not photo_urls:
         raise HTTPException(status_code=400, detail="At least one photo is required.")
