@@ -184,3 +184,11 @@ async def select_avatar_variant(
         "user": current_user.model_dump(),
         "message": "Avatar updated.",
     }
+
+
+@router.post("/me/extension-connected")
+async def mark_extension_connected(current_user: User = Depends(get_current_user)):
+    """Called by the extension after successful auth to flag the user account."""
+    current_user.extension_connected = True
+    await current_user.save()
+    return {"success": True}

@@ -1,0 +1,58 @@
+.root {
+  position: relative;
+  width: 100%;
+}
+
+.md {
+  height: 160px;
+}
+
+.sm {
+  height: 100px;
+}
+
+.img {
+  position: absolute;
+  border-radius: var(--radius-md);
+  border: var(--border-thin);
+  background: var(--color-bg-tertiary);
+  overflow: hidden;
+  bottom: 0;
+}
+
+.left {
+  width: 45%;
+  left: 0;
+  height: 85%;
+  transform: rotate(2deg);
+  z-index: 1;
+}
+
+.center {
+  width: 50%;
+  left: 50%;
+  transform: translateX(-50%) rotate(-3deg);
+  height: 100%;
+  z-index: 2;
+}
+
+.right {
+  width: 45%;
+  right: 0;
+  height: 85%;
+  transform: rotate(1.5deg);
+  z-index: 1;
+}
+
+.photo {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.placeholder {
+  width: 100%;
+  height: 100%;
+  background: var(--color-bg-tertiary);
+}

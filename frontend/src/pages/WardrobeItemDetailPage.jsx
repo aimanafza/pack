@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { AnimatePresence } from 'framer-motion'
 import api from '../utils/api.js'
+import StyleThisItemModal from '../components/wardrobe/StyleThisItemModal.jsx'
 import styles from './WardrobeItemDetailPage.module.css'
 
 
@@ -40,6 +42,9 @@ export default function WardrobeItemDetailPage() {
   const [error, setError] = useState('')
   const [deleting, setDeleting] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [showStyleModal, setShowStyleModal] = useState(false)
+  const [itemLooks, setItemLooks] = useState([])
+  const [selectedLook, setSelectedLook] = useState(null)
 
   // Edit state
   const [editing, setEditing] = useState(false)
@@ -57,17 +62,25 @@ export default function WardrobeItemDetailPage() {
   const [editWeight, setEditWeight] = useState(300)
 
   useEffect(() => {
-    async function fetchItem() {
+    async function fetchAll() {
       try {
-        const { data } = await api.get(`/api/v1/wardrobe/${item_id}`)
-        setItem(data.data)
-      } catch {
-        setError('Item not found.')
+        const [itemRes, looksRes] = await Promise.allSettled([
+          api.get(`/api/v1/wardrobe/${item_id}`),
+          api.get(`/api/v1/looks/item/${item_id}`),
+        ])
+        if (itemRes.status === 'fulfilled') {
+          setItem(itemRes.value.data.data)
+        } else {
+          setError('Item not found.')
+        }
+        if (looksRes.status === 'fulfilled') {
+          setItemLooks(looksRes.value.data.data || [])
+        }
       } finally {
         setLoading(false)
       }
     }
-    fetchItem()
+    fetchAll()
   }, [item_id])
 
   function startEditing() {
@@ -398,6 +411,9 @@ export default function WardrobeItemDetailPage() {
                 <button className={styles.btnEdit} onClick={startEditing} type="button">
                   Edit details
                 </button>
+                <button className={styles.btnStyle} onClick={() => setShowStyleModal(true)} type="button">
+                  Style this item
+                </button>
                 <button className={styles.btnDelete} onClick={() => setConfirmingDelete(true)} type="button">
                   Remove
                 </button>
@@ -406,6 +422,76 @@ export default function WardrobeItemDetailPage() {
           </div>
         )}
       </div>
+
+      {/* Item Looks section */}
+      {itemLooks.length > 0 && (
+        <div className={styles.looksSection}>
+          <p className={styles.looksSectionLabel}>Item Looks</p>
+          <div className={styles.looksRow}>
+            {itemLooks.map((look) => (
+              <button
+                key={look.id || look._id}
+                type="button"
+                className={styles.lookCard}
+                onClick={() => setSelectedLook(look)}
+              >
+                <div className={styles.lookCardImg}>
+                  {look.avatar_image_url ? (
+                    <img src={look.avatar_image_url} alt={look.name} className={styles.lookCardPhoto} />
+                  ) : (
+                    <div className={styles.lookCardPlaceholder}>
+                      <span className={styles.lookCardPlaceholderText}>{look.name || 'Look'}</span>
+                    </div>
+                  )}
+                </div>
+                <div className={styles.lookCardFoot}>
+                  <span className={styles.lookCardName}>{look.name}</span>
+                  <span className={styles.lookCardOccasion}>{look.occasion}</span>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Look detail overlay */}
+      <AnimatePresence>
+        {selectedLook && (
+          <div className={styles.lookOverlay} onClick={() => setSelectedLook(null)}>
+            <div className={styles.lookOverlayCard} onClick={e => e.stopPropagation()}>
+              <button
+                type="button"
+                className={styles.lookOverlayClose}
+                onClick={() => setSelectedLook(null)}
+              >×</button>
+              {selectedLook.avatar_image_url && (
+                <img src={selectedLook.avatar_image_url} alt={selectedLook.name} className={styles.lookOverlayImg} />
+              )}
+              <div className={styles.lookOverlayBody}>
+                <p className={styles.lookOverlayOccasion}>{selectedLook.occasion}</p>
+                <h3 className={styles.lookOverlayName}>{selectedLook.name}</h3>
+                {selectedLook.styling_notes && (
+                  <p className={styles.lookOverlayNotes}>{selectedLook.styling_notes}</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Style this item modal */}
+      <AnimatePresence>
+        {showStyleModal && (
+          <StyleThisItemModal
+            item={item}
+            onClose={() => setShowStyleModal(false)}
+            onLooksApproved={(newLooks) => {
+              setItemLooks(prev => [...newLooks, ...prev])
+              setShowStyleModal(false)
+            }}
+          />
+        )}
+      </AnimatePresence>
     </div>
   )
 }

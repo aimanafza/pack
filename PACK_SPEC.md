@@ -5,9 +5,13 @@
 
 ## 0. What PACK Is
 
-PACK is a fashion travel packing app with an AI personal stylist at its core. The user logs in, builds their wardrobe (uploading clothing items), creates a trip (destination, dates, occasions), and the AI generates a curated packing list with full outfit breakdowns — thinking like a personal stylist, not a checklist generator. Users can save trips, edit lists, and check items off as they pack.
+PACK is a full-scale consumer fashion app with an AI personal stylist at its core. It is being built for public launch and investor funding. Every architectural and design decision must be production-grade, scalable, and investor-ready. There are no shortcuts.
 
-This is a capstone project (CP192, Minerva University). It must be fully functional, visually exceptional, and built to the exact specifications below. There is no room for generic UI. Every screen must feel like it was art-directed.
+PACK has two core experiences:
+
+**Trip Packing:** The user creates a trip (destination, dates, occasions), uploads wardrobe items and inspiration images, and the AI generates a curated packing list with full outfit breakdowns — thinking like a personal stylist, not a checklist generator. Users can save trips, edit lists, and check items off as they pack.
+
+**Daily Styling:** Every morning, PACK's AI agent styles the user for the day — pulling weather automatically, reading their calendar, tracking what they've worn recently, and asking for mood + occasion + social vibe. It generates 3 outfit options from their real wardrobe. Users swipe to choose. Their selection is logged and the agent learns their patterns over time.
 
 ---
 
@@ -25,36 +29,45 @@ PACK/
 │   │   │   ├── trips/              # TripCard, TripForm, TripDetail, VibeCard
 │   │   │   ├── packing/            # PackingList, OutfitCard, SuggestionStream
 │   │   │   ├── review/             # SwipeCard, ItemScrollRow, RejectionModal, BagCounter
+│   │   │   ├── daily/              # NEW — all daily styling components
+│   │   │   │   ├── TodayCard.jsx
+│   │   │   │   ├── ContextCard.jsx
+│   │   │   │   ├── DailyOutfitSwipe.jsx
+│   │   │   │   ├── LookHistoryCard.jsx
+│   │   │   │   ├── OutfitCollage.jsx
+│   │   │   │   └── VibeSelector.jsx
 │   │   │   ├── layout/             # Navbar, Sidebar, PageWrapper
 │   │   │   └── auth/               # LoginForm, SignupForm
 │   │   ├── pages/
-│   │   │   ├── LandingPage.jsx       # public, unauthenticated
+│   │   │   ├── LandingPage.jsx
 │   │   │   ├── AuthPage.jsx
-│   │   │   ├── DashboardPage.jsx     # logged-in homepage with welcome back experience
-│   │   │   ├── OnboardingPage.jsx    # guided interactive walkthrough
-│   │   │   ├── ProfilePage.jsx       # activity summary + AI wardrobe vibe
+│   │   │   ├── DashboardPage.jsx     # UPDATED — Today section added above Upcoming Trips
+│   │   │   ├── OnboardingPage.jsx
+│   │   │   ├── ProfilePage.jsx       # UPDATED — Your Looks section + Looks Styled stat
 │   │   │   ├── WardrobePage.jsx
-│   │   │   ├── WardrobeItemPage.jsx  # NEW — item detail/product page at /wardrobe/:item_id
+│   │   │   ├── WardrobeItemPage.jsx
 │   │   │   ├── TripDetailPage.jsx
 │   │   │   ├── NewTripPage.jsx
 │   │   │   ├── SwipeReviewPage.jsx
-│   │   │   └── PackingPage.jsx
+│   │   │   ├── PackingPage.jsx
+│   │   │   └── DailyStylingPage.jsx  # NEW
 │   │   ├── hooks/
 │   │   │   ├── useAuth.js
 │   │   │   ├── useWardrobe.js
 │   │   │   ├── useTrips.js
-│   │   │   └── usePackingSuggestions.js
+│   │   │   ├── usePackingSuggestions.js
+│   │   │   └── useDailyStyling.js    # NEW
 │   │   ├── store/
 │   │   │   └── index.js            # Zustand store — single file, all slices
 │   │   ├── utils/
-│   │   │   ├── api.js              # Axios instance with baseURL + auth headers
+│   │   │   ├── api.js
 │   │   │   └── helpers.js
 │   │   ├── styles/
-│   │   │   ├── tokens.css          # All CSS custom properties (design tokens)
-│   │   │   └── global.css          # Reset + base typography
+│   │   │   ├── tokens.css
+│   │   │   └── global.css
 │   │   ├── App.jsx
 │   │   └── main.jsx
-│   ├── .env                        # VITE_API_URL=http://localhost:8000
+│   ├── .env
 │   ├── index.html
 │   ├── vite.config.js
 │   └── package.json
@@ -63,30 +76,33 @@ PACK/
 │   ├── app/
 │   │   ├── api/
 │   │   │   ├── routes/
-│   │   │   │   ├── auth.py         # POST /auth/register, /auth/login, /auth/me
-│   │   │   │   ├── wardrobe.py     # CRUD for clothing items
-│   │   │   │   ├── trips.py        # CRUD for trips
-│   │   │   │   └── pack.py         # POST /pack/suggest (Claude API call)
-│   │   │   └── deps.py             # get_current_user dependency
+│   │   │   │   ├── auth.py
+│   │   │   │   ├── wardrobe.py
+│   │   │   │   ├── trips.py
+│   │   │   │   ├── pack.py
+│   │   │   │   └── daily.py          # NEW
+│   │   │   └── deps.py
 │   │   ├── models/
-│   │   │   ├── user.py
+│   │   │   ├── user.py               # UPDATED — daily styling fields added
 │   │   │   ├── item.py
-│   │   │   └── trip.py
+│   │   │   ├── trip.py
+│   │   │   └── daily.py              # NEW
 │   │   ├── services/
-│   │   │   ├── auth_service.py     # JWT creation + verification
-│   │   │   ├── claude_service.py   # All Claude API logic lives here
-│   │   │   └── cloudinary_service.py
+│   │   │   ├── auth_service.py
+│   │   │   ├── claude_service.py     # UPDATED — daily agent added
+│   │   │   ├── cloudinary_service.py
+│   │   │   └── weather_service.py    # NEW
 │   │   ├── core/
-│   │   │   ├── config.py           # Settings from .env via pydantic-settings
-│   │   │   ├── security.py         # Password hashing
-│   │   │   └── database.py         # MongoDB Atlas connection via Beanie
-│   │   └── main.py                 # FastAPI app, CORS, rate limiting, router registration
-│   ├── .env                        # All secrets — never commit this
+│   │   │   ├── config.py             # UPDATED — OPENWEATHER_API_KEY added
+│   │   │   ├── security.py
+│   │   │   └── database.py
+│   │   └── main.py
+│   ├── .env
 │   ├── requirements.txt
 │   └── README.md
 │
-├── PACK_SPEC.md                    # This file
-└── CLAUDE.md                       # Aiman's design agent config
+├── PACK_SPEC.md
+└── CLAUDE.md
 ```
 
 ---
@@ -104,18 +120,20 @@ PACK/
 ### Backend
 - **FastAPI** — async Python web framework
 - **Beanie** — async MongoDB ODM (wraps Motor)
-- **MongoDB Atlas** — M0 free tier, cloud-hosted even for local dev
+- **MongoDB Atlas** — production cluster
 - **python-jose** — JWT auth
 - **passlib[bcrypt]** — password hashing
 - **slowapi** — rate limiting
-- **anthropic** — official Python SDK
+- **anthropic** — official Python SDK, tool use enabled
 - **cloudinary** — image upload and storage
 - **pydantic-settings** — env var management
+- **httpx** — async HTTP for weather API calls
 
 ### External Services
-- **MongoDB Atlas** — free M0 cluster
+- **MongoDB Atlas** — production-grade cluster
 - **Cloudinary** — free tier (25GB storage). All wardrobe item uploads must use the `e_background_removal` transformation to produce clean white/transparent backgrounds automatically.
-- **Anthropic API** — Claude Haiku 4.5 (model string: `claude-haiku-4-5-20251001`)
+- **Anthropic API** — claude-sonnet-4-6 (model string: `claude-sonnet-4-6`). Use this model everywhere. Do not use Haiku.
+- **OpenWeatherMap API** — free tier, current weather by coordinates
 
 ---
 
@@ -132,6 +150,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 CLOUDINARY_CLOUD_NAME=...
 CLOUDINARY_API_KEY=...
 CLOUDINARY_API_SECRET=...
+OPENWEATHER_API_KEY=...
 FRONTEND_URL=http://localhost:5173
 ```
 
@@ -190,37 +209,31 @@ PACK looks like a fashion editorial magazine, not a SaaS app. Every screen is ar
 ### 4.3 Typography
 
 ```css
-/* Import in index.html */
-/* Cormorant Garamond — display headlines */
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&display=swap');
-/* DM Sans — body, UI, labels */
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap');
 
 :root {
   --font-display: 'Cormorant Garamond', Georgia, serif;
   --font-body: 'DM Sans', system-ui, sans-serif;
 
-  /* Type scale */
-  --text-xs: 11px;      /* Uppercase labels, metadata */
-  --text-sm: 13px;      /* Secondary body, captions */
-  --text-base: 15px;    /* Primary body text */
-  --text-md: 18px;      /* Large body, intro text */
-  --text-lg: 24px;      /* Small display */
-  --text-xl: 36px;      /* Section headlines */
-  --text-2xl: 52px;     /* Page titles */
-  --text-3xl: 72px;     /* Hero text */
+  --text-xs: 11px;
+  --text-sm: 13px;
+  --text-base: 15px;
+  --text-md: 18px;
+  --text-lg: 24px;
+  --text-xl: 36px;
+  --text-2xl: 52px;
+  --text-3xl: 72px;
 
-  /* Line heights */
   --leading-tight: 1.1;
   --leading-snug: 1.3;
   --leading-normal: 1.6;
   --leading-loose: 1.8;
 
-  /* Letter spacing */
   --tracking-tight: -0.02em;
   --tracking-normal: 0;
-  --tracking-wide: 0.06em;    /* For uppercase labels */
-  --tracking-wider: 0.12em;   /* For small caps labels */
+  --tracking-wide: 0.06em;
+  --tracking-wider: 0.12em;
 }
 ```
 
@@ -261,7 +274,7 @@ Base unit: 4px. Use multiples only.
 }
 ```
 
-### 4.6 Typography Patterns (how to actually use the fonts)
+### 4.6 Typography Patterns
 
 **Display headings** (Cormorant Garamond):
 - Weight 300 or 400 for elegance, weight 500 only for emphasis
@@ -278,7 +291,6 @@ Base unit: 4px. Use multiples only.
 **Section labels** (DM Sans, uppercase):
 - 11px, weight 500, letter-spacing 0.12em, color `--color-text-tertiary`
 - Format: "THE WARDROBE" / "UPCOMING TRIPS" / "YOUR STYLIST"
-- This is the SSQRD/Phia pattern — small muted label above the serif headline
 
 **Example pattern used everywhere:**
 ```
@@ -314,18 +326,16 @@ Your Closet           ← Cormorant Garamond 36px, 400, --color-text-primary
 - Border: `--border-thin`
 - Radius: `--radius-pill`
 - Text: DM Sans 11px, weight 500, `--color-text-secondary`
-- Used for: occasion tags, category labels, clothing attributes
 
 **Dividers:**
 - `1px solid --color-border-light`
-- Or: thin horizontal rule with generous vertical margin
 - Never decorative, only structural
 
 **Images:**
 - Always `object-fit: cover`
-- Aspect ratios are fixed per context (see per-component specs)
+- Aspect ratios are fixed per context
 - Never stretched, never pixelated
-- Placeholder for empty wardrobe items: `--color-bg-tertiary` with centered thin plus icon
+- Placeholder: `--color-bg-tertiary` with centered thin plus icon
 
 ### 4.8 Layout
 
@@ -354,37 +364,62 @@ Use Framer Motion sparingly. Only these:
 ### User
 ```python
 class User(Document):
-    email: str                    # unique index
+    email: str
     password_hash: str
     name: str
     created_at: datetime
-    style_preferences: StylePreferences  # embedded doc
+    style_preferences: StylePreferences
+    # NEW — daily styling fields
+    daily_styling_prefs: DailyStylingPrefs = Field(default_factory=DailyStylingPrefs)
+    style_insights: StyleInsights = Field(default_factory=StyleInsights)
+    worn_history: List[WornHistoryEntry] = Field(default_factory=list)
 
 class StylePreferences(BaseModel):
-    occasions: List[str]          # ["work", "casual", "formal", "travel"]
-    preferred_palette: List[str]  # ["neutrals", "earth tones", "bold"]
-    avoid: List[str]              # ["prints", "heels", etc.]
-    notes: str                    # freeform style notes, feeds stylist context
+    occasions: List[str]
+    preferred_palette: List[str]
+    avoid: List[str]
+    notes: str
+
+# NEW embedded models for daily styling
+class DailyStylingPrefs(BaseModel):
+    notification_time: str = "07:30"
+    notifications_enabled: bool = False
+    calendar_connected: bool = False
+    calendar_provider: Optional[str] = None   # "google" | "apple"
+
+class StyleInsights(BaseModel):
+    last_updated: Optional[datetime] = None
+    underused_item_ids: List[str] = []
+    skip_pattern_item_ids: List[str] = []
+    occasion_preferences: dict = {}
+    vibe_correlations: dict = {}
+    wear_frequency: dict = {}
+
+class WornHistoryEntry(BaseModel):
+    date: date
+    look_id: str
+    occasion: str
+    vibe: Optional[str] = None
+    item_ids: List[str]
+    weather_summary: str
 ```
 
 ### WardrobeItem
 ```python
 class WardrobeItem(Document):
     user_id: PydanticObjectId
-    name: str                     # "White linen shirt"
+    name: str
     category: str                 # "top" | "bottom" | "dress" | "outerwear" | "shoes" | "bag" | "accessory"
-    subcategory: str              # "shirt" | "jeans" | "blazer" etc.
-    color: List[str]              # ["white", "ivory"]
-    fabric: str                   # "linen" | "cotton" | "silk" | "wool" | "synthetic"
+    subcategory: str
+    color: List[str]
+    fabric: str
     formality: str                # "casual" | "smart-casual" | "business" | "formal"
-    occasions: List[str]          # ["work", "dinner", "beach", "travel"]
-    season: List[str]             # ["spring", "summer", "fall", "winter", "all"]
-    image_url: str                # Cloudinary URL
-    cloudinary_public_id: str     # For deletion
-    weight_grams: int             # Estimated weight in grams. Default by category if user skips:
-                                  # top=300g, bottom=500g, dress=400g, outerwear=800g,
-                                  # shoes=600g, bag=400g, accessory=100g
-    notes: str                    # Optional styling notes
+    occasions: List[str]
+    season: List[str]
+    image_url: str
+    cloudinary_public_id: str
+    weight_grams: int             # Default by category: top=300, bottom=500, dress=400, outerwear=800, shoes=600, bag=400, accessory=100
+    notes: str
     created_at: datetime
 ```
 
@@ -392,66 +427,89 @@ class WardrobeItem(Document):
 ```python
 class Trip(Document):
     user_id: PydanticObjectId
-    name: str                     # "Paris in June" — user-set
-    destination: str              # "Paris, France"
+    name: str
+    destination: str
     start_date: date
     end_date: date
-    duration_days: int            # computed
-    occasions: List[str]          # ["sightseeing", "business dinners", "casual days"]
+    duration_days: int
+    occasions: List[str]
     climate: str                  # "hot" | "warm" | "mild" | "cold" | "variable"
-    notes: str = ""               # user's notes to the stylist
-    # Weight logic
+    notes: str = ""
     bag_type: str = "checked"     # "carry_on" | "checked" | "both"
-    bag_weight_limit_grams: int   # Total bag allowance e.g. 23000 (23kg)
-    empty_bag_weight_grams: int   # Weight of the empty bag e.g. 2000 (2kg)
-    reserved_items: List[ReservedItem] = []  # Shoes, makeup, toiletries etc
-    available_clothing_weight_grams: int     # Computed: limit - empty_bag - sum(reserved)
-    weight_unit: str = "kg"       # "kg" | "lbs" — display preference only, store always in grams
-    inspiration_images: List[InspirationImage] = []   # uploaded moodboard screenshots
-    vibe_analysis: Optional[VibeAnalysis] = None      # Claude vision analysis of inspiration
-    packing_list: Optional[PackingList] = None        # populated after AI suggestion
-    approved_outfits: List[str] = []                  # outfit names approved via swipe
-    rejected_outfits: List[str] = []                  # outfit names rejected
+    bag_weight_limit_grams: int
+    empty_bag_weight_grams: int
+    reserved_items: List[ReservedItem] = []
+    available_clothing_weight_grams: int
+    weight_unit: str = "kg"
+    inspiration_images: List[InspirationImage] = []
+    vibe_analysis: Optional[VibeAnalysis] = None
+    packing_list: Optional[PackingList] = None
+    approved_outfits: List[str] = []
+    rejected_outfits: List[str] = []
     created_at: datetime
     status: str                   # "planning" | "reviewing" | "packed" | "completed"
 
 class InspirationImage(BaseModel):
-    url: str                      # Cloudinary URL
+    url: str
     cloudinary_public_id: str
 
 class VibeAnalysis(BaseModel):
-    summary: str                  # "Effortless coastal minimalism with a quiet luxury edge"
-    style_keywords: List[str]     # ["minimal", "neutral tones", "linen", "oversized"]
-    color_palette: List[str]      # ["ivory", "sand", "warm white", "light denim"]
-    formality_level: str          # "casual" | "smart-casual" | "elevated casual" | "formal"
-    avoid: List[str]              # ["prints", "bright colors"]
-    raw_analysis: str             # full Claude vision response
+    summary: str
+    style_keywords: List[str]
+    color_palette: List[str]
+    formality_level: str
+    avoid: List[str]
+    raw_analysis: str
 
 class PackingList(BaseModel):
     generated_at: datetime
-    stylist_note: str             # Opening paragraph from the stylist
+    stylist_note: str
     outfits: List[Outfit]
-    essentials: List[str]         # Non-clothing items: "adapter", "sunscreen"
-    raw_items: List[PackingItem]  # Flat list for checklist view
+    essentials: List[str]
+    raw_items: List[PackingItem]
 
 class Outfit(BaseModel):
-    name: str                     # "Day 1 — Arrival"
+    name: str
     occasion: str
     items: List[PackingItem]
-    styling_note: str             # Stylist's note on this specific outfit
+    styling_note: str
 
 class PackingItem(BaseModel):
-    wardrobe_item_id: Optional[str]   # Links to actual wardrobe item if matched
+    wardrobe_item_id: Optional[str] = None
     name: str
     category: str
-    image_url: Optional[str]      # wardrobe item image for swipe UI
-    weight_grams: int             # carried through from wardrobe item
+    image_url: Optional[str] = None
+    weight_grams: int
     checked: bool = False
-    in_wardrobe: bool             # True if matched to user's existing item
+    in_wardrobe: bool
 
 class ReservedItem(BaseModel):
-    name: str                     # "Makeup bag", "Shoes", "Toiletries"
-    weight_grams: int             # User-entered weight
+    name: str
+    weight_grams: int
+```
+
+### NEW: DailyLook
+```python
+class DailyLook(Document):
+    user_id: PydanticObjectId
+    date: date
+    occasion: str                 # "college" | "office" | "going_out" | "dinner_date" | "wfh" | "travel" | "active" | "special_event"
+    mood: str                     # "energised" | "put_together" | "lowkey" | "playful" | "cozy"
+    vibe: Optional[str] = None    # "lowkey" | "going_out_out" | "cute_casual" | "dress_to_impress" | "match_energy" | "surprise"
+    weather_summary: str
+    generated_outfits: List[DailyOutfit]
+    chosen_outfit_index: Optional[int] = None
+    chosen_item_ids: List[str] = []
+    status: str = "generated"     # "generated" | "chosen" | "skipped"
+    created_at: datetime
+
+class DailyOutfit(BaseModel):
+    outfit_index: int
+    item_ids: List[str]
+    item_names: List[str]
+    item_image_urls: List[str]
+    claude_note: str
+    occasion_tags: List[str]
 ```
 
 ---
@@ -470,34 +528,47 @@ GET  /me              Header: Authorization Bearer          Returns: user object
 GET    /              Returns: list of all user's items
 POST   /              Body: multipart form (item data + image file)   Returns: created item
 GET    /{item_id}     Returns: single item with trips it appears in
-PUT    /{item_id}     Body: partial update (including optional new image)  Returns: updated item
+PUT    /{item_id}     Body: partial update     Returns: updated item
 DELETE /{item_id}     Also deletes Cloudinary image
 ```
 
 ### Trips — `/api/v1/trips`
 ```
 GET    /                          Returns: list of user's trips
-POST   /                          Body: trip data (no packing list yet)   Returns: created trip
+POST   /                          Body: trip data    Returns: created trip
 GET    /{trip_id}                 Returns: full trip with packing list
 PUT    /{trip_id}                 Body: partial update
 DELETE /{trip_id}
-PATCH  /{trip_id}/check-item      Body: {item_id, checked}               Returns: updated trip
-PATCH  /{trip_id}/approve-outfit  Body: {outfit_name}                    Returns: updated trip
-PATCH  /{trip_id}/reject-outfit   Body: {outfit_name, keep_items: bool}  Returns: updated trip
+PATCH  /{trip_id}/check-item      Body: {item_id, checked}
+PATCH  /{trip_id}/approve-outfit  Body: {outfit_name}
+PATCH  /{trip_id}/reject-outfit   Body: {outfit_name, keep_items: bool}
 ```
 
 ### Inspiration — `/api/v1/trips/{trip_id}/inspiration`
 ```
-POST   /upload    Body: multipart images (up to 5)    Uploads to Cloudinary, returns urls
-POST   /analyze   Body: {trip_id}                     Calls Claude vision API, returns VibeAnalysis
-                  Rate limited: 5/minute per user
+POST   /upload    Body: multipart images (up to 5)
+POST   /analyze   Body: {trip_id}    Rate limited: 5/minute
 ```
 
 ### Pack — `/api/v1/pack`
 ```
-POST /suggest         Body: {trip_id}    Calls Claude API   Returns: PackingList
-                      Rate limited: 10/minute per user
-                      This is the most expensive route — guard it
+POST /suggest     Body: {trip_id}    Rate limited: 10/minute
+```
+
+### NEW: Daily Styling — `/api/v1/daily`
+```
+POST /generate              Body: { occasion, mood, vibe?, lat?, lon? }   Returns: { look_id, outfits, weather_summary }   Rate limited: 10/minute
+POST /{look_id}/choose      Body: { outfit_index: 0|1|2 }                 Returns: updated DailyLook
+GET  /history               Query: ?limit=20&offset=0                     Returns: paginated DailyLook list
+GET  /today                 Returns: today's DailyLook if exists, or null
+GET  /insights              Returns: user's StyleInsights
+```
+
+### NEW: Weather — `/api/v1/weather`
+```
+GET /current?lat={lat}&lon={lon}
+  Returns: { temp_c, feels_like_c, condition, rain_chance, icon, city }
+  Cached 30 minutes per coordinate pair
 ```
 
 ### Response format (all routes):
@@ -509,9 +580,11 @@ POST /suggest         Body: {trip_id}    Calls Claude API   Returns: PackingList
 {"success": False, "data": None, "message": "Descriptive error message"}
 ```
 
-### File: `backend/app/services/cloudinary_service.py`
+---
 
-All wardrobe item uploads must apply Cloudinary's AI background removal transformation. This runs automatically on upload and returns a clean white/transparent background — no manual editing needed.
+## 7. Services
+
+### File: `backend/app/services/cloudinary_service.py`
 
 ```python
 import cloudinary
@@ -529,7 +602,7 @@ async def upload_wardrobe_item(file, user_id: str) -> dict:
         file,
         folder=f"pack/wardrobe/{user_id}",
         transformation=[
-            {"effect": "background_removal"},   # AI background removal — always on
+            {"effect": "background_removal"},
             {"quality": "auto"},
             {"fetch_format": "auto"}
         ]
@@ -543,11 +616,51 @@ async def delete_wardrobe_item(public_id: str) -> None:
     cloudinary.uploader.destroy(public_id)
 ```
 
-**Note:** Background removal counts against Cloudinary's free tier transformation credits. The free tier includes 25 monthly credits — each background removal uses 1 credit. At capstone scale (a few dozen wardrobe items) this will never be an issue.
+### File: `backend/app/services/weather_service.py` — NEW
+
+```python
+import httpx
+from app.core.config import settings
+
+async def get_current_weather(lat: float, lon: float) -> dict:
+    url = "https://api.openweathermap.org/data/2.5/weather"
+    params = {
+        "lat": lat,
+        "lon": lon,
+        "appid": settings.OPENWEATHER_API_KEY,
+        "units": "metric"
+    }
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, params=params, timeout=5.0)
+            data = response.json()
+        return {
+            "temp_c": round(data["main"]["temp"]),
+            "feels_like_c": round(data["main"]["feels_like"]),
+            "condition": data["weather"][0]["description"].capitalize(),
+            "rain_chance": round(data.get("clouds", {}).get("all", 0)),
+            "icon": data["weather"][0]["icon"],
+            "city": data.get("name", "")
+        }
+    except Exception:
+        # Never crash if weather fails — return a neutral default
+        return {
+            "temp_c": 20,
+            "feels_like_c": 20,
+            "condition": "Clear",
+            "rain_chance": 0,
+            "icon": "01d",
+            "city": ""
+        }
+
+def get_weather_summary(weather: dict) -> str:
+    city = f" · {weather['city']}" if weather.get("city") else ""
+    return f"{weather['temp_c']}°C · {weather['condition']}{city}"
+```
 
 ### File: `backend/app/services/claude_service.py`
 
-Two functions: `analyze_vibe` (vision) and `generate_packing_list` (stylist). Both use the same client and cached system prompt.
+Two existing functions (analyze_vibe, generate_packing_list) plus the new daily styling agent. Do not remove the existing functions.
 
 ```python
 import anthropic
@@ -581,14 +694,70 @@ Your job is to extract the precise aesthetic language from these images. Be spec
 
 Respond ONLY with valid JSON. No preamble, no markdown fences."""
 
+# NEW — daily styling agent
+DAILY_STYLIST_SYSTEM_PROMPT = """You are PACK's personal stylist. You style users for their actual day, every day.
+
+You have access to their real wardrobe. You know what they've worn recently. You understand their style patterns.
+
+Your output: exactly 3 distinct outfit combinations. Each must be a complete look — at minimum top + bottom (or dress) + shoes. Accessories optional but elevate the look.
+
+Rules:
+- Never suggest an item worn in the last 5 days
+- Each of the 3 options must feel genuinely different — different silhouette, different energy, or different colour story
+- Match the occasion AND the vibe. If vibe is "going_out_out", the outfits should reflect that energy
+- "lowkey" means effortless and easy. "dress_to_impress" means reach for the best pieces
+- Consider the weather. Cold: add a layer. Rain: avoid delicate fabrics. Warm: breathable fabrics first
+- For underused items in style_insights: work them in where they fit naturally
+- Write one sentence per outfit. Direct, specific, no filler. Like a real stylist texting you in the morning
+
+Return ONLY valid JSON. No preamble. No markdown fences."""
+
+DAILY_STYLING_TOOLS = [
+    {
+        "name": "get_wardrobe",
+        "description": "Get the user's wardrobe items, optionally filtered by category or occasion",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "categories": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Filter by categories e.g. ['top', 'bottom', 'shoes']"
+                },
+                "occasions": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Filter by occasion tags e.g. ['casual', 'work']"
+                }
+            }
+        }
+    },
+    {
+        "name": "get_recent_outfits",
+        "description": "Get outfits worn in the last N days to avoid repeats",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "days": {
+                    "type": "integer",
+                    "description": "How many days back to check. Default 7."
+                }
+            }
+        }
+    },
+    {
+        "name": "get_style_insights",
+        "description": "Get this user's style patterns — underused items, preferences by occasion, vibe correlations",
+        "input_schema": {"type": "object", "properties": {}}
+    }
+]
+
 
 async def analyze_vibe(image_urls: list[str]) -> dict:
     """Analyze inspiration images with Claude vision to extract style vibe."""
-
-    # Fetch images and encode as base64
     image_contents = []
     async with httpx.AsyncClient() as http:
-        for url in image_urls[:5]:   # max 5 images
+        for url in image_urls[:5]:
             r = await http.get(url)
             ext = url.split(".")[-1].split("?")[0].lower()
             media_type = "image/jpeg" if ext in ("jpg", "jpeg") else f"image/{ext}"
@@ -603,27 +772,25 @@ async def analyze_vibe(image_urls: list[str]) -> dict:
         "text": """Analyze these inspiration images and return a JSON object with this exact structure:
 {
   "summary": "2-3 sentence description of the overall aesthetic — be specific and evocative",
-  "style_keywords": ["5-8 precise style keywords, e.g. 'quiet luxury', 'coastal minimal', 'oversized tailoring'"],
-  "color_palette": ["4-6 specific colors present, e.g. 'warm ivory', 'camel', 'washed denim'"],
+  "style_keywords": ["5-8 precise style keywords"],
+  "color_palette": ["4-6 specific colors present"],
   "formality_level": "casual | smart-casual | elevated casual | formal",
-  "avoid": ["2-4 things this aesthetic explicitly rejects, e.g. 'logo-heavy pieces', 'bright colors'"],
+  "avoid": ["2-4 things this aesthetic explicitly rejects"],
   "raw_analysis": "your full detailed analysis before distilling to keywords"
 }"""
     })
 
     response = client.messages.create(
-        model="claude-haiku-4-5-20251001",
+        model="claude-sonnet-4-6",
         max_tokens=1000,
         system=VIBE_SYSTEM_PROMPT,
         messages=[{"role": "user", "content": image_contents}]
     )
-
     return json.loads(response.content[0].text)
 
 
 async def generate_packing_list(trip, wardrobe, style_prefs: dict) -> dict:
     """Generate outfit-based packing list using wardrobe + vibe context."""
-
     wardrobe_context = [
         {
             "id": str(item.id),
@@ -664,14 +831,13 @@ WEIGHT BUDGET:
 - Reserved items: {", ".join([f"{r.name} ({r.weight_grams/1000:.1f}kg)" for r in trip.reserved_items])}
 - Available for clothing: {trip.available_clothing_weight_grams / 1000:.1f}kg
 Do NOT suggest outfits whose total item weight exceeds this clothing budget.
-Prioritize versatile, lightweight pieces. If the budget is tight, say so in the stylist note.
 {vibe_context}
 Wardrobe ({len(wardrobe)} items):
 {json.dumps(wardrobe_context, indent=2)}
 
 Build the complete packing list. Return this JSON structure:
 {{
-  "stylist_note": "opening paragraph — reference the trip, the vibe, and the weight budget strategy",
+  "stylist_note": "opening paragraph",
   "total_weight_grams": 0,
   "outfits": [
     {{
@@ -694,12 +860,10 @@ Build the complete packing list. Return this JSON structure:
   ],
   "essentials": ["universal adapter", "laundry bag"],
   "raw_items": []
-}}
-
-raw_items is the flat deduplicated list. total_weight_grams and outfit_weight_grams must be accurate sums."""
+}}"""
 
     response = client.messages.create(
-        model="claude-haiku-4-5-20251001",
+        model="claude-sonnet-4-6",
         max_tokens=2000,
         system=[
             {
@@ -710,15 +874,112 @@ raw_items is the flat deduplicated list. total_weight_grams and outfit_weight_gr
         ],
         messages=[{"role": "user", "content": user_message}]
     )
-
     return json.loads(response.content[0].text)
+
+
+def _filter_wardrobe(wardrobe: list, filters: dict) -> list:
+    """Filter wardrobe items by category and/or occasion."""
+    result = wardrobe
+    if filters.get("categories"):
+        result = [i for i in result if i.get("category") in filters["categories"]]
+    if filters.get("occasions"):
+        result = [i for i in result if any(o in i.get("occasions", []) for o in filters["occasions"])]
+    return result
+
+
+def _get_recent(worn_history: list, days: int = 7) -> list:
+    """Return worn outfits from the last N days."""
+    from datetime import date, timedelta
+    cutoff = date.today() - timedelta(days=days)
+    return [e for e in worn_history if e.get("date") and e["date"] >= str(cutoff)]
+
+
+async def generate_daily_outfits(
+    wardrobe: list,
+    worn_history: list,
+    style_insights: dict,
+    context: dict
+) -> dict:
+    """Run the daily styling agent with tool use. Returns dict with 3 outfits."""
+    tool_data = {
+        "wardrobe": wardrobe,
+        "recent_outfits": worn_history,
+        "style_insights": style_insights
+    }
+
+    weather = context.get("weather", {})
+    user_message = f"""Style me for today.
+
+Today's context:
+- Occasion: {context['occasion']}
+- Mood: {context['mood']}
+- Vibe: {context.get('vibe', 'not specified')}
+- Weather: {weather.get('temp_c', 20)}°C, {weather.get('condition', 'Clear')}. Feels like {weather.get('feels_like_c', 20)}°C. Rain chance: {weather.get('rain_chance', 0)}%.
+
+Use your tools to check my wardrobe and recent outfits, then generate 3 complete outfit options.
+
+Return this exact JSON structure:
+{{
+  "outfits": [
+    {{
+      "outfit_index": 0,
+      "item_ids": ["id1", "id2", "id3"],
+      "item_names": ["White linen shirt", "Black wide-leg trousers", "Ballet flats"],
+      "item_image_urls": ["url1", "url2", "url3"],
+      "claude_note": "One direct sentence about why this works for today.",
+      "occasion_tags": ["daytime", "polished", "comfortable"]
+    }},
+    {{ "outfit_index": 1 }},
+    {{ "outfit_index": 2 }}
+  ]
+}}"""
+
+    messages = [{"role": "user", "content": user_message}]
+
+    while True:
+        response = client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=2000,
+            system=DAILY_STYLIST_SYSTEM_PROMPT,
+            tools=DAILY_STYLING_TOOLS,
+            messages=messages
+        )
+
+        if response.stop_reason == "end_turn":
+            for block in response.content:
+                if hasattr(block, 'text'):
+                    return json.loads(block.text)
+
+        if response.stop_reason == "tool_use":
+            tool_results = []
+            for block in response.content:
+                if block.type == "tool_use":
+                    if block.name == "get_wardrobe":
+                        result = _filter_wardrobe(tool_data["wardrobe"], block.input)
+                    elif block.name == "get_recent_outfits":
+                        result = _get_recent(tool_data["recent_outfits"], block.input.get("days", 7))
+                    elif block.name == "get_style_insights":
+                        result = tool_data["style_insights"]
+                    else:
+                        result = {}
+
+                    tool_results.append({
+                        "type": "tool_result",
+                        "tool_use_id": block.id,
+                        "content": json.dumps(result)
+                    })
+
+            messages.append({"role": "assistant", "content": response.content})
+            messages.append({"role": "user", "content": tool_results})
+        else:
+            raise ValueError(f"Unexpected stop reason: {response.stop_reason}")
 ```
 
 ---
 
 ## 8. Auth Flow
 
-- JWT stored in `localStorage` (acceptable for capstone scope)
+- JWT stored in `localStorage`
 - Axios instance in `utils/api.js` reads token and adds `Authorization: Bearer <token>` to every request
 - FastAPI `deps.py` has `get_current_user` dependency that verifies JWT and returns user
 - On 401 response, frontend clears token and redirects to `/auth`
@@ -786,6 +1047,21 @@ const useStore = create((set, get) => ({
   packingError: null,
   setPackingLoading: (v) => set({ packingLoading: v }),
   setPackingError: (e) => set({ packingError: e }),
+
+  // NEW — Daily styling slice
+  todayLook: null,
+  lookHistory: [],
+  dailyLoading: false,
+  dailyError: null,
+  setTodayLook: (look) => set({ todayLook: look }),
+  setLookHistory: (history) => set({ lookHistory: history }),
+  setDailyLoading: (v) => set({ dailyLoading: v }),
+  setDailyError: (e) => set({ dailyError: e }),
+  chooseDailyOutfit: (outfitIndex) => set((s) => ({
+    todayLook: s.todayLook
+      ? { ...s.todayLook, chosen_outfit_index: outfitIndex, status: 'chosen' }
+      : null
+  })),
 }))
 
 export default useStore
@@ -797,484 +1073,486 @@ export default useStore
 
 ### 10.1 Landing Page (`/`) — Public, Unauthenticated
 
-**Purpose:** Marketing page. Converts visitors to sign-ups. If authenticated, redirect immediately to `/dashboard`.
-
 **Layout:** Full-page sections, no sidebar.
 
 **Section 1 — Hero:**
-- Full viewport height, split: left 55% text, right 45% editorial fashion photo (--color-bg-tertiary placeholder)
+- Full viewport height, split: left 55% text, right 45% editorial fashion photo
 - Label: "INTRODUCING PACK" — DM Sans 11px uppercase --tracking-wider --color-text-tertiary
 - Headline: Cormorant Garamond 72px weight 300 italic: *"Pack like you mean it."*
 - Subhead: DM Sans 18px weight 300 --color-text-secondary: "Your AI personal stylist. Every trip, perfectly packed."
-- CTA: "Start Packing" — primary button, uppercase DM Sans 13px weight 500, sharp corners
+- CTA: "Start Packing" — primary button
 - Below CTA: DM Sans 11px --color-text-tertiary: "Free to use. No credit card required."
 
 **Section 2 — How It Works:**
 - Label: "HOW IT WORKS"
 - 3 columns. Each: Cormorant 52px number (weight 300, --color-text-tertiary), Cormorant 24px headline, DM Sans 15px weight 300 body
-- Col 1: "01 / Build Your Wardrobe — Upload your clothes once. PACK learns your style."
-- Col 2: "02 / Set the Vibe — Drop your Pinterest inspo. Your stylist reads the aesthetic."
-- Col 3: "03 / Pack Smarter — Swipe through AI-generated outfits. Approve what you love."
+- Col 1: "01 / Build Your Wardrobe"
+- Col 2: "02 / Set the Vibe"
+- Col 3: "03 / Pack Smarter"
 
 **Section 3 — Bottom CTA:**
-- Centered, --space-32 top and bottom padding
 - Cormorant 52px italic: *"Every trip deserves the right wardrobe."*
 - "Create Your Account" primary button
 
-**Footer:** © 2026 PACK — DM Sans 11px --color-text-tertiary centered only.
+**Footer:** © 2026 PACK — DM Sans 11px --color-text-tertiary centered.
 
 ---
 
 ### 10.2 Auth Page (`/auth`)
 
-**Purpose:** Login and signup, toggled on the same page.
-
 **Layout:** Split — left editorial panel, right form.
 
-**Left panel:**
-- Background: --color-bg-secondary
-- Centered: "PACK" in Cormorant Garamond 52px weight 300 italic
-- DM Sans 15px weight 300 italic --color-text-secondary below: *"Your personal stylist, in your pocket."*
+**Left panel:** --color-bg-secondary, centered "PACK" Cormorant 52px italic, tagline below.
 
-**Right panel:**
-- Centered form, max-width 360px
-- Toggle: "Sign in" / "Create account" — active --color-text-primary, inactive --color-text-tertiary
-- Fields (login): Email, Password
-- Fields (signup): Name, Email, Password
-- Submit: full width primary button
-- Errors: DM Sans 13px --color-error below relevant field
-- After signup: redirect to `/onboarding`
-- After login: redirect to `/dashboard`
+**Right panel:** centered form max-width 360px, toggle sign in/create account, fields, submit button.
+
+After signup: redirect to `/onboarding`. After login: redirect to `/dashboard`.
 
 ---
 
-### 10.3 Dashboard Page (`/dashboard`) — Logged-In Homepage
-
-**Purpose:** Home screen after login. Two states: returning user and fresh user.
+### 10.3 Dashboard Page (`/dashboard`) — UPDATED
 
 **Layout:** Sidebar + main content.
 
 **Sidebar (240px, fixed left):**
-- "PACK" wordmark — Cormorant 24px italic, top padding --space-8
-- Nav items (DM Sans 14px weight 400): Dashboard / Wardrobe / Trips / Profile
-- Bottom: user name (DM Sans 13px weight 500), email (DM Sans 11px --color-text-tertiary), Logout
-- Active state: weight 500, 2px left border --color-text-primary, no background fill
+- "PACK" wordmark — Cormorant 24px italic
+- Nav: Dashboard / Wardrobe / Trips / Profile / **Today** (new item, links to /daily)
+- Bottom: user name, email, Logout
+- Active state: weight 500, 2px left border --color-text-primary
 
-**Returning user state** (reference: `references/ssqrd-welcomeback.png`):
-- Full-bleed hero area at top: most recently added wardrobe item as background image, or --color-bg-tertiary fallback
-- Frosted glass card over hero (backdrop-filter: blur(12px), background: rgba(255,255,255,0.72), --border-thin, --radius-xl, padding --space-8):
-  - "Welcome back, [Name]." — Cormorant 36px weight 400
-  - Stats: DM Sans 13px --color-text-secondary: "[n] trips planned · [n] wardrobe items · [n] outfits approved"
-  - Two action icon cards side by side (like SSQRD Atlas/Explore): "NEW TRIP" with map pin icon + "MY WARDROBE" with hanger icon — --color-bg-primary, --border-thin, --radius-lg, 120px wide, icon centered above label
-  - "Continue" primary button below
-- Upcoming Trips section: label "UPCOMING TRIPS", horizontal scroll TripCards + "Plan a trip +" dashed card at end
-- Wardrobe Snapshot: label "YOUR WARDROBE", 6 thumbnails 100px, "View all →" link
+**Returning user state:**
+- Full-bleed hero with frosted glass welcome card (backdrop-filter: blur(12px), rgba(255,255,255,0.72)):
+  - "Welcome back, [Name]." — Cormorant 36px
+  - Stats row
+  - NEW TRIP + MY WARDROBE icon cards
+  - "Continue" primary button
 
-**Fresh user state (no wardrobe, no trips):**
-- No hero, no frosted card
-- Centered: Cormorant 36px italic: *"Let's build your wardrobe."*
-- DM Sans 15px weight 300 --color-text-secondary: "Add your first piece to get started."
-- "Add First Item" primary button
-- "Or take the guided tour →" text link below — navigates to `/onboarding`
+**Content sections in this order:**
+1. Hero / welcome card
+2. **TODAY** ← new section
+3. UPCOMING TRIPS
+4. YOUR WARDROBE snapshot
 
----
+**TODAY section:**
+- Label: "TODAY"
+- Single TodayCard component (not a scroll row)
+- Left-aligned, ~360px wide on desktop, full width on mobile
+- Two states — see TodayCard spec in Section 10.10
 
-### 10.4 Onboarding Page (`/onboarding`) — Interactive Guided Walkthrough
-
-**Purpose:** First-time experience only. Guides new users through a real action at each step. Not a slideshow.
-
-**Layout:** Full screen. Semi-transparent dark overlay (rgba(0,0,0,0.55)) over blurred app UI.
-
-**Always visible:** "Skip intro →" top right — DM Sans 13px --color-text-inverse, text only.
-
-**Step indicator:** Top center: 4 white dots (filled = active, outlined = inactive). "GETTING STARTED" label above in DM Sans 11px.
-
-**Step 1 — Welcome:**
-- Centered modal: --color-bg-primary, --radius-xl, max-width 440px
-- Cormorant 32px italic: *"Welcome to PACK."*
-- DM Sans 15px weight 300: "Your AI personal stylist lives here. Let's set things up in 4 quick steps."
-- "Let's go" primary button
-
-**Step 2 — Upload first wardrobe item:**
-- Spotlight ring highlights the "Add Item" button area (CSS box-shadow cutout on overlay)
-- Animated CSS arrow pointing to it
-- Tooltip card (--color-bg-primary, --border-default, --radius-lg) near the arrow:
-  - Cormorant 20px: "Add your first piece"
-  - DM Sans 13px weight 300 --color-text-secondary: "Upload a photo of any clothing item."
-  - "Open Wardrobe" primary small button — opens Add Item modal directly on top of overlay
-- On successful upload: auto-advance to step 3
-- "Do this later" text link — skip to step 3
-
-**Step 3 — Create first trip:**
-- Spotlight shifts to Trips nav + new trip area
-- Tooltip card:
-  - Cormorant 20px: "Plan your first trip"
-  - DM Sans 13px: "Tell your stylist where you're going. Drop inspiration images for best results."
-  - "Plan a Trip" button — navigates to `/trips/new` (exits onboarding overlay, sets localStorage `pack_onboarding_step=3` so returning mid-flow picks up here)
-- "Do this later" link — skip to step 4
-
-**Step 4 — Meet your stylist:**
-- Full overlay, no spotlight
-- Cormorant 32px italic: *"Your stylist is ready."*
-- DM Sans 15px weight 300: "Generate a packing list and swipe through your AI-curated outfits."
-- Static mockup of a simplified outfit card (placeholder, not real data)
-- "Start Exploring" primary button — navigates to `/dashboard`, sets `localStorage.setItem('pack_onboarded', 'true')`
+**Fresh user state:** Cormorant 36px italic "Let's build your wardrobe." + "Add First Item" button + "Or take the guided tour →" link.
 
 ---
 
----
+### 10.4 Onboarding Page (`/onboarding`)
 
-### 10.4 Wardrobe Page (`/wardrobe`)
+**Layout:** Full screen with dark overlay (rgba(0,0,0,0.55)) over blurred app UI.
 
-**Purpose:** Browse, add, and manage all clothing items.
+**Always visible:** "Skip intro →" top right.
 
-**Layout:** Sidebar + main content.
+**Step indicator:** Top center: 4 white dots.
 
-**Header:**
-- Label: "THE WARDROBE"
-- Headline: "Your Closet" — Cormorant 52px
-- Right side: "[n] items" in DM Sans 13px --color-text-tertiary, and "Add Item" button (primary)
+**Step 1:** Welcome modal — Cormorant 32px italic "Welcome to PACK." + "Let's go" button.
 
-**Filter bar (below header, above grid):**
-- Horizontal row of pill tags for filtering: All / Tops / Bottoms / Dresses / Outerwear / Shoes / Bags / Accessories
-- Active filter: background --color-text-primary, text --color-text-inverse
-- Inactive: --color-bg-tertiary, text --color-text-secondary
+**Step 2:** Spotlight on Add Item button. Tooltip card with "Add your first piece" + upload trigger. Auto-advance on upload or "Do this later".
 
-**Wardrobe grid:**
-- 4 columns on desktop, 2 on mobile
-- Gap: --space-6
-- Each item card:
-  - Square image, aspect 1:1, object-fit: cover, radius --radius-md
-  - Below image: item name (DM Sans 14px weight 400 --color-text-primary)
-  - Category tag (DM Sans 11px uppercase --color-text-tertiary)
-  - Weight (DM Sans 11px --color-text-tertiary): e.g. "300g"
-  - On hover: semi-transparent overlay (rgba(26,26,24,0.35)) with two icon buttons centered:
-    - Edit icon (pencil) — opens Edit Item modal
-    - Delete icon (trash) — opens confirm delete dialog
-  - Clicking the image itself (not the icons) → navigates to `/wardrobe/:item_id` (item detail page)
+**Step 3:** Spotlight on Trips. "Plan your first trip" tooltip. "Plan a Trip" button navigates to /trips/new.
 
-**Add Item modal (triggered by "Add Item" button):**
-- Full-screen overlay, --color-bg-overlay background
-- Centered card, max-width 480px, --color-bg-primary, --radius-lg, --space-8 padding
-- Title: "Add to Wardrobe" — Cormorant 28px
-- Image upload area: dashed border, centered text "Drop an image or click to upload", 1:1 aspect ratio preview
-- Fields: Name (text), Category (select), Subcategory (text), Color(s) (tag input), Fabric (select), Formality (select), Occasions (multi-select tags), Season (multi-select tags), Weight in grams (number input — placeholder pre-fills by category when user selects it: top=300, bottom=500, dress=400, outerwear=800, shoes=600, bag=400, accessory=100), Notes (textarea optional)
-- Buttons: "Add Item" (primary) + "Cancel" (secondary), right-aligned row
-- On submit: POST to `/api/v1/wardrobe`, image uploads to Cloudinary first via backend
-
-**Edit Item modal (same fields as Add, pre-populated):**
-- Same layout as Add Item modal
-- Title: "Edit Item" — Cormorant 28px
-- Image: shows current image with "Replace photo" overlay option on hover
-- All fields pre-filled with current item data
-- Buttons: "Save Changes" (primary) + "Cancel" (secondary)
-- On submit: PUT to `/api/v1/wardrobe/:item_id`
-
-**Delete confirm dialog:**
-- Small centered modal (max-width 360px), not full-screen overlay
-- Cormorant 20px: "Remove this item?"
-- DM Sans 13px --color-text-secondary: "It will be removed from your wardrobe and any upcoming trip suggestions."
-- Buttons: "Remove" (--color-error text, no background) + "Keep it" (primary)
-
-**Empty state (no items yet):**
-- Centered, generous vertical padding
-- DM Sans 15px weight 300 --color-text-secondary: "Your wardrobe is empty. Add your first item to get started."
-- "Add Item" button below
+**Step 4:** "Your stylist is ready." — static mockup of outfit card. "Start Exploring" → /dashboard, sets `localStorage.setItem('pack_onboarded', 'true')`.
 
 ---
 
-### 10.4b Wardrobe Item Detail Page (`/wardrobe/:item_id`)
+### 10.5 Wardrobe Page (`/wardrobe`)
 
-**Purpose:** Full product-page view of a single wardrobe item. Edit or delete from here too.
+**Header:** Label "THE WARDROBE", headline "Your Closet" Cormorant 52px, "[n] items" + "Add Item" button right.
 
-**Layout:** Sidebar + main content (two-column).
+**Filter bar:** Horizontal pill row — All / Tops / Bottoms / Dresses / Outerwear / Shoes / Bags / Accessories. Active: --color-text-primary bg + --color-text-inverse text.
 
-**Left column — image:**
-- Large square image, max-width 400px, object-fit: contain, --color-bg-secondary background, --radius-lg
-- Background-removed wardrobe photo shows cleanly on the warm bg
-- Below image: small "Replace photo" text link
+**Grid:** 4 columns desktop, 2 mobile, --space-6 gap. Each card: 1:1 square image, name DM Sans 14px, category tag 11px uppercase, weight 11px. Hover: overlay with edit + delete icons. Click image → /wardrobe/:item_id.
 
-**Right column — item details:**
-- Category label: DM Sans 11px uppercase --color-text-tertiary (e.g. "TOP")
-- Item name: Cormorant 42px weight 400
-- Weight: DM Sans 13px --color-text-secondary: "~300g"
-- Divider line --border-thin
-- **Details section:**
-  - Each detail as a row: DM Sans 11px uppercase --color-text-tertiary label left, DM Sans 14px --color-text-primary value right
-  - Rows: Subcategory / Fabric / Formality / Season / Color(s)
-  - Color(s): shown as small pill tags
-  - Occasions: shown as pill tags
-- **Notes section** (if notes exist):
-  - Label: "STYLIST NOTES"
-  - DM Sans 14px weight 300 italic --color-text-secondary
-- **Actions** (bottom of right column):
-  - "Edit Item" — secondary button, opens Edit modal
-  - "Remove from Wardrobe" — text link, --color-error, opens confirm dialog
-- **Trips this item appears in** (below actions):
-  - Label: "APPEARS IN"
-  - List of trip names where this item has been suggested, each as a clickable link → `/trips/:id`
-  - Empty state: "Not used in any trips yet."
+**Add Item modal:** Full-screen overlay, max-width 480px card. Fields: Name, Category, Subcategory, Colors, Fabric, Formality, Occasions, Season, Weight (auto-prefills by category), Notes.
 
-**Back navigation:**
-- "← Your Wardrobe" — DM Sans 13px --color-text-tertiary, top left of main content
+**Edit Item modal:** Same fields pre-populated.
+
+**Delete confirm:** Small modal — "Remove this item?" + "Remove" (--color-error) + "Keep it" (primary).
+
+**Empty state:** "Your wardrobe is empty. Add your first item to get started."
 
 ---
 
-### 10.5 New Trip Page (`/trips/new`)
+### 10.5b Wardrobe Item Detail Page (`/wardrobe/:item_id`)
 
-**Purpose:** Create a new trip. Collected info + inspiration images become full context for the AI stylist.
+**Layout:** Sidebar + two-column.
 
-**Layout:** Sidebar + centered form (max-width 560px).
+**Left column:** Large square image (max-width 400px, object-fit: contain, --color-bg-secondary bg, --radius-lg) + "Replace photo" link below.
 
-**Header:**
-- Label: "NEW TRIP"
-- Headline: "Where are you going?" — Cormorant 52px italic
+**Right column:**
+- Category label DM Sans 11px uppercase
+- Item name Cormorant 42px
+- Weight DM Sans 13px
+- Divider
+- Details rows: Subcategory / Fabric / Formality / Season / Color(s) / Occasions
+- Notes section (if exists): label "STYLIST NOTES", DM Sans 14px weight 300 italic
+- Actions: "Edit Item" secondary + "Remove from Wardrobe" --color-error text link
+- "APPEARS IN": list of trips this item appears in
 
-**Form fields (in order):**
-1. **Trip name** — text input, placeholder: "Paris in June"
-2. **Destination** — text input, placeholder: "Paris, France"
-3. **Dates** — two date inputs side by side: "Depart" and "Return"
-4. **Climate** — select: Hot / Warm / Mild / Cold / Variable
-5. **Occasions** — multi-select pill tags: Sightseeing / Business meetings / Casual days / Dinners out / Beach / Hiking / Formal events / Nightlife
-6. **Notes to your stylist** — textarea, placeholder: "I have a wedding on Saturday. I want to pack light but look put-together every day."
-7. **Choose Your Bag** — visual selector, label: "YOUR BAG"
-   - Subtext: DM Sans 11px --color-text-tertiary: "Select the bag you're travelling with"
-   - Three large clickable cards side by side: "Carry-On", "Checked Bag", "Both"
-   - Each card: bag illustration image centered (use `references/carry_on.png` and `references/checked_bag.png` — both have transparent backgrounds so they render cleanly on any bg), bag type label in DM Sans 13px weight 500 below, standard weight range in DM Sans 11px --color-text-tertiary below that:
-     - Carry-On: "references/carry_on.png" / "Carry-On" / "Typically 7–10kg"
-     - Checked Bag: "references/checked_bag.png" / "Checked Bag" / "Typically 20–23kg"
-     - Both: show both illustrations stacked small / "Carry-On + Checked" / "Enter both limits"
-   - Unselected card: --color-bg-secondary, --border-thin, --radius-lg
-   - Selected card: --color-bg-primary, 2px solid --color-text-primary border, --radius-lg
-   - Selecting "Both" splits the weight section below into two parallel inputs
-   - Bag type stored as: `bag_type: "carry_on" | "checked" | "both"`
-   - When "Carry-On" selected: pre-fills bag weight limit to 7000g, pre-fills empty bag weight to 2000g (user can override)
-   - When "Checked" selected: pre-fills bag weight limit to 23000g, pre-fills empty bag weight to 3000g (user can override)
-   - When "Both" selected: two sets of weight inputs appear (one for carry-on, one for checked), available weight is the sum of both
-8. **Bag Weight Limit** — number input + kg/lbs toggle pill, placeholder auto-filled based on bag type selection
-   - Label: "BAG WEIGHT LIMIT"
-   - Subtext: DM Sans 11px --color-text-tertiary: "Your airline's allowance for this bag"
-9. **Empty Bag Weight** — number input, auto-filled based on bag type
-   - Label: "EMPTY BAG WEIGHT"
-   - Subtext: "How much does your empty bag weigh?"
-10. **Reserved Items** — dynamic add/remove list, label: "RESERVED WEIGHT"
-    - Subtext: DM Sans 11px --color-text-tertiary: "Shoes, makeup bag, toiletries — things going in the bag that aren't clothes"
-    - Each row: item name text input (placeholder: "Makeup bag") + weight number input + × remove button
-    - "+ Add item" text link adds a new blank row
-11. **Live weight calculator** — updates in real time as user types any weight field:
-    - --color-bg-tertiary background, --radius-md, --space-4 padding
-    - Label: "AVAILABLE FOR CLOTHES" — DM Sans 11px uppercase --color-text-tertiary
-    - Large Cormorant 36px weight 300: "14.2 kg" (computed: limit − empty bag − sum of reserved)
-    - DM Sans 11px breakdown below: "23kg limit − 2kg bag − 6.8kg reserved = 14.2kg"
-    - If result goes negative: number turns --color-error, "You're over your limit" warning
-12. **Inspiration upload** — label: "STYLE INSPIRATION"
-    - Subtext: DM Sans 13px --color-text-secondary: "Drop your Pinterest screenshots, moodboards, or outfit inspo. Your stylist will study the vibe."
-    - Dashed border upload zone, --radius-lg, min-height 160px, accepts up to 5 images
-    - Horizontal thumbnail preview row with × remove buttons on each
-    - Empty state text: DM Sans 13px --color-text-tertiary centered: "Drop images here or click to browse"
-
-**Submit button:** "Plan This Trip" — full width, primary style
-
-**On success:** 
-- If inspiration images were uploaded: POST to `/api/v1/trips/{id}/inspiration/analyze` immediately after trip creation, then redirect to `/trips/[id]`
-- If no inspiration images: redirect directly to `/trips/[id]`
+**Back nav:** "← Your Wardrobe" top left.
 
 ---
 
-### 10.6 Trip Detail Page (`/trips/:id`)
+### 10.6 New Trip Page (`/trips/new`)
 
-**Purpose:** View trip info, see vibe analysis results, generate packing list, then enter swipe review.
+**Header:** Label "NEW TRIP", headline "Where are you going?" Cormorant 52px italic.
 
-**Layout:** Sidebar + main content (two-column on desktop)
+**Form fields:**
+1. Trip name
+2. Destination
+3. Dates (Depart + Return side by side)
+4. Climate (select)
+5. Occasions (multi-select pills)
+6. Notes to your stylist
+7. **Bag type selector** — 3 large clickable cards: Carry-On / Checked Bag / Both. Each has illustration image (references/carry_on.png, references/checked_bag.png), label, weight range. Selected: 2px solid --color-text-primary. Carry-On pre-fills 7000g limit / 2000g empty. Checked pre-fills 23000g / 3000g.
+8. Bag Weight Limit (number + kg/lbs toggle)
+9. Empty Bag Weight (number)
+10. Reserved Items (dynamic add/remove rows: name + weight + × button)
+11. **Live weight calculator** (--color-bg-tertiary bg, --radius-md): "AVAILABLE FOR CLOTHES" label, Cormorant 36px computed weight, breakdown text below. Turns --color-error if negative.
+12. Inspiration upload — dashed border zone, up to 5 images, horizontal thumbnail preview row
 
-**Trip header:**
-- Label: "YOUR TRIP"
-- Trip name: Cormorant 52px
-- Destination + dates: DM Sans 15px --color-text-secondary
-- Status tag (planning / reviewing / packed / completed)
+**Submit:** "Plan This Trip" full-width primary button.
 
-**Left column — Trip Info:**
-- Climate, duration, occasions (pill tags)
-- Stylist notes from user
-- **Weight budget card** (--color-bg-secondary, --border-thin, --radius-lg, --space-4 padding):
-  - Label: "WEIGHT BUDGET"
-  - Cormorant 28px: "[X.X]kg available for clothes"
-  - DM Sans 11px breakdown: "[limit]kg limit − [bag]kg bag − [reserved]kg reserved"
-  - Reserved items listed as small pills below
-  - If total_weight_grams from packing list exists: thin progress bar showing used/available
-
-**Inspiration & Vibe section (left column, below trip info):**
-- Label: "YOUR VIBE"
-- If inspiration images exist: show them as a horizontal scrollable row of 80px thumbnails
-- If vibe_analysis exists: show the vibe card:
-  - Summary in Cormorant 18px italic, --color-text-secondary
-  - Style keywords as pill tags
-  - Color palette: small colored squares (actual colors from palette) + text label
-  - Formality level tag
-  - "Avoid" section: small strikethrough tags
-- If no vibe yet but images exist: show "Analyzing your vibe..." with pulse animation
-- If no images: show subtle "Add inspiration →" link
-
-**Right column — Packing:**
-- "Generate Packing List" button — primary, full width
-  - Loading state: "Your stylist is thinking..." with pulse
-  - If vibe exists, the button label is: "Generate Outfits Based on Your Vibe"
-- After generation: show stylist note (Cormorant 20px italic, left border 2px) + "Review Outfits" button (primary) that navigates to `/trips/:id/review`
-- If outfits already approved: show summary of approved outfits + "Go to Packing" button
+**On success:** If inspiration images exist → analyze immediately → redirect to /trips/:id. Else redirect directly.
 
 ---
 
-### 10.7 Swipe Review Page (`/trips/:id/review`) — THE HERO FEATURE
+### 10.7 Trip Detail Page (`/trips/:id`)
 
-**Purpose:** Review AI-generated outfits one at a time. Swipe right to approve (add to bag), swipe left to reject. This is the core interaction of PACK.
+**Layout:** Sidebar + two-column desktop.
 
-**Layout:** No sidebar. Centered, full-height experience. Max-width 480px centered.
+**Trip header:** Label "YOUR TRIP", trip name Cormorant 52px, destination + dates DM Sans 15px, status tag.
 
-**Header:**
-- Back link: "← [Trip Name]"
-- Label: "REVIEW YOUR OUTFITS"
-- Progress indicator: "3 of 8 outfits" — DM Sans 13px --color-text-tertiary
-- Thin progress bar: 2px height, no radius, --color-text-primary fill
+**Left column:**
+- Climate, duration, occasions pills
+- Stylist notes
+- Weight budget card (--color-bg-secondary, --border-thin, --radius-lg): Cormorant 28px "X.Xkg available", breakdown text, progress bar when packing list exists
+- Vibe section: inspiration thumbnails horizontal scroll, vibe_analysis card (summary italic Cormorant, keywords pills, color palette swatches, formality tag, avoid strikethrough tags)
 
-**Main card — the outfit:**
-This is the Phia "Shop the look" pattern but for approval. One outfit at a time.
-
-Card structure (--color-bg-primary, --border-default, --radius-xl, generous padding):
-- Top: outfit name — DM Sans 14px weight 500 uppercase --color-text-tertiary (e.g. "DAY 2 — SIGHTSEEING")
-- Occasion tag pill below name
-- **Item scroll row** — the core visual:
-  - Horizontal scrollable row of item cards
-  - Each item card: 140px wide, aspect 3:4, --color-bg-secondary background, --border-thin, --radius-md
-  - Item image centered (object-fit: contain — these are background-removed wardrobe photos on clean bg)
-  - Active/selected item: border becomes 2px --color-text-primary (like Phia's blue border)
-  - Clicking an item makes it active and shows its details below
-  - Scroll with trackpad/mouse horizontally
-  - Items not in wardrobe: show placeholder bg with item name centered in DM Sans 13px italic
-- **Selected item detail** (below scroll row, updates on click):
-  - Item name: Cormorant 20px
-  - Category tag + formality tag
-  - DM Sans 13px --color-text-secondary: item notes if any
-- **Weight indicator** (below outfit name, above item scroll):
-  - DM Sans 11px --color-text-tertiary: "~[X.Xkg] · [n] pieces"
-  - Running total in bag counter: "Bag ([X.Xkg] / [limit]kg)"
-
-**Action buttons — bottom of card:**
-Two large buttons side by side:
-- Left: "Pass" — secondary style, DM Sans 13px weight 500
-- Right: "Add to Bag" — primary style (sharp corners, near-black bg), DM Sans 13px weight 500
-
-**"Add to Bag" interaction — the visual moment:**
-When user clicks "Add to Bag":
-1. The card animates: scale up slightly (1.02) then flies upward and fades out (Framer Motion: y: 0 → -40px, opacity: 1 → 0, duration 0.4s)
-2. A small bag icon in the top right of the screen briefly pulses (scale 1 → 1.3 → 1)
-3. The outfit name appears briefly as a toast below the bag icon: "Day 2 outfit added" — DM Sans 13px, fades after 1.5s
-4. Next outfit card slides in from the right (x: 60px → 0, opacity: 0 → 1, duration 0.3s)
-5. Progress bar updates
-
-**"Pass" interaction:**
-1. Card slides left and fades (x: 0 → -40px, opacity: 1 → 0, duration 0.3s)
-2. **Rejection modal appears** (centered overlay):
-   - Title: "Keep any pieces?" — Cormorant 24px
-   - Shows each item from the outfit as a small pill tag with a checkbox
-   - Below: "Keep pieces but restyle" button (secondary) — saves selected items to a "loose items" list for the stylist to reassign
-   - "Skip entirely" button (text only, --color-text-tertiary) — discards the whole outfit
-   - This gives the user granular control without losing good individual pieces
-
-**Bag counter** (top right, persistent):
-- Small bag icon + number: "Bag (3)"
-- DM Sans 13px weight 500
-- Pulses on each addition
-
-**Completion state:**
-When all outfits reviewed:
-- Headline: Cormorant 52px italic: *"Your bag is packed."*
-- Summary: "You approved [n] outfits, [n] items total."
-- Two buttons: "Review Bag" (secondary) → goes to packing list, "Start Packing" (primary) → goes to `/trips/:id/pack`
+**Right column:**
+- "Generate Packing List" primary button. Loading: "Your stylist is thinking..." with pulse.
+- After generation: stylist note (Cormorant 20px italic, 2px left border) + "Review Outfits" button → /trips/:id/review
+- If approved: approved outfits summary + "Go to Packing" button
 
 ---
 
-### 10.8 Trip Detail Page — After Review (`/trips/:id`)
+### 10.8 Swipe Review Page (`/trips/:id/review`) — THE HERO FEATURE
 
-After outfits are approved, the right column of the trip detail page updates to show:
-- Approved outfits summary (outfit names + item count each)
-- "Edit Selections" link → back to `/trips/:id/review`
-- "Start Packing" button → `/trips/:id/pack`
+**Layout:** No sidebar. Centered max-width 480px.
+
+**Header:** Back link, "REVIEW YOUR OUTFITS" label, "3 of 8 outfits" progress, 2px progress bar.
+
+**Main card** (--color-bg-primary, --border-default, --radius-xl):
+- Outfit name: DM Sans 14px weight 500 uppercase --color-text-tertiary
+- Occasion tag pill
+- Weight indicator: "~X.Xkg · n pieces" + "Bag (X.Xkg / limit kg)"
+- **Item scroll row:** horizontal scroll, 140px × 3:4 cards, --color-bg-secondary, --border-thin, --radius-md. Click item = active (2px --color-text-primary border) + shows detail below. Items not in wardrobe: placeholder with name centered.
+- Selected item detail below: Cormorant 20px name, category + formality tags, notes
+
+**Action buttons:**
+- "Pass" — secondary
+- "Add to Bag" — primary
+
+**"Add to Bag" animation:**
+1. Card: scale 1.02 then y: 0 → -40px, opacity → 0, duration 0.4s
+2. Bag icon pulse: scale 1 → 1.3 → 1
+3. Toast: "Day 2 outfit added" — DM Sans 13px, fades 1.5s
+4. Next card: x: 60px → 0, opacity 0 → 1, duration 0.3s
+
+**"Pass" → Rejection modal:**
+- "Keep any pieces?" Cormorant 24px
+- Each item as checkable pill
+- "Keep pieces but restyle" secondary + "Skip entirely" text link
+
+**Bag counter** (top right): bag icon + "Bag (3)", pulses on addition.
+
+**Completion state:** Cormorant 52px italic "Your bag is packed." + "Review Bag" + "Start Packing" → /trips/:id/pack.
 
 ---
 
 ### 10.9 Packing Page (`/trips/:id/pack`)
 
-**Purpose:** Focused checklist view. User is actively packing. Distraction-free.
+**Layout:** No sidebar. Centered max-width 640px.
 
-**Layout:** No sidebar. Full-width, centered max-width 640px.
+**Header:** Back link, "PACKING MODE" label, "12 / 24 packed" Cormorant 52px progress.
 
-**Header:**
-- Back link: "← Paris in June"
-- Label: "PACKING MODE"
-- Progress: "12 / 24 packed" — large Cormorant 52px with thin DM Sans label
+**Checklist:** Items grouped by category. Category label DM Sans 11px uppercase. Each item: large checkbox, name DM Sans 15px, outfit tag pill. Checked: line-through, --color-text-tertiary.
 
-**All items as a flat checklist grouped by category:**
-- Category label: DM Sans 11px uppercase --color-text-tertiary
-- Each item: large checkbox, item name DM Sans 15px, outfit tag (small pill)
-- Checked state: item name gets line-through, text shifts to --color-text-tertiary
-
-**"All packed!" state:**
-- When all items checked: headline changes to Cormorant italic *"You're ready."*
-- Trip status updates to "packed" automatically
+**All packed state:** Cormorant italic "You're ready." Trip status → "packed".
 
 ---
 
-### 10.12 Profile Page (`/profile`)
+### 10.10 Daily Styling Page (`/daily`) — NEW
 
-**Purpose:** Visual activity summary + AI analysis of the user's personal style DNA based on their wardrobe.
+**Layout:** No sidebar. Focused mode, same as SwipeReviewPage and PackingPage. Max-width 520px centered.
+
+**3 steps, managed by local state: 'context' | 'outfits' | 'confirmed'**
+
+**Step: 'context' — Context Card**
+
+```
+Label: "TODAY"
+Date: Cormorant 42px — "Friday, April 25" (JS Date, formatted)
+Weather strip: auto-fetched via /api/v1/weather/current using navigator.geolocation
+  "18°C · Partly cloudy · Buenos Aires" — DM Sans 13px --color-text-secondary
+  Loading: "--°C · Fetching weather..." in --color-text-tertiary
+  Error or denied: hide weather strip silently
+
+Divider --border-thin
+
+Mood selector — label: "HOW ARE YOU FEELING?"
+  5 option cards in flex row (wrap to 2+3 on mobile)
+  Each: icon (24px emoji) centered, DM Sans 11px label below
+  Default: --color-bg-secondary, --border-thin, --radius-lg, ~80px wide
+  Selected: --color-bg-primary, 2px solid --color-text-primary
+  Options/values:
+    Energised ⚡ → "energised"
+    Put-together 🎯 → "put_together"
+    Lowkey 🤍 → "lowkey"
+    Playful 🎨 → "playful"
+    Cozy ☁️ → "cozy"
+
+Divider --border-thin
+
+Occasion selector — label: "WHAT'S TODAY?"
+  8 pills in flex-wrap, 4 per row desktop, 2 per row mobile
+  Default: --radius-pill, --color-bg-tertiary, --border-thin, DM Sans 12px weight 500
+  Selected: bg --color-text-primary, color --color-text-inverse
+  Options/values:
+    🎓 College → "college"
+    💼 Office → "office"
+    👯 Going Out → "going_out"
+    🍽 Dinner/Date → "dinner_date"
+    🏠 WFH → "wfh"
+    ✈️ Travel Day → "travel"
+    🏃 Active → "active"
+    🎉 Special Event → "special_event"
+
+VibeSelector (VibeSelector.jsx):
+  Renders only when occasion === "going_out" || occasion === "dinner_date"
+  Framer Motion: initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }}
+  Label: "WHAT'S THE ENERGY?"
+  Sub-label: "Friends always ask what you're wearing." — DM Sans 13px --color-text-secondary italic
+  6 pills in 2 rows of 3:
+    "Keep it lowkey 🤍" → "lowkey"
+    "We're going out out 🔥" → "going_out_out"
+    "Cute but casual ✨" → "cute_casual"
+    "Dress to impress 💅" → "dress_to_impress"
+    "Match the group energy 👯" → "match_energy"
+    "Surprise me" → "surprise"
+
+CTA: "Style Me Today" — primary, full width, sharp corners
+  Disabled if no occasion selected
+  onClick: get geolocation → call generateLook({ occasion, mood, vibe, lat, lon })
+```
+
+**Step: 'generating' (while API call in progress)**
+```
+Cormorant 28px italic: "Your stylist is working..."
+DM Sans 13px --color-text-secondary: "Checking your wardrobe and today's weather."
+Pulse animation on a thin horizontal line — not a spinner
+```
+
+**Step: 'outfits' — 3 Outfit Options**
+```
+Local state: currentIndex (0, 1, 2)
+
+Progress: "OPTION {currentIndex + 1} OF 3" — DM Sans 11px uppercase --color-text-tertiary
+
+Card (--color-bg-primary, --border-default, --radius-xl, --space-8 padding):
+  Occasion tags from outfit.occasion_tags as pills
+  Claude's note: outfit.claude_note — Cormorant 20px italic --color-text-secondary, --space-4 vertical margin
+  ItemScrollRow (reuse existing component): outfit items, same 140px × 3:4 cards
+  Context line: DM Sans 11px --color-text-tertiary — weather summary + occasion
+
+Action buttons:
+  "Next option →" — secondary
+    If currentIndex < 2: increment, animate card out left / new card in right
+    If currentIndex === 2: label "Back to first", wraps to 0
+  "Wear this today" — primary
+    Calls chooseOutfit(look._id, currentIndex)
+    On success: transition to 'confirmed'
+
+Card transition (Framer Motion AnimatePresence, key={currentIndex}):
+  Out: x: 0 → -30px, opacity: 1 → 0, duration 0.25s
+  In:  x: 30px → 0, opacity: 0 → 1, duration 0.25s
+```
+
+**Step: 'confirmed'**
+```
+Cormorant 48px italic: "Looking good."
+OutfitCollage (size="md") showing chosen outfit's item_image_urls
+DM Sans 15px weight 300 --color-text-secondary: "Your look for {date} is saved."
+"View your wardrobe →" text link → /wardrobe
+"Back to Dashboard" secondary button → /dashboard
+```
+
+---
+
+### 10.11 Profile Page (`/profile`) — UPDATED
 
 **Layout:** Sidebar + main content.
 
-**Header** (reference: `references/phia-profile1.png`):
-- Centered, generous top padding
-- Circular avatar 80px: first wardrobe item image, or initials on --color-bg-tertiary
-- Name: Cormorant 32px weight 400
-- Two pill buttons: "Preferences" + "Settings" — secondary style, side by side
+**Header:** Circular avatar 80px, Name Cormorant 32px, "Preferences" + "Settings" pill buttons.
 
-**Activity Stats row:**
-- 4 stats horizontal, thin --color-border-light dividers between
-- Each: Cormorant 52px weight 300 number + DM Sans 11px uppercase label below
-- Stats: TRIPS PLANNED / WARDROBE ITEMS / OUTFITS APPROVED / LOOKS GENERATED
+**Activity Stats row — UPDATED:**
+5 stats with --color-border-light dividers between:
+- TRIPS PLANNED / WARDROBE ITEMS / OUTFITS APPROVED / LOOKS GENERATED / **LOOKS STYLED** (new)
+Each: Cormorant 52px weight 300 number + DM Sans 11px uppercase label.
 
-**Upcoming Trips section** (reference: `references/phia-profile2.png` scroll pattern):
-- Label: "UPCOMING TRIPS"
-- Subtext: DM Sans 13px --color-text-secondary
-- Horizontal scroll row with ← → arrow buttons top right (DM Sans 13px "See all" + arrow icons)
-- Same TripCard as dashboard
+**Upcoming Trips:** Label + horizontal scroll row with ← → arrows + TripCards.
 
-**Style DNA section — the AI personality card:**
-- Label: "YOUR STYLE DNA"
-- Calls `/api/v1/profile/analyze-style` on mount if user has 3+ wardrobe items
-- Loading state: DM Sans 13px --color-text-tertiary: "Analyzing your wardrobe..." with pulse on card
-- Result (--color-bg-secondary, --border-thin, --radius-xl, --space-8 padding):
-  - Cormorant 28px italic headline: the vibe summary e.g. *"Quiet Luxury with an Edge"*
-  - DM Sans 15px weight 300 --color-text-secondary: 2-3 sentence style description
-  - Style keyword pills
-  - Color palette row: 24px color circles + name labels
-  - "Most worn category" stat — DM Sans 13px
-  - "Based on [n] items" — DM Sans 11px --color-text-tertiary
-  - "Re-analyze →" text link bottom right
-- Empty state (< 3 items): "Add at least 3 items to unlock your Style DNA."
+**Style DNA section:**
+- Label "YOUR STYLE DNA"
+- Calls /api/v1/profile/analyze-style on mount if 3+ wardrobe items
+- Loading: pulse on card
+- Result (--color-bg-secondary, --border-thin, --radius-xl): Cormorant 28px italic headline, DM Sans 15px description, keyword pills, color circles, most worn category, "Re-analyze →" link
+- Empty: "Add at least 3 items to unlock your Style DNA."
 
-**Approved Looks section** (reference: `references/phia-profile2.png`):
-- Label: "APPROVED LOOKS"
-- Horizontal scroll row with ← → arrows
-- Each card: outfit name (DM Sans 14px weight 500), trip name (DM Sans 11px --color-text-tertiary), occasion tag, item count
-- Empty state: "Approve outfits from a trip to see your looks here."
+**Approved Looks section:**
+- Label "APPROVED LOOKS"
+- Horizontal scroll, ← → arrows
+- Each card: outfit name DM Sans 14px, trip name 11px, occasion tag, item count
 
-**Backend:**
-```
-POST /api/v1/profile/analyze-style
-Rate limited: 3/hour per user
-Returns: VibeAnalysis object based on full wardrobe
+**NEW: Your Looks section:**
+- Label "YOUR LOOKS"
+- Sub-label DM Sans 13px: "Your daily style archive."
+- Horizontal scroll row, same pattern as Approved Looks
+- LookHistoryCard for each DailyLook in lookHistory
+- Empty: "Start styling daily to build your look archive."
+
+---
+
+## 11. New Components — Daily Styling
+
+### OutfitCollage.jsx
+
+A reusable component displaying 3 clothing item images as a loose editorial flat-lay.
+
+Props: `{ imageUrls: string[], size?: 'sm' | 'md' }`
+
+Visual spec:
+- Container: relative position, height md=160px sm=100px
+- 3 images absolutely positioned:
+  - Left: bottom-left, width ~45%, `transform: rotate(2deg)`, z-index 1
+  - Center: centered, width ~50%, `transform: rotate(-3deg)`, z-index 2
+  - Right: bottom-right, width ~45%, `transform: rotate(1.5deg)`, z-index 1
+- Each image: --radius-md, object-fit: contain, --color-bg-tertiary bg, --border-thin
+- Missing images: --color-bg-tertiary placeholder rectangle
+
+### TodayCard.jsx
+
+Props: `{ todayLook, onStyleMe }`
+
+**State A: todayLook null**
+- Card: TripCard dimensions (~280px height), --color-bg-secondary, --border-thin, --radius-lg
+- Date + weather in DM Sans 11px
+- Cormorant 28px italic "What are you wearing today?"
+- DM Sans 13px --color-text-tertiary "Your stylist is ready."
+- "Style me today →" primary button
+
+**State B: todayLook.status === 'chosen'**
+- Occasion + vibe pill tags top
+- OutfitCollage (size="md") center
+- Claude's note Cormorant 14px italic bottom
+- "Change look →" text link right
+
+**State C: todayLook.status === 'generated' (in progress)**
+- Same as State A but button reads "Continue styling →"
+
+Hover: scale 1.01, --border-medium.
+
+### LookHistoryCard.jsx
+
+Props: `{ look }` — DailyLook object
+
+- Card: TripCard dimensions, --color-bg-secondary, --border-thin, --radius-lg
+- Top 55%: OutfitCollage (size="sm")
+- Bottom 45%: date (DM Sans 11px uppercase), occasion + vibe pills, Claude note (Cormorant 13px italic, 2 lines max)
+- Hover: scale 1.01, --border-medium
+
+### VibeSelector.jsx
+
+Props: `{ value, onChange }` — controlled
+
+- Framer Motion animate in/out
+- Label + sub-label
+- 6 pills in 2×3 grid
+- Selected: --color-text-primary bg + --color-text-inverse text
+
+### ContextCard.jsx (used inside DailyStylingPage)
+
+Full context input. Props: `{ onGenerate }`.
+Contains: weather strip, mood selector, occasion selector, VibeSelector (conditional), CTA button.
+See DailyStylingPage spec above for full visual detail.
+
+---
+
+## 12. useDailyStyling Hook
+
+```javascript
+// frontend/src/hooks/useDailyStyling.js
+import api from '../utils/api'
+import useStore from '../store'
+
+export function useDailyStyling() {
+  const { setTodayLook, setLookHistory, setDailyLoading, setDailyError } = useStore()
+
+  const getLocation = () => new Promise((resolve) => {
+    if (!navigator.geolocation) return resolve(null)
+    navigator.geolocation.getCurrentPosition(
+      pos => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
+      () => resolve(null),
+      { timeout: 5000 }
+    )
+  })
+
+  const checkToday = async () => {
+    try {
+      const res = await api.get('/api/v1/daily/today')
+      if (res.data.data) setTodayLook(res.data.data)
+    } catch (_) {}
+  }
+
+  const generateLook = async ({ occasion, mood, vibe, lat, lon }) => {
+    setDailyLoading(true)
+    setDailyError(null)
+    try {
+      const res = await api.post('/api/v1/daily/generate', { occasion, mood, vibe, lat, lon })
+      setTodayLook(res.data.data)
+      return res.data.data
+    } catch (err) {
+      setDailyError(err.response?.data?.message || 'Something went wrong')
+      throw err
+    } finally {
+      setDailyLoading(false)
+    }
+  }
+
+  const chooseOutfit = async (lookId, outfitIndex) => {
+    const res = await api.post(`/api/v1/daily/${lookId}/choose`, { outfit_index: outfitIndex })
+    setTodayLook(res.data.data)
+    return res.data.data
+  }
+
+  const fetchHistory = async (limit = 20, offset = 0) => {
+    const res = await api.get(`/api/v1/daily/history?limit=${limit}&offset=${offset}`)
+    setLookHistory(res.data.data)
+  }
+
+  return { checkToday, generateLook, chooseOutfit, fetchHistory, getLocation }
+}
 ```
 
 ---
+
+## 13. Rate Limiting
 
 ```python
 # backend/app/main.py
@@ -1286,24 +1564,23 @@ limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# backend/app/api/routes/pack.py
-@router.post("/suggest")
-@limiter.limit("10/minute")
-async def suggest_packing_list(request: Request, ...):
-    ...
+# Applied per route:
+# pack/suggest: @limiter.limit("10/minute")
+# trips/inspiration/analyze: @limiter.limit("5/minute")
+# daily/generate: @limiter.limit("10/minute")
+# profile/analyze-style: @limiter.limit("3/hour")
 ```
 
 ---
 
-## 12. CORS Setup
+## 14. CORS Setup
 
 ```python
-# backend/app/main.py
 from fastapi.middleware.cors import CORSMiddleware
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.FRONTEND_URL],   # "http://localhost:5173" from .env
+    allow_origins=[settings.FRONTEND_URL],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -1312,15 +1589,14 @@ app.add_middleware(
 
 ---
 
-## 13. Local Dev Setup — Running the App
+## 15. Local Dev Setup
 
 ### Backend
 ```bash
 cd backend
 python -m venv venv
-source venv/bin/activate        # Windows: venv\Scripts\activate
+source venv/bin/activate
 pip install -r requirements.txt
-# Create backend/.env with all variables
 uvicorn app.main:app --reload --port 8000
 ```
 
@@ -1328,12 +1604,9 @@ uvicorn app.main:app --reload --port 8000
 ```bash
 cd frontend
 npm install
-# Create frontend/.env with VITE_API_URL=http://localhost:8000
 npm run dev
 # Runs on http://localhost:5173
 ```
-
-**Two terminals. No Docker. MongoDB is Atlas cloud, no local instance needed.**
 
 ### requirements.txt
 ```
@@ -1368,28 +1641,36 @@ httpx==0.27.0
   }
 }
 ```
+
 ---
 
-## 15. Critical Design Reminders for Claude Code
+## 16. Critical Design Reminders for Claude Code
 
 1. No drop shadows anywhere. Ever. Border instead.
 2. No gradients. Flat color only.
 3. Cormorant Garamond for all display text. DM Sans for all UI text. Nothing else.
 4. Section labels are ALWAYS: DM Sans 11px, weight 500, uppercase, letter-spacing 0.12em, --color-text-tertiary
-5. Buttons are sharp-cornered (no border-radius) except pill tags
-6. No Inter, no Roboto, no system-ui as a display font
-7. Every page has a sidebar except Landing, Auth, and Packing Mode
-8. The only accent color is --color-text-primary (near-black). There is no blue, no green as a UI color.
-9. All images are object-fit: cover with fixed aspect ratios
-10. Hover states use border-color change + scale 1.01, never background color fill change
-11. Empty states are written in warm human language, never "No data found"
-12. Every form field label is uppercase DM Sans 11px above the input, not placeholder-only
-13. Loading states exist for every async operation. Use subtle pulse animation on the container, not a spinner.
-14. The swipe review page is the hero moment of the app — treat it like that. The "Add to Bag" animation must feel satisfying and deliberate.
-15. The packing list generation is the second hero moment — the UI must feel special when Claude responds.
+5. Buttons are sharp-cornered (no border-radius) except pill tags.
+6. No Inter, no Roboto, no system-ui as a display font.
+7. Every page has a sidebar except Landing, Auth, Packing Mode, Swipe Review, and Daily Styling.
+8. The only accent color is --color-text-primary (near-black). No blue, no green as UI colors.
+9. All images are object-fit: cover with fixed aspect ratios.
+10. Hover states use border-color change + scale 1.01, never background fill change.
+11. Empty states are written in warm human language, never "No data found."
+12. Every form field label is uppercase DM Sans 11px above the input, not placeholder-only.
+13. Loading states exist for every async operation. Subtle pulse animation, not a spinner.
+14. The swipe review page is the hero moment of the trip flow — treat it like that.
+15. The packing list generation is the second hero moment of the trip flow.
+16. The model is claude-sonnet-4-6 everywhere. No exceptions. Update any existing references to older models.
+17. The TodayCard flat-lay collage (OutfitCollage.jsx) is the visual identity of daily styling. 3 images, loose positioning, center image rotated -3deg. Make it feel editorial not utilitarian.
+18. The vibe selector only appears for social occasions. Animate it in with Framer Motion, don't just toggle display.
+19. Weather is fetched client-side via navigator.geolocation and passed as lat/lon to the backend. Never hardcode a city.
+20. Every daily look logged to wornHistory is a data asset. Log it correctly every time with item_ids, weather, occasion, and vibe.
+21. The DailyStylingPage has no sidebar — it is a focused mode experience like PackingPage.
+22. The TODAY section on the dashboard sits above UPCOMING TRIPS, below the hero card.
 
 ---
 
-*Built for CP192 Mini Capstone, Minerva University, Spring 2026.*
-*Design references: SSQRD (ssqrd.co), Phia (phia.com), JW Anderson (jwanderson.com), MaxMara (thejacketcirclegame.maxmara.com)*
-*Stack: React + Vite + Zustand + FastAPI + Beanie + MongoDB Atlas + Cloudinary + Anthropic Claude Haiku 4.5*
+*Built for public launch and investor funding. Production-grade. No shortcuts.*
+*Design references: SSQRD (ssqrd.co), Phia (phia.com), JW Anderson (jwanderson.com), MaxMara*
+*Stack: React + Vite + Zustand + FastAPI + Beanie + MongoDB Atlas + Cloudinary + Anthropic Claude + OpenWeatherMap*

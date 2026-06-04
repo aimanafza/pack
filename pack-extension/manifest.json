@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "PACK — Shop with your wardrobe",
+  "version": "1.0.0",
+  "description": "See how any item fits your existing wardrobe before you buy it.",
+  "permissions": ["activeTab", "storage", "sidePanel", "scripting"],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "action": {
+    "default_title": "PACK",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  }
+}

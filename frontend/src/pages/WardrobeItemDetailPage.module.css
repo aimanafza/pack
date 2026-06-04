@@ -48,17 +48,13 @@
   border: var(--border-thin);
   border-radius: var(--radius-md);
   overflow: hidden;
-  aspect-ratio: 3 / 4;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 .image {
   width: 100%;
-  height: 100%;
-  object-fit: contain;
+  height: auto;
   display: block;
+  object-fit: contain;
 }
 
 .imagePlaceholder {
@@ -192,6 +188,27 @@
 
 .btnEdit:hover {
   background: var(--color-accent-hover);
+}
+
+.btnStyle {
+  background: none;
+  border: var(--border-default);
+  border-radius: 0;
+  padding: var(--space-3) var(--space-5);
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.btnStyle:hover {
+  background: var(--color-text-primary);
+  color: var(--color-text-inverse);
+  border-color: var(--color-text-primary);
 }
 
 .btnDelete {
@@ -490,17 +507,244 @@
 }
 
 /* Responsive */
-@media (max-width: 680px) {
+@media (max-width: 767px) {
   .layout {
     grid-template-columns: 1fr;
-    gap: var(--space-6);
+    gap: 0;
   }
 
   .imageCol {
     position: static;
   }
 
+  .imageWrap {
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
+
+  .image {
+    width: 100%;
+    height: auto;
+  }
+
+  .detailCol {
+    padding: 20px 0;
+  }
+
   .name {
     font-size: 32px;
   }
+
+  .actions {
+    flex-direction: column;
+    gap: var(--space-2);
+    margin-top: var(--space-4);
+  }
+
+  .btnEdit,
+  .btnStyle,
+  .btnDelete {
+    width: 100%;
+    text-align: center;
+    justify-content: center;
+  }
+
+  .looksRow {
+    gap: var(--space-3);
+  }
+
+  .lookCard {
+    width: 140px;
+  }
+
+  .lookCardImg {
+    width: 140px;
+  }
+}
+
+/* ── Item Looks section ───────────────────────────────────────────────────── */
+
+.looksSection {
+  margin-top: var(--space-12);
+  padding-top: var(--space-8);
+  border-top: var(--border-thin);
+}
+
+.looksSectionLabel {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+  color: var(--color-text-tertiary);
+  margin: 0 0 var(--space-5);
+}
+
+.looksRow {
+  display: flex;
+  gap: var(--space-4);
+  overflow-x: auto;
+  padding-bottom: var(--space-2);
+  scrollbar-width: none;
+}
+
+.looksRow::-webkit-scrollbar {
+  display: none;
+}
+
+.lookCard {
+  flex-shrink: 0;
+  width: 160px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.lookCardImg {
+  width: 160px;
+  aspect-ratio: 3 / 4;
+  background: var(--color-bg-secondary);
+  border: var(--border-thin);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin-bottom: var(--space-2);
+  transition: border-color 0.15s;
+}
+
+.lookCard:hover .lookCardImg {
+  border-color: var(--color-border-medium);
+}
+
+.lookCardPhoto {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.lookCardPlaceholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-3);
+}
+
+.lookCardPlaceholderText {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: var(--text-sm);
+  color: var(--color-text-tertiary);
+  text-align: center;
+}
+
+.lookCardFoot {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.lookCardName {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+
+.lookCardOccasion {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+  text-transform: capitalize;
+  display: block;
+}
+
+/* ── Look detail overlay ──────────────────────────────────────────────────── */
+
+.lookOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  background: rgba(26, 26, 24, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+}
+
+.lookOverlayCard {
+  position: relative;
+  background: var(--color-bg-primary);
+  border: var(--border-thin);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  max-width: 380px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.lookOverlayClose {
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-5);
+  background: none;
+  border: none;
+  font-size: 22px;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  z-index: 10;
+  transition: color 0.15s;
+}
+
+.lookOverlayClose:hover {
+  color: var(--color-text-primary);
+}
+
+.lookOverlayImg {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  display: block;
+}
+
+.lookOverlayBody {
+  padding: var(--space-5) var(--space-6) var(--space-8);
+}
+
+.lookOverlayOccasion {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  color: var(--color-text-tertiary);
+  margin: 0 0 var(--space-2);
+}
+
+.lookOverlayName {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-style: italic;
+  font-weight: 400;
+  color: var(--color-text-primary);
+  letter-spacing: var(--tracking-tight);
+  margin: 0 0 var(--space-4);
+}
+
+.lookOverlayNotes {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: var(--text-base);
+  color: var(--color-text-secondary);
+  line-height: var(--leading-relaxed);
+  margin: 0;
 }

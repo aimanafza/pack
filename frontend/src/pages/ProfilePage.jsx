@@ -5,10 +5,12 @@ import useStore from '../store/index.js'
 import { useTrips } from '../hooks/useTrips.js'
 import { useWardrobe } from '../hooks/useWardrobe.js'
 import { useNewTrip } from '../hooks/useNewTrip.js'
+import { useDailyStyling } from '../hooks/useDailyStyling.js'
 import api from '../utils/api.js'
 import styles from './ProfilePage.module.css'
 import PreferencesModal from '../components/profile/PreferencesModal.jsx'
 import WardrobeGateModal from '../components/trips/WardrobeGateModal.jsx'
+import LookHistoryCard from '../components/daily/LookHistoryCard.jsx'
 
 function IconArrowRight() {
   return (
@@ -61,10 +63,12 @@ function isUpcoming(trip) {
 export default function ProfilePage() {
   const user = useStore((s) => s.user)
   const updateUser = useStore((s) => s.updateUser)
+  const lookHistory = useStore((s) => s.lookHistory)
   const { trips, fetchTrips } = useTrips()
   const { wardrobe, fetchWardrobe } = useWardrobe()
   const navigate = useNavigate()
   const { goToNewTrip, gateOpen, missing, closeGate } = useNewTrip()
+  const { fetchHistory } = useDailyStyling()
   const [styleDNA, setStyleDNA] = useState(null)
   const [dnaLoading, setDnaLoading] = useState(false)
   const [dnaError, setDnaError] = useState('')
@@ -75,10 +79,12 @@ export default function ProfilePage() {
   const tripsScrollRef = useRef(null)
   const looksScrollRef = useRef(null)
   const analyzedRef = useRef(false)
+  const [styledLooks, setStyledLooks] = useState([])
 
   useEffect(() => {
     fetchTrips()
     fetchWardrobe()
+    fetchHistory(50, 0)
     // Fetch full user to get persisted style_dna
     api.get('/api/v1/auth/me').then(({ data }) => {
       updateUser(data.data)
@@ -86,6 +92,11 @@ export default function ProfilePage() {
         setStyleDNA(data.data.style_dna)
         analyzedRef.current = true
       }
+    }).catch(() => {})
+    // Fetch styled looks archive
+    api.get('/api/v1/looks/me').then(({ data }) => {
+      const all = data.data || []
+      setStyledLooks(all.filter(l => l.source === 'styled'))
     }).catch(() => {})
   }, [])
 
@@ -250,6 +261,7 @@ export default function ProfilePage() {
           { n: wardrobeItems, label: 'Wardrobe Items' },
           { n: outfitsApproved, label: 'Outfits Approved' },
           { n: looksGenerated, label: 'Looks Generated' },
+          { n: lookHistory.length, label: 'Looks Styled' },
         ].map(({ n, label }, i) => (
           <div key={label} className={styles.statCell}>
             {i > 0 && <div className={styles.statDivider} />}
@@ -487,6 +499,56 @@ export default function ProfilePage() {
             ))}
           </div>
         )}
+      </section>
+
+      {/* Your Looks (daily styling archive) */}
+      <section className={styles.section}>
+        <div className={styles.sectionTop}>
+          <p className={styles.sectionLabel}>YOUR LOOKS</p>
+        </div>
+        {styledLooks.length === 0 ? (
+          <p className={styles.emptyState}>Style an item from your wardrobe to start building your look archive.</p>
+        ) : (
+          <>
+            <p className={styles.sectionSub}>Your personal style archive.</p>
+            <div className={styles.lookbookGrid}>
+              {styledLooks.map((look) => (
+                <div key={look.id || look._id} className={styles.lookbookCard}>
+                  <div className={styles.lookbookCardImg}>
+                    {look.avatar_image_url ? (
+                      <img
+                        src={look.avatar_image_url}
+                        alt={look.name}
+                        className={styles.lookbookCardPhoto}
+                      />
+                    ) : (
+                      <div className={styles.lookbookCardPlaceholder}>
+                        <span className={styles.lookbookCardPlaceholderText}>{look.name || 'Look'}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className={styles.lookbookCardFoot}>
+                    <span className={styles.lookbookCardNum}>{look.name}</span>
+                    <span className={styles.lookbookCardTrip}>{look.occasion}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </section>
+
+      {/* Shopping history link */}
+      <section className={styles.section}>
+        <div className={styles.sectionTop}>
+          <p className={styles.sectionLabel}>SHOPPING HISTORY</p>
+        </div>
+        <p className={styles.sectionSub}>
+          Analyses, purchase decisions, and items added from the PACK extension.
+        </p>
+        <Link to="/profile/shopping" className={styles.seeFullLink}>
+          View shopping history →
+        </Link>
       </section>
 
       <AnimatePresence>

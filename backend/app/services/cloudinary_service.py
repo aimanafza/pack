@@ -1,6 +1,9 @@
+import logging
 import cloudinary
 import cloudinary.uploader
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 cloudinary.config(
     cloud_name=settings.CLOUDINARY_CLOUD_NAME,
@@ -10,17 +13,49 @@ cloudinary.config(
 
 
 async def upload_wardrobe_item(file, user_id: str) -> dict:
-    result = cloudinary.uploader.upload(
-        file,
-        folder=f"pack/wardrobe/{user_id}",
-        transformation=[
-            {"effect": "background_removal"},
-            {"quality": "auto"},
-            {"fetch_format": "auto"},
-        ],
-    )
+    """Upload a wardrobe item to Cloudinary, attempting background removal via e_bgremoval.
+
+    `file` can be raw bytes or a URL string. When a URL is given the image is
+    downloaded first so we always upload bytes — avoids Cloudinary refusing to
+    fetch its own hosted URLs during re-uploads from the AI-autofill flow.
+
+    Background removal is attempted but non-fatal: if the add-on is unavailable
+    or quota is exhausted, the original image is saved and the upload still succeeds.
+    """
+    import httpx
+
+    if isinstance(file, str):
+        async with httpx.AsyncClient(timeout=30) as http:
+            r = await http.get(file)
+            r.raise_for_status()
+            file = r.content
+
+    # Attempt upload with background removal
+    try:
+        result = cloudinary.uploader.upload(
+            file,
+            folder=f"pack/wardrobe/{user_id}",
+            resource_type="image",
+            eager=[{"effect": "e_bgremoval", "quality": "auto", "format": "png"}],
+            eager_async=False,
+        )
+        if result.get("eager") and len(result["eager"]) > 0:
+            url = result["eager"][0]["secure_url"]
+            logger.info(f"e_bgremoval succeeded: {url}")
+        else:
+            url = result["secure_url"]
+            logger.warning("e_bgremoval eager result missing — using original URL")
+    except Exception as e:
+        logger.warning(f"Background removal failed ({e}), falling back to plain upload")
+        result = cloudinary.uploader.upload(
+            file,
+            folder=f"pack/wardrobe/{user_id}",
+            resource_type="image",
+        )
+        url = result["secure_url"]
+
     return {
-        "url": result["secure_url"],
+        "url": url,
         "public_id": result["public_id"],
     }
 

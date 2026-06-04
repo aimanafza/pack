@@ -16,3 +16,15 @@
   margin: 0 auto;
   padding: 0 var(--space-8);
 }
+
+@media (max-width: 767px) {
+  .main {
+    margin-left: 0;
+    padding-top: var(--space-8);
+    padding-bottom: calc(64px + var(--space-8));
+  }
+
+  .inner {
+    padding: 0 16px;
+  }
+}

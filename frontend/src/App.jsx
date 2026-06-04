@@ -18,6 +18,10 @@ import SwipeReviewPage from './pages/SwipeReviewPage.jsx'
 import WardrobeItemDetailPage from './pages/WardrobeItemDetailPage.jsx'
 import AvatarBuilder from './pages/AvatarBuilder.jsx'
 import RegisterPage from './pages/RegisterPage.jsx'
+import DailyStylingPage from './pages/DailyStylingPage.jsx'
+import ExtensionLoginPage from './pages/ExtensionLoginPage.jsx'
+import ShoppingHistoryPage from './pages/ShoppingHistoryPage.jsx'
+import ShoppingAnalysisPage from './pages/ShoppingAnalysisPage.jsx'
 
 function PrivateRoute({ children }) {
   const token = useStore((s) => s.token)
@@ -55,9 +59,15 @@ export default function App() {
         <Route path="/profile" element={<WithLayout><ProfilePage /></WithLayout>} />
         <Route path="/profile/style-dna" element={<WithLayout><StyleDNAPage /></WithLayout>} />
         <Route path="/profile/build-avatar" element={<PrivateRoute><AvatarBuilder /></PrivateRoute>} />
+        <Route path="/daily" element={<WithLayout><DailyStylingPage /></WithLayout>} />
         {/* Swipe review + packing: no sidebar, distraction-free full-width */}
         <Route path="/trips/:id/review" element={<PrivateRoute><SwipeReviewPage /></PrivateRoute>} />
         <Route path="/trips/:id/pack" element={<PrivateRoute><PackingPage /></PrivateRoute>} />
+        {/* Extension auth bridge — no sidebar, full page */}
+        <Route path="/auth/extension-login" element={<ExtensionLoginPage />} />
+        {/* Shopping history — profile sub-pages */}
+        <Route path="/profile/shopping" element={<WithLayout><ShoppingHistoryPage /></WithLayout>} />
+        <Route path="/profile/shopping/:analysis_id" element={<WithLayout><ShoppingAnalysisPage /></WithLayout>} />
       </Routes>
     </BrowserRouter>
   )

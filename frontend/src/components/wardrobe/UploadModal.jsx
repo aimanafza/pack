@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useWardrobe } from '../../hooks/useWardrobe.js'
+import api from '../../utils/api.js'
 import styles from './UploadModal.module.css'
 
 const CATEGORIES = ['top', 'bottom', 'dress', 'outerwear', 'shoes', 'bag', 'accessory']
@@ -9,12 +10,24 @@ const FORMALITIES = ['casual', 'smart-casual', 'elevated casual', 'business casu
 const OCCASIONS = ['work', 'casual', 'formal', 'travel', 'dinner', 'beach', 'hiking', 'nightlife']
 const SEASONS = ['spring', 'summer', 'fall', 'winter', 'all']
 
+// Normalize Claude's value strings to match our existing option lists
+function normalise(val) {
+  return val?.toLowerCase().replace(/-/g, ' ').trim()
+}
+
+function filterToList(arr, list) {
+  if (!Array.isArray(arr)) return []
+  return arr.map(normalise).filter((v) => list.includes(v))
+}
+
 export default function UploadModal({ onClose }) {
   const { uploadItem } = useWardrobe()
   const fileInputRef = useRef(null)
 
   const [imageFile, setImageFile] = useState(null)
   const [imagePreview, setImagePreview] = useState(null)
+  const [preUploadedUrl, setPreUploadedUrl] = useState(null)
+
   const [name, setName] = useState('')
   const [category, setCategory] = useState('')
   const [subcategory, setSubcategory] = useState('')
@@ -31,13 +44,91 @@ export default function UploadModal({ onClose }) {
   const [customOccasion, setCustomOccasion] = useState('')
   const [showCustomOccasion, setShowCustomOccasion] = useState(false)
 
-  function handleImageChange(e) {
+  // AI autofill state
+  const [analysing, setAnalysing] = useState(false)
+  const [hasAnalysed, setHasAnalysed] = useState(false)
+  const [aiFilledFields, setAiFilledFields] = useState(new Set())
+
+  function clearAiField(fieldName) {
+    setAiFilledFields((prev) => {
+      const next = new Set(prev)
+      next.delete(fieldName)
+      return next
+    })
+  }
+
+  async function handleImageChange(e) {
     const file = e.target.files[0]
     if (!file) return
     setImageFile(file)
     const reader = new FileReader()
     reader.onload = (ev) => setImagePreview(ev.target.result)
     reader.readAsDataURL(file)
+
+    // Pre-upload to Cloudinary so we have a URL for Claude Vision
+    try {
+      const fd = new FormData()
+      fd.append('image', file)
+      const { data } = await api.post('/api/v1/uploads/image', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      const url = data.data.url
+      setPreUploadedUrl(url)
+
+      // Only analyse once per image selection
+      if (!hasAnalysed) {
+        setAnalysing(true)
+        try {
+          const res = await api.post('/api/v1/wardrobe/analyse-image', { image_url: url })
+          const result = res.data.data || {}
+          applyAnalysis(result)
+        } catch {
+          // Fail silently — user fills manually
+        } finally {
+          setAnalysing(false)
+        }
+      }
+    } catch {
+      // Pre-upload failed — fall back to file upload on submit
+    }
+  }
+
+  function applyAnalysis(result) {
+    const filled = new Set()
+
+    if (result.name) { setName(result.name); filled.add('name') }
+
+    const cat = normalise(result.category)
+    if (cat && CATEGORIES.includes(cat)) { setCategory(cat); filled.add('category') }
+
+    if (result.subcategory) { setSubcategory(result.subcategory); filled.add('subcategory') }
+
+    if (Array.isArray(result.color) && result.color.length > 0) {
+      setColors(result.color.map((c) => c.toLowerCase().trim()))
+      filled.add('colors')
+    }
+
+    const fab = normalise(result.fabric)
+    if (fab && FABRICS.includes(fab)) { setFabric(fab); filled.add('fabric') }
+
+    const formalityFilled = filterToList(result.formality, FORMALITIES)
+    if (formalityFilled.length > 0) { setFormality(formalityFilled); filled.add('formality') }
+
+    const occasionsFilled = filterToList(result.occasions, OCCASIONS)
+    if (occasionsFilled.length > 0) { setOccasions(occasionsFilled); filled.add('occasions') }
+
+    const seasonFilled = filterToList(result.season, SEASONS)
+    if (seasonFilled.length > 0) { setSeason(seasonFilled); filled.add('season') }
+
+    if (result.weight_grams && typeof result.weight_grams === 'number') {
+      setWeightGrams(result.weight_grams)
+      filled.add('weightGrams')
+    }
+
+    if (result.notes) { setNotes(result.notes); filled.add('notes') }
+
+    setAiFilledFields(filled)
+    setHasAnalysed(true)
   }
 
   function handleColorKeyDown(e) {
@@ -46,17 +137,20 @@ export default function UploadModal({ onClose }) {
       const val = colorInput.trim().toLowerCase()
       if (!colors.includes(val)) setColors([...colors, val])
       setColorInput('')
+      clearAiField('colors')
     }
   }
 
   function removeColor(c) {
     setColors(colors.filter((x) => x !== c))
+    clearAiField('colors')
   }
 
   function toggleFormality(f) {
     setFormality((prev) =>
       prev.includes(f) ? prev.filter((x) => x !== f) : [...prev, f]
     )
+    clearAiField('formality')
   }
 
   function toggleOccasion(occ) {
@@ -70,6 +164,7 @@ export default function UploadModal({ onClose }) {
     setOccasions((prev) =>
       prev.includes(occ) ? prev.filter((o) => o !== occ) : [...prev, occ]
     )
+    clearAiField('occasions')
   }
 
   function handleCustomOccasionKeyDown(e) {
@@ -85,11 +180,12 @@ export default function UploadModal({ onClose }) {
     setSeason((prev) =>
       prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]
     )
+    clearAiField('season')
   }
 
   async function handleSubmit(e) {
     e.preventDefault()
-    if (!imageFile) { setError('Add a photo to continue.'); return }
+    if (!imageFile && !preUploadedUrl) { setError('Add a photo to continue.'); return }
     if (!name.trim()) { setError('Give this item a name.'); return }
     if (!category) { setError('Select a category.'); return }
     if (colors.length === 0) { setError('Add at least one color.'); return }
@@ -102,7 +198,6 @@ export default function UploadModal({ onClose }) {
     setError('')
     try {
       const fd = new FormData()
-      fd.append('image', imageFile)
       fd.append('name', name.trim())
       fd.append('category', category)
       fd.append('subcategory', subcategory.trim())
@@ -113,6 +208,16 @@ export default function UploadModal({ onClose }) {
       fd.append('season', JSON.stringify(season))
       fd.append('notes', notes.trim())
       fd.append('weight_grams', String(weightGrams || 300))
+
+      // If image was pre-uploaded for analysis, pass the URL.
+      // Backend re-runs it through upload_wardrobe_item so background removal
+      // and proper folder/naming are always applied.
+      if (preUploadedUrl) {
+        fd.append('image_url', preUploadedUrl)
+      } else {
+        fd.append('image', imageFile)
+      }
+
       await uploadItem(fd)
       onClose()
     } catch {
@@ -120,6 +225,18 @@ export default function UploadModal({ onClose }) {
     } finally {
       setLoading(false)
     }
+  }
+
+  // Helper: label with optional AI dot
+  function AiLabel({ fieldName, children }) {
+    return (
+      <label className={styles.label}>
+        {children}
+        {aiFilledFields.has(fieldName) && (
+          <span className={styles.aiDot} title="Filled by AI — edit to confirm">✦</span>
+        )}
+      </label>
+    )
   }
 
   return (
@@ -148,6 +265,9 @@ export default function UploadModal({ onClose }) {
                 </span>
               )}
             </div>
+            {analysing && (
+              <p className={styles.analysingText}>Analysing item...</p>
+            )}
             <input
               ref={fileInputRef}
               type="file"
@@ -156,25 +276,25 @@ export default function UploadModal({ onClose }) {
               onChange={handleImageChange}
             />
 
-            <div className={styles.fields}>
+            <div className={`${styles.fields} ${analysing ? styles.fieldsAnalysing : ''}`}>
               <div className={styles.field}>
-                <label className={styles.label}>Name</label>
+                <AiLabel fieldName="name">Name</AiLabel>
                 <input
                   className={styles.input}
                   type="text"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e) => { setName(e.target.value); clearAiField('name') }}
                   placeholder="White linen shirt"
                 />
               </div>
 
               <div className={styles.row}>
                 <div className={styles.field}>
-                  <label className={styles.label}>Category</label>
+                  <AiLabel fieldName="category">Category</AiLabel>
                   <select
                     className={styles.select}
                     value={category}
-                    onChange={(e) => setCategory(e.target.value)}
+                    onChange={(e) => { setCategory(e.target.value); clearAiField('category') }}
                   >
                     <option value="">Select</option>
                     {CATEGORIES.map((c) => (
@@ -185,19 +305,19 @@ export default function UploadModal({ onClose }) {
                   </select>
                 </div>
                 <div className={styles.field}>
-                  <label className={styles.label}>Subcategory</label>
+                  <AiLabel fieldName="subcategory">Subcategory</AiLabel>
                   <input
                     className={styles.input}
                     type="text"
                     value={subcategory}
-                    onChange={(e) => setSubcategory(e.target.value)}
+                    onChange={(e) => { setSubcategory(e.target.value); clearAiField('subcategory') }}
                     placeholder="Shirt, blazer..."
                   />
                 </div>
               </div>
 
               <div className={styles.field}>
-                <label className={styles.label}>Color(s)</label>
+                <AiLabel fieldName="colors">Color(s)</AiLabel>
                 <div
                   className={styles.tagInputWrap}
                   onClick={() => document.getElementById('color-input')?.focus()}
@@ -220,17 +340,17 @@ export default function UploadModal({ onClose }) {
                     value={colorInput}
                     onChange={(e) => setColorInput(e.target.value)}
                     onKeyDown={handleColorKeyDown}
-                    placeholder="Type a color, press Enter"
+                    placeholder={colors.length === 0 ? 'Type a color, press Enter' : ''}
                   />
                 </div>
               </div>
 
               <div className={styles.field}>
-                <label className={styles.label}>Fabric</label>
+                <AiLabel fieldName="fabric">Fabric</AiLabel>
                 <select
                   className={styles.select}
                   value={fabric}
-                  onChange={(e) => setFabric(e.target.value)}
+                  onChange={(e) => { setFabric(e.target.value); clearAiField('fabric') }}
                 >
                   <option value="">Select</option>
                   {FABRICS.map((f) => (
@@ -242,7 +362,7 @@ export default function UploadModal({ onClose }) {
               </div>
 
               <div className={styles.field}>
-                <label className={styles.label}>Formality <span className={styles.req}>*</span></label>
+                <AiLabel fieldName="formality">Formality <span className={styles.req}>*</span></AiLabel>
                 <div className={styles.pillGroup}>
                   {FORMALITIES.map((f) => (
                     <button
@@ -258,7 +378,7 @@ export default function UploadModal({ onClose }) {
               </div>
 
               <div className={styles.field}>
-                <label className={styles.label}>Occasions</label>
+                <AiLabel fieldName="occasions">Occasions</AiLabel>
                 <div className={styles.pillGroup}>
                   {OCCASIONS.map((occ) => (
                     <button
@@ -297,7 +417,7 @@ export default function UploadModal({ onClose }) {
               </div>
 
               <div className={styles.field}>
-                <label className={styles.label}>Season</label>
+                <AiLabel fieldName="season">Season</AiLabel>
                 <div className={styles.pillGroup}>
                   {SEASONS.map((s) => (
                     <button
@@ -313,17 +433,17 @@ export default function UploadModal({ onClose }) {
               </div>
 
               <div className={styles.field}>
-                <label className={styles.label}>Notes</label>
+                <AiLabel fieldName="notes">Notes</AiLabel>
                 <textarea
                   className={styles.textarea}
                   value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
+                  onChange={(e) => { setNotes(e.target.value); clearAiField('notes') }}
                   placeholder="How you style it, what it pairs with..."
                 />
               </div>
 
               <div className={styles.field}>
-                <label className={styles.label}>Weight (grams)</label>
+                <AiLabel fieldName="weightGrams">Weight (grams)</AiLabel>
                 <input
                   className={styles.input}
                   type="number"
@@ -331,11 +451,18 @@ export default function UploadModal({ onClose }) {
                   max="5000"
                   step="10"
                   value={weightGrams}
-                  onChange={(e) => setWeightGrams(parseInt(e.target.value) || 300)}
+                  onChange={(e) => { setWeightGrams(parseInt(e.target.value) || 300); clearAiField('weightGrams') }}
                   placeholder="300"
                 />
               </div>
             </div>
+
+            {aiFilledFields.size > 0 && !analysing && (
+              <p className={styles.aiBanner}>
+                <span className={styles.aiBannerIcon}>✦</span>
+                Fields filled by AI — review before saving
+              </p>
+            )}
 
             {error && <p className={styles.error}>{error}</p>}
 
@@ -343,7 +470,7 @@ export default function UploadModal({ onClose }) {
               <button type="button" className={styles.btnSecondary} onClick={onClose}>
                 Cancel
               </button>
-              <button type="submit" className={styles.btnPrimary} disabled={loading}>
+              <button type="submit" className={styles.btnPrimary} disabled={loading || analysing}>
                 {loading ? 'Adding...' : 'Add Item'}
               </button>
             </div>

@@ -69,6 +69,11 @@ class PackingList(BaseModel):
     versatility_note: str = ""         # e.g. "Your jeans work across 3 outfits"
 
 
+class AnchorItem(BaseModel):
+    item_id: str          # wardrobe item ObjectId as string
+    note: str = ""        # optional styling note from the user
+
+
 class InspirationImage(BaseModel):
     url: str
     cloudinary_public_id: str
@@ -100,6 +105,7 @@ class Trip(Document):
     rejected_outfits: List[str] = []
     bags: List[BagEntry] = []
     reserved_items: List[ReservedItem] = []
+    anchor_items: List[AnchorItem] = []
     available_clothing_weight_grams: int = 0
     weight_unit: str = "kg"
     created_at: datetime = Field(default_factory=datetime.utcnow)

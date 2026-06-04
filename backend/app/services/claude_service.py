@@ -142,6 +142,210 @@ async def analyse_avatar_photos(photo_urls: list[str]) -> dict:
     return _safe_json_loads(raw)
 
 
+DAILY_STYLIST_SYSTEM_PROMPT = """You are PACK's personal stylist. You style users for their actual day, every day.
+
+You have access to their real wardrobe. You know what they've worn recently. You understand their style patterns.
+
+Your output: exactly 3 distinct outfit combinations. Each must be a complete look — at minimum top + bottom (or dress) + shoes. Accessories optional but elevate the look.
+
+Rules:
+- Never suggest an item worn in the last 5 days
+- Each of the 3 options must feel genuinely different — different silhouette, different energy, or different colour story
+- Match the occasion AND the vibe. If vibe is "going_out_out", the outfits should reflect that energy
+- "lowkey" means effortless and easy. "dress_to_impress" means reach for the best pieces
+- Consider the weather. Cold: add a layer. Rain: avoid delicate fabrics. Warm: breathable fabrics first
+- For underused items in style_insights: work them in where they fit naturally
+- Write one sentence per outfit. Direct, specific, no filler. Like a real stylist texting you in the morning
+
+Return ONLY valid JSON. No preamble. No markdown fences."""
+
+DAILY_STYLING_TOOLS = [
+    {
+        "name": "get_wardrobe",
+        "description": "Get the user's wardrobe items, optionally filtered by category or occasion",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "categories": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Filter by categories e.g. ['top', 'bottom', 'shoes']",
+                },
+                "occasions": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Filter by occasion tags e.g. ['casual', 'work']",
+                },
+            },
+        },
+    },
+    {
+        "name": "get_recent_outfits",
+        "description": "Get outfits worn in the last N days to avoid repeats",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "days": {
+                    "type": "integer",
+                    "description": "How many days back to check. Default 7.",
+                }
+            },
+        },
+    },
+    {
+        "name": "get_style_insights",
+        "description": "Get this user's style patterns — underused items, preferences by occasion, vibe correlations",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+]
+
+
+def _filter_wardrobe(wardrobe: list, filters: dict) -> list:
+    """Filter wardrobe items by category and/or occasion."""
+    result = wardrobe
+    if filters.get("categories"):
+        result = [i for i in result if i.get("category") in filters["categories"]]
+    if filters.get("occasions"):
+        result = [i for i in result if any(o in i.get("occasions", []) for o in filters["occasions"])]
+    return result
+
+
+def _get_recent(worn_history: list, days: int = 7) -> list:
+    """Return worn outfits from the last N days."""
+    from datetime import date, timedelta
+    cutoff = date.today() - timedelta(days=days)
+    return [e for e in worn_history if e.get("date") and e["date"] >= str(cutoff)]
+
+
+async def generate_daily_outfits(
+    wardrobe: list,
+    worn_history: list,
+    style_insights: dict,
+    context: dict,
+    anchor_items: list = None,
+    inspiration_image_urls: list = None,
+    preferences: dict = None,
+    style_dna: dict = None,
+) -> dict:
+    """Generate 3 daily outfit options from the user's wardrobe. Returns dict with outfits list."""
+    weather = context.get("weather", {})
+    context_note_line = f"\n- Additional context: {context['context_note']}" if context.get("context_note") else ""
+
+    recently_worn_ids = set()
+    for entry in _get_recent(worn_history, days=5):
+        recently_worn_ids.update(entry.get("item_ids", []))
+
+    wardrobe_lines = []
+    for item in wardrobe:
+        colors = ", ".join(item.get("color", [])) if isinstance(item.get("color"), list) else item.get("color", "")
+        wardrobe_lines.append(
+            f'- id:{item["id"]} | {item["name"]} | {item.get("category","")} | {colors} | '
+            f'{item.get("fabric","")} | formality:{item.get("formality","")} | '
+            f'occasions:{",".join(item.get("occasions",[]))} | season:{",".join(item.get("season",[]))} | '
+            f'img:{item.get("image_url","")} | worn_recently:{"yes" if item["id"] in recently_worn_ids else "no"}'
+        )
+
+    wardrobe_block = "\n".join(wardrobe_lines) if wardrobe_lines else "No items in wardrobe yet."
+
+    # Build STYLIST BRIEFING block from user preferences
+    prefs_block = ""
+    if preferences:
+        prefs_lines = []
+        if preferences.get("style_aesthetics"):
+            prefs_lines.append(f"Style aesthetics: {', '.join(preferences['style_aesthetics'])}")
+        if preferences.get("fit_preference"):
+            prefs_lines.append(f"Fit preference: {preferences['fit_preference']}")
+        if preferences.get("colors_to_avoid"):
+            prefs_lines.append(f"Colors to avoid: {', '.join(preferences['colors_to_avoid'])}")
+        if preferences.get("dresses_for"):
+            prefs_lines.append(f"Dresses for: {', '.join(preferences['dresses_for'])}")
+        if preferences.get("climate_preference"):
+            prefs_lines.append(f"Climate preference: {preferences['climate_preference']}")
+        if preferences.get("stylist_notes"):
+            prefs_lines.append(f"Always remember: {preferences['stylist_notes']}")
+        if prefs_lines:
+            prefs_block = "\nSTYLIST BRIEFING — user's explicit constraints, always respected:\n" + "\n".join(prefs_lines) + "\n"
+
+    # Build STYLE DNA block from observed wardrobe patterns
+    daily_dna_block = ""
+    if style_dna:
+        dna_lines = []
+        if style_dna.get("headline"):
+            dna_lines.append(f"Style archetype: {style_dna['headline']}")
+        if style_dna.get("style_keywords"):
+            dna_lines.append(f"Style keywords: {', '.join(style_dna['style_keywords'])}")
+        if style_dna.get("style_gaps"):
+            dna_lines.append(f"Wardrobe gaps: {', '.join(style_dna['style_gaps'])}")
+        if style_dna.get("stylist_paragraph"):
+            dna_lines.append(f"Stylist's read: {style_dna['stylist_paragraph']}")
+        if dna_lines:
+            daily_dna_block = "\nSTYLE DNA — previously observed about this user's wardrobe (use to personalize, not override occasion or briefing):\n" + "\n".join(dna_lines) + "\n"
+
+    # Build anchor items block
+    anchor_block = ""
+    if anchor_items:
+        names = ", ".join(a.get("name", a.get("item_id", "")) for a in anchor_items)
+        anchor_block = f"\n\nITEMS I'M DEFINITELY WEARING TODAY: {names}\nBuild at least one outfit around each of these. They must appear in the suggestions."
+
+    user_message_text = f"""Style me for today.
+
+Today's context:
+- Occasion: {context['occasion']}
+- Mood: {context['mood']}
+- Vibe: {context.get('vibe', 'not specified')}
+- Weather: {weather.get('temp_c', 20)}°C, {weather.get('condition', 'Clear')}. Feels like {weather.get('feels_like_c', 20)}°C. Rain chance: {weather.get('rain_chance', 0)}%.{context_note_line}{anchor_block}{prefs_block}{daily_dna_block}
+My wardrobe:
+{wardrobe_block}
+
+Generate 3 complete outfit options using items from my wardrobe. Avoid items marked worn_recently:yes unless they are anchor items.
+
+Return ONLY this exact JSON — no preamble, no markdown fences:
+{{
+  "outfits": [
+    {{
+      "outfit_index": 0,
+      "item_ids": ["id_from_wardrobe_1", "id_from_wardrobe_2"],
+      "item_names": ["Item name 1", "Item name 2"],
+      "item_image_urls": ["img_url_1", "img_url_2"],
+      "claude_note": "One direct sentence about why this works for today.",
+      "occasion_tags": ["tag1", "tag2"]
+    }},
+    {{ "outfit_index": 1, "item_ids": [], "item_names": [], "item_image_urls": [], "claude_note": "", "occasion_tags": [] }},
+    {{ "outfit_index": 2, "item_ids": [], "item_names": [], "item_image_urls": [], "claude_note": "", "occasion_tags": [] }}
+  ]
+}}"""
+
+    # Build message content — add inspiration images if provided (up to 3)
+    message_content = []
+    if inspiration_image_urls:
+        try:
+            image_blocks = await _fetch_image_content_blocks(inspiration_image_urls, limit=3)
+            if image_blocks:
+                message_content.extend(image_blocks)
+                count = len(inspiration_image_urls)
+                message_content.append({
+                    "type": "text",
+                    "text": f"Above {'are' if count > 1 else 'is'} the user's inspiration {'images' if count > 1 else 'image'}. Study the aesthetic — color palette, silhouettes, mood, styling details — and let it guide the outfit suggestions.\n\n" + user_message_text,
+                })
+        except Exception:
+            message_content.append({"type": "text", "text": user_message_text})
+    else:
+        message_content.append({"type": "text", "text": user_message_text})
+
+    response = await client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=2000,
+        system=DAILY_STYLIST_SYSTEM_PROMPT,
+        messages=[{"role": "user", "content": message_content}],
+    )
+
+    for block in response.content:
+        if hasattr(block, "text"):
+            return _safe_json_loads(block.text)
+
+    return {"outfits": []}
+
+
 async def analyze_vibe(image_urls: list[str]) -> dict:
     """Analyze inspiration images with Claude vision to extract style vibe."""
     image_contents = await _fetch_image_content_blocks(image_urls, limit=5)
@@ -160,7 +364,7 @@ async def analyze_vibe(image_urls: list[str]) -> dict:
     })
 
     response = await client.messages.create(
-        model="claude-haiku-4-5-20251001",
+        model="claude-sonnet-4-6",
         max_tokens=1000,
         system=VIBE_SYSTEM_PROMPT,
         messages=[{"role": "user", "content": image_contents}]
@@ -225,7 +429,7 @@ Return ONLY this JSON — no preamble, no markdown:
 }}"""
 
     response = await client.messages.create(
-        model="claude-haiku-4-5-20251001",
+        model="claude-sonnet-4-6",
         max_tokens=900,
         system=[
             {
@@ -300,7 +504,7 @@ def build_preferences_briefing(prefs: dict) -> str:
     return f"\nSTYLIST BRIEFING — read before generating any outfits:\n{body}\n"
 
 
-async def generate_packing_list(trip: Trip, wardrobe: list[WardrobeItem], style_prefs: dict, preferences: dict = None) -> dict:
+async def generate_packing_list(trip: Trip, wardrobe: list[WardrobeItem], preferences: dict = None, style_dna: dict = None) -> dict:
     """Generate outfit-based packing list using wardrobe + vibe context."""
     prefs = preferences or {}
 
@@ -326,6 +530,21 @@ async def generate_packing_list(trip: Trip, wardrobe: list[WardrobeItem], style_
     month = trip.start_date.strftime("%B")
     dates_str = f"{trip.start_date} to {trip.end_date} ({trip.duration_days} days)"
     occasions_str = ", ".join(trip.occasions) if trip.occasions else "general travel"
+
+    # Style DNA block — observational context about this user's wardrobe patterns
+    dna_block = ""
+    if style_dna:
+        dna_lines = []
+        if style_dna.get("headline"):
+            dna_lines.append(f"Style archetype: {style_dna['headline']}")
+        if style_dna.get("style_keywords"):
+            dna_lines.append(f"Style keywords: {', '.join(style_dna['style_keywords'])}")
+        if style_dna.get("style_gaps"):
+            dna_lines.append(f"Wardrobe gaps to note: {', '.join(style_dna['style_gaps'])}")
+        if style_dna.get("stylist_paragraph"):
+            dna_lines.append(f"Stylist's read: {style_dna['stylist_paragraph']}")
+        if dna_lines:
+            dna_block = "\nSTYLE DNA — what has been previously observed about this user's wardrobe (descriptive context, not directives — trip vibe and preferences above take priority):\n" + "\n".join(dna_lines) + "\n"
 
     # Inspiration vibe block (injected into system prompt if available)
     vibe_block = ""
@@ -356,7 +575,7 @@ Fit preference: {prefs.get("fit_preference") or "not specified"}
 Colors to avoid: {", ".join(prefs.get("colors_to_avoid", [])) or "none"}
 Dresses for: {", ".join(prefs.get("dresses_for", [])) or "not specified"}
 Climate preference: {prefs.get("climate_preference") or "not specified"}
-Always remember: {prefs.get("stylist_notes") or "nothing additional"}{vibe_block}
+Always remember: {prefs.get("stylist_notes") or "nothing additional"}{dna_block}{vibe_block}
 
 WARDROBE — these are the ONLY items you may use:
 {wardrobe_json}
@@ -479,6 +698,22 @@ OUTPUT FORMAT — return this exact JSON structure:
   "packing_summary": "2-3 sentence overview of the full packing strategy for this trip, written editorially"
 }}"""
 
+    # Build anchor items block if the user pinned specific pieces
+    anchor_block = ""
+    if getattr(trip, "anchor_items", None):
+        lines = []
+        for a in trip.anchor_items:
+            note_part = f" — user note: {a.note}" if a.note else ""
+            # Try to find the name from wardrobe for readability
+            matched = next((w for w in wardrobe if str(w.id) == a.item_id), None)
+            item_name = matched.name if matched else f"item {a.item_id}"
+            lines.append(f"  - {item_name} (id: {a.item_id}){note_part}")
+        anchor_block = f"""
+ANCHOR ITEMS — the user is definitely packing these pieces:
+{chr(10).join(lines)}
+These items MUST appear across your outfits. Build looks around them wherever it makes sense. Don't force every anchor into every outfit, but each should feature in at least one.
+"""
+
     user_message = f"""Generate {num_outfits} outfits for this trip.
 
 Wardrobe ({len(wardrobe)} items):
@@ -488,11 +723,11 @@ Trip: {trip.destination}, {dates_str}
 Occasions by day: {occasions_str}
 Available bag weight: {available_weight_kg}kg
 Preferred aesthetics: {", ".join(prefs.get("style_aesthetics", [])) or "not specified"}
-
+{anchor_block}
 Remember: ONLY use item IDs from the wardrobe above. No invented items. No duplicate item IDs within one outfit. Return valid JSON only."""
 
     response = await client.messages.create(
-        model="claude-sonnet-4-5",
+        model="claude-sonnet-4-6",
         max_tokens=8000,
         temperature=1.0,
         messages=[{"role": "user", "content": user_message}],
@@ -589,7 +824,7 @@ Weight budget: {available_weight_kg}kg
 Build the best possible outfit around the kept pieces. Return ONLY valid JSON."""
 
     response = await client.messages.create(
-        model="claude-haiku-4-5-20251001",
+        model="claude-sonnet-4-6",
         max_tokens=1500,
         temperature=1.0,
         messages=[{"role": "user", "content": user_msg}],
@@ -769,7 +1004,7 @@ Write the image generation prompt. Plain white background, studio lighting only.
     content.append({"type": "text", "text": user_text})
 
     response = await client.messages.create(
-        model="claude-haiku-4-5-20251001",
+        model="claude-sonnet-4-6",
         max_tokens=300,
         system=_OUTFIT_PROMPT_SYSTEM,
         messages=[{"role": "user", "content": content}],
@@ -869,7 +1104,7 @@ White background only. No location context."""
     content.append({"type": "text", "text": user_text})
 
     response = await client.messages.create(
-        model="claude-haiku-4-5-20251001",
+        model="claude-sonnet-4-6",
         max_tokens=250,
         system=_LOOKBOOK_PROMPT_SYSTEM,
         messages=[{"role": "user", "content": content}],
@@ -1148,3 +1383,339 @@ async def build_carpet_image(user) -> Optional[str]:
     await user.save()
     logger.info(f"build_carpet_image: saved carpet URL for user {user.id}")
     return permanent_url
+
+
+# ── Item Styling ──────────────────────────────────────────────────────────────
+
+ITEM_STYLIST_SYSTEM_PROMPT = """
+You are an expert fashion stylist. A user wants to style a specific wardrobe item they own.
+You will receive: the anchor item's full details, their complete wardrobe, their style preferences, and optionally: a free-text note about the occasion/vibe, and base64-encoded inspiration images.
+
+Your job:
+1. Reason through the anchor item's color, fabric, formality, and occasions.
+2. If inspiration images are provided, analyze their aesthetic — silhouette, color palette, mood, styling details — and factor that into your suggestions.
+3. Search the user's wardrobe for items that complement the anchor item. Prefer actual wardrobe items. Only suggest non-wardrobe items (like "a white sneaker") if there is truly no match in the wardrobe.
+4. Generate exactly N distinct outfit combinations built around the anchor item. Each outfit must feel like a complete, wearable look.
+5. For each outfit, write a precise fal.ai generation prompt describing EXACTLY how the avatar is wearing every item: is the shirt tucked or untucked, is the jacket open or closed, is the bag held or on shoulder, are sunglasses on the face or on the head, is hair up or down, what exact footwear, every detail.
+
+Return ONLY valid JSON, no markdown, no preamble:
+{
+  "outfits": [
+    {
+      "name": "short evocative name",
+      "occasion": "casual / dinner / travel / etc",
+      "season": ["spring", "summer"],
+      "styling_notes": "why this works, the vibe, what makes it cohesive",
+      "wardrobe_item_ids": ["id1", "id2"],
+      "suggested_additions": ["white low-top sneaker", "gold hoop earrings"],
+      "fal_prompt": "Full-body photo of a young woman. She is wearing [describe anchor item precisely], [describe each wardrobe item precisely and how it is worn — tucked/untucked, open/closed, layered how]. [Hair description]. [Accessories description, how worn]. [Shoes description]. [Bag description, how carried]. Neutral studio background, soft natural light, editorial fashion photography."
+    }
+  ]
+}
+"""
+
+
+async def generate_item_styling_suggestions(
+    anchor_item: dict,
+    wardrobe: list,
+    style_prefs: dict,
+    occasion_note: str = "",
+    inspiration_image_urls: list = [],
+    count: int = 3,
+) -> dict:
+    """Generate N outfit suggestions built around a single anchor wardrobe item."""
+
+    wardrobe_block = "\n".join([
+        f"- ID: {item['id']} | {item['name']} | {item['category']} | colors: {item.get('color', [])} | fabric: {item.get('fabric', '')} | occasions: {item.get('occasions', [])} | formality: {item.get('formality', [])}"
+        for item in wardrobe if item['id'] != anchor_item['id']
+    ])
+
+    text_prompt = f"""
+Anchor item the user wants to style:
+ID: {anchor_item['id']}
+Name: {anchor_item['name']}
+Category: {anchor_item['category']}
+Color: {anchor_item.get('color', [])}
+Fabric: {anchor_item.get('fabric', '')}
+Occasions: {anchor_item.get('occasions', [])}
+Formality: {anchor_item.get('formality', [])}
+Season: {anchor_item.get('season', [])}
+
+User's full wardrobe (excluding the anchor item):
+{wardrobe_block if wardrobe_block else "No other items in wardrobe."}
+
+Style preferences: {style_prefs}
+
+User note (occasion / vibe): {occasion_note if occasion_note else "None provided"}
+
+Generate exactly {count} outfit combinations. Use the wardrobe items above where possible.
+"""
+
+    content_blocks = []
+
+    if inspiration_image_urls:
+        for url in inspiration_image_urls[:3]:
+            try:
+                import httpx as _httpx
+                import base64
+                async with _httpx.AsyncClient() as _http:
+                    r = await _http.get(url, timeout=10)
+                    b64 = base64.b64encode(r.content).decode()
+                    ext = url.split(".")[-1].lower().split("?")[0]
+                    media_type = "image/jpeg" if ext in ("jpg", "jpeg") else f"image/{ext}"
+                content_blocks.append({
+                    "type": "image",
+                    "source": {"type": "base64", "media_type": media_type, "data": b64},
+                })
+            except Exception:
+                pass
+
+    content_blocks.append({"type": "text", "text": text_prompt})
+
+    response = await client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=3000,
+        system=ITEM_STYLIST_SYSTEM_PROMPT,
+        messages=[{"role": "user", "content": content_blocks}],
+    )
+
+    result = _safe_json_loads(response.content[0].text.strip())
+    if not result or "outfits" not in result:
+        return {"outfits": []}
+    return result
+
+
+async def generate_look_avatar_image(
+    fal_prompt: str,
+    user_avatar,
+) -> Optional[str]:
+    """Generate a fal.ai avatar image for an approved look using the saved user avatar."""
+    import fal_client
+    import os
+    os.environ["FAL_KEY"] = settings.FAL_API_KEY
+
+    # Accept Avatar object or dict
+    if hasattr(user_avatar, "base_url"):
+        base_url = user_avatar.base_url
+    elif isinstance(user_avatar, dict):
+        base_url = user_avatar.get("base_url", "")
+    else:
+        return None
+
+    if not base_url:
+        return None
+
+    try:
+        result = await asyncio.to_thread(
+            fal_client.run,
+            "fal-ai/nano-banana-pro/edit",
+            arguments={
+                "prompt": fal_prompt,
+                "image_urls": [base_url],
+                "num_images": 1,
+                "image_size": "portrait_9_16",
+            },
+        )
+        images = result.get("images", [])
+        if not images:
+            return None
+        return images[0]["url"]
+    except Exception as e:
+        logger.error(f"generate_look_avatar_image failed: {e}")
+        return None
+
+
+# ── Wardrobe item image analysis ─────────────────────────────────────
+
+WARDROBE_ANALYSE_SYSTEM_PROMPT = """
+You are a fashion expert and wardrobe cataloguing assistant. A user has uploaded a photo of a clothing item or accessory. Analyze the image carefully and extract structured metadata about the item.
+
+Return ONLY valid JSON, no markdown, no preamble, no explanation:
+{
+  "name": "short descriptive name, e.g. 'White linen shirt' or 'Black leather ankle boot'",
+  "category": "one of: top, bottom, dress, outerwear, shoes, bag, accessory",
+  "subcategory": "specific type e.g. tank top, blazer, midi skirt, loafer, tote bag",
+  "color": ["primary color", "secondary color if present"],
+  "fabric": "one of: linen, cotton, silk, wool, synthetic, denim, leather, other",
+  "formality": ["one or more of: casual, smart-casual, business, formal, elevated-casual, nightlife"],
+  "occasions": ["one or more of: casual, travel, dinner, work, nightlife, beach, sport, formal"],
+  "season": ["one or more of: spring, summer, fall, winter"],
+  "weight_grams": 300,
+  "notes": "any notable details worth capturing: print description, hardware details, special construction, brand if visible, condition, etc."
+}
+
+weight_grams should be an integer estimate. Typical ranges: tops 150-400, bottoms 300-700, shoes 400-900, outerwear 500-1200, bags 200-800, accessories 50-200.
+Be precise with colors (say 'burgundy' not just 'red', 'ivory' not just 'white'). If the image is unclear or shows multiple items, do your best with what's visible. Never return null for required fields — use your best judgment.
+"""
+
+
+async def analyse_wardrobe_item_image(image_url: str) -> dict:
+    """Use Claude Vision to extract wardrobe item metadata from a photo."""
+    try:
+        import httpx, base64
+        async with httpx.AsyncClient() as http:
+            r = await http.get(image_url, timeout=15)
+            b64 = base64.b64encode(r.content).decode()
+            ext = image_url.split(".")[-1].lower().split("?")[0]
+            media_type = "image/jpeg" if ext in ("jpg", "jpeg") else f"image/{ext}"
+            if media_type not in ("image/jpeg", "image/png", "image/webp", "image/gif"):
+                media_type = "image/jpeg"
+
+        response = await client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=600,
+            system=WARDROBE_ANALYSE_SYSTEM_PROMPT,
+            messages=[{
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image",
+                        "source": {"type": "base64", "media_type": media_type, "data": b64}
+                    },
+                    {
+                        "type": "text",
+                        "text": "Analyze this wardrobe item and return the metadata JSON."
+                    }
+                ]
+            }]
+        )
+        return _safe_json_loads(response.content[0].text.strip())
+    except Exception as e:
+        print(f"Wardrobe item analysis failed: {e}")
+        return {}
+
+
+# ── Purchase Analysis ─────────────────────────────────────────────────────────
+
+PURCHASE_ANALYSIS_SYSTEM_PROMPT = """You are PACK's purchase intelligence system. A user is considering buying a new item. You have access to their full wardrobe, style DNA, preferences, and shopping archetype.
+
+Your job is to give an honest, nuanced analysis — not a generic recommendation. You must:
+
+1. Count exactly how many distinct outfit combinations this item enables with their existing wardrobe. Be specific — reason through the actual combinations, then give the count.
+
+2. Assess style alignment honestly. If it matches their DNA, say so. If it doesn't, say so — but also assess whether this is a smart style expansion move or a likely impulse purchase.
+
+3. Check for redundancy — do they already own similar items? If they have 4 black tops, a 5th needs to justify itself clearly.
+
+4. Research the brand quality signal — use what you know about this brand's reputation for quality, sizing accuracy, fabric integrity, and ethical production. Be specific. Mention known issues if any.
+
+5. Calculate cost per outfit if price is available: price ÷ outfit_count. Context: under $15/outfit is excellent, $15–30 is reasonable, $30–50 is acceptable for quality pieces, over $50 needs justification.
+
+6. Assign the user a wardrobe archetype based on their shopping profile and style DNA: Curator (tight cohesive wardrobe), Explorer (varied aesthetics, high rotation), Nostalgic (returns to core aesthetic), Trend Chaser (seasonal high turnover). Frame your analysis through this lens.
+
+7. Write one honest plain-language verdict paragraph. Do not be sycophantic. Ask one genuine question back at the user at the end. Sound like a trusted friend who knows fashion, not a chatbot.
+
+Return ONLY valid JSON — no preamble, no markdown fences:
+{
+  "scores": {
+    "versatility": 0-10,
+    "style_alignment": 0-10,
+    "gap_fill": 0-10,
+    "quality": 0-10,
+    "cost_per_outfit": 0-10,
+    "overall": 0-10
+  },
+  "outfit_count": integer,
+  "outfit_combinations": [
+    {
+      "name": "evocative outfit name",
+      "items": ["wardrobe_item_id_or_description"],
+      "occasion": "casual / dinner / travel / etc",
+      "styling_note": "one sentence on the look"
+    }
+  ],
+  "archetype": "Curator|Explorer|Nostalgic|Trend Chaser",
+  "archetype_note": "one sentence on how this purchase fits or challenges their archetype",
+  "style_expansion_note": "one sentence on whether this is a smart expansion or random departure",
+  "brand_quality_note": "what you know about this brand's quality and any known issues",
+  "verdict": "honest 2-3 sentence verdict ending with a genuine question"
+}"""
+
+
+async def analyse_purchase(product: dict, wardrobe: list, style_context: dict) -> dict:
+    """Full purchase analysis: 6 metrics, brand research, outfit counting, archetype read."""
+
+    wardrobe_block = "\n".join([
+        f"- ID:{item['id']} | {item['name']} | {item['category']} | "
+        f"colors:{item.get('color',[])} | fabric:{item.get('fabric','')} | "
+        f"occasions:{item.get('occasions',[])} | formality:{item.get('formality',[])}"
+        for item in wardrobe
+    ]) or "Wardrobe is empty."
+
+    style_dna = style_context.get("style_dna", {})
+    prefs = style_context.get("preferences", {})
+    shopping = style_context.get("shopping_profile", {})
+
+    prompt = f"""Product the user is considering buying:
+Name: {product.get('name', 'Unknown')}
+Brand: {product.get('brand', 'Unknown')}
+URL: {product.get('url', '')}
+Price: {product.get('price', 'Unknown')} {product.get('currency', 'USD')}
+
+Their wardrobe ({len(wardrobe)} items):
+{wardrobe_block}
+
+Their style DNA:
+Headline: {style_dna.get('headline', 'Not analysed yet')}
+Keywords: {style_dna.get('style_keywords', [])}
+Style gaps: {style_dna.get('style_gaps', [])}
+Stylist's read: {style_dna.get('stylist_paragraph', '')}
+
+Their preferences:
+Aesthetics: {prefs.get('style_aesthetics', [])}
+Fit: {prefs.get('fit_preference', '')}
+Avoid colors: {prefs.get('colors_to_avoid', [])}
+Dresses for: {prefs.get('dresses_for', [])}
+Stylist notes: {prefs.get('stylist_notes', '')}
+
+Shopping profile:
+Current archetype: {shopping.get('archetype', 'unknown — first analysis')}
+Total analyses done: {shopping.get('total_analyses', 0)}
+Impulse ratio: {f"{shopping.get('impulse_ratio', 0):.0%}" if shopping.get('total_analyses', 0) > 0 else 'no data yet'}
+
+Analyse this purchase honestly."""
+
+    content_blocks: list = []
+
+    # Attach product image if available
+    if product.get("image_url"):
+        try:
+            import httpx, base64
+            async with httpx.AsyncClient(timeout=10) as http:
+                r = await http.get(product["image_url"])
+                b64 = base64.b64encode(r.content).decode()
+                raw_type = r.headers.get("content-type", "").split(";")[0].strip()
+                media_type = raw_type if raw_type.startswith("image/") else "image/jpeg"
+            content_blocks.append({
+                "type": "image",
+                "source": {"type": "base64", "media_type": media_type, "data": b64},
+            })
+        except Exception:
+            pass  # image fetch failed — analysis proceeds without it
+
+    content_blocks.append({"type": "text", "text": prompt})
+
+    response = await client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=2000,
+        system=PURCHASE_ANALYSIS_SYSTEM_PROMPT,
+        messages=[{"role": "user", "content": content_blocks}],
+    )
+
+    result = _safe_json_loads(response.content[0].text.strip())
+
+    # Build outfit collages: product image first, then matched wardrobe item images
+    wardrobe_map = {item["id"]: item.get("image_url", "") for item in wardrobe}
+    outfit_collages = []
+    for combo in result.get("outfit_combinations", [])[:3]:
+        urls: list[str] = []
+        if product.get("image_url"):
+            urls.append(product["image_url"])
+        for ref in combo.get("items", [])[:3]:
+            img = wardrobe_map.get(ref, "")
+            if img:
+                urls.append(img)
+        outfit_collages.append(urls)
+
+    result["outfit_collages"] = outfit_collages
+    return result

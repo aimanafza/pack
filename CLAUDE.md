@@ -85,7 +85,7 @@ All screenshots are in `/references/`. Claude Code must view them before writing
 - **State:** Keep global state minimal; prefer local component state unless data is shared across 3+ components
 - **API pattern:** FastAPI routes, `/api/v1/` prefix, snake_case for all Python variables
 
-### PACK (CP192 Mini Capstone)
+### PACK
 - **Palette:** `#FFFFFF` primary bg, `#F7F5F2` secondary bg, `#EFECE7` tertiary, `#1A1A18` text primary — no other colors, no gradients
 - **Typography:** Cormorant Garamond (all display/headlines), DM Sans (all UI/body) — nothing else
 - **Aesthetic:** Editorial luxury-minimal. SSQRD meets personal stylist. Fashion magazine, not travel app.
@@ -216,7 +216,7 @@ PRIORITY: [High / Medium / Low]
 | Project | Status | Stack | Notes |
 |---|---|---|---|
 | SwapCircle | Live (Vercel + Railway) | React, FastAPI, MongoDB, Firebase | Pending: search bar (waiting on PR merge) |
-| PACK | In design/build | React + Vite + Three.js, FastAPI, MongoDB, Claude API | CP192 mini capstone |
+| PACK | In design/build | React + Vite + Three.js, FastAPI, MongoDB, Claude API | production product for public launch and investor funding |
 | Undercurrent | In design | Figma | FigBuild 2026, solo entry |
 | Portfolio | Live, iterating | Vercel | Museum/gallery aesthetic |
 
