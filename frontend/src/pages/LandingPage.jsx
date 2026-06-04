@@ -67,7 +67,50 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Section 3 — Bottom CTA */}
+      {/* Section 3 — Extension */}
+      <section className={styles.extensionSection}>
+        <p className={styles.sectionLabel}>THE PACK EXTENSION</p>
+        <h2 className={styles.extensionHeadline}>Your wardrobe, everywhere you shop.</h2>
+        <p className={styles.extensionSubtext}>
+          See how any item fits with what you already own — before you buy it.
+        </p>
+
+        <a href="#" className={styles.chromeBtn}>
+          {/* Chrome logo — coloured circle mark */}
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <circle cx="9" cy="9" r="9" fill="#fff" fillOpacity="0.12"/>
+            <path d="M9 5.4a3.6 3.6 0 1 1 0 7.2A3.6 3.6 0 0 1 9 5.4Z" fill="#fff"/>
+            <path d="M9 5.4H15.54A8.1 8.1 0 0 0 1.8 7.2L5.07 12.96A3.6 3.6 0 0 1 9 5.4Z" fill="#EA4335"/>
+            <path d="M9 5.4H15.54A8.1 8.1 0 0 1 16.2 9a8.1 8.1 0 0 1-4.14 7.02L8.82 10.08A3.6 3.6 0 0 0 12.6 9a3.6 3.6 0 0 0-.06-.6H9Z" fill="#FBBC05"/>
+            <path d="M9 12.6a3.6 3.6 0 0 1-3.93-4.04L1.8 7.2A8.1 8.1 0 0 0 9 17.1a8.1 8.1 0 0 0 3.06-.6L8.82 10.08A3.59 3.59 0 0 1 9 12.6Z" fill="#34A853"/>
+            <path d="M9 5.4H15.54A8.1 8.1 0 0 0 1.8 7.2L5.07 12.96A3.6 3.6 0 0 1 5.4 9a3.6 3.6 0 0 1 3.6-3.6Z" fill="#4285F4"/>
+          </svg>
+          Add to Chrome — Free
+        </a>
+
+        <div className={styles.extensionFlows}>
+          <div className={styles.extensionFlow}>
+            <p className={styles.flowLabel}>NEW TO PACK</p>
+            <p className={styles.flowText}>
+              Create your account, build your wardrobe once, then add the extension.
+              Every item you browse gets analysed against what you already own.
+            </p>
+          </div>
+          <div className={styles.extensionFlow}>
+            <p className={styles.flowLabel}>ALREADY A MEMBER</p>
+            <p className={styles.flowText}>
+              Add the extension to Chrome, click Connect to PACK, and sign in.
+              Your wardrobe and style profile load automatically — no setup needed.
+            </p>
+          </div>
+        </div>
+
+        <p className={styles.extensionAvailability}>
+          Also available for Safari · Android support coming soon
+        </p>
+      </section>
+
+      {/* Section 4 — Bottom CTA */}
       <section className={styles.bottomCta}>
         <h2 className={styles.bottomHeadline}>Every trip deserves the right wardrobe.</h2>
         <Link to="/auth" className={styles.ctaBtn}>Create Your Account</Link>
