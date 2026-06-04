@@ -1,0 +1,305 @@
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;}
+.lb{font-family:'DM Sans',sans-serif;background:#f4f3ef;color:#1a1a1a;user-select:none;}
+.lb-section-label{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:#999;padding:1.5rem 1.5rem .75rem;}
+
+.lb-card{position:relative;background:#f4f3ef;overflow:hidden;}
+.lb-inner{display:grid;grid-template-columns:1fr 1fr;min-height:480px;}
+
+/* LEFT — figure */
+.lb-fig-side{position:relative;display:flex;align-items:flex-end;justify-content:center;background:#eceae4;overflow:hidden;min-height:480px;}
+.lb-fig-side::after{content:'';position:absolute;bottom:0;left:0;right:0;height:80px;background:linear-gradient(transparent,rgba(236,234,228,.7));}
+
+.figure-wrap{width:55%;height:92%;position:absolute;bottom:0;display:flex;align-items:flex-end;justify-content:center;}
+
+/* SVG silhouette figure */
+.fig-svg{width:100%;height:100%;}
+
+.lb-look-label{position:absolute;bottom:16px;left:18px;z-index:2;}
+.lb-look-num{font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:rgba(0,0,0,.38);display:block;margin-bottom:2px;}
+.lb-look-name{font-family:'Cormorant Garamond',serif;font-size:18px;font-style:italic;font-weight:300;color:#1a1a1a;line-height:1.15;}
+
+/* RIGHT — items */
+.lb-items-side{display:flex;flex-direction:column;padding:22px 18px 18px;gap:14px;border-left:.5px solid rgba(0,0,0,.08);}
+.lb-occ-row{display:flex;gap:6px;flex-wrap:wrap;}
+.lb-tag{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:#888;background:rgba(0,0,0,.05);padding:3px 9px;border-radius:20px;}
+
+.lb-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;flex:1;}
+.lb-item{background:#fff;border:.5px solid rgba(0,0,0,.09);border-radius:6px;display:flex;flex-direction:column;overflow:hidden;cursor:pointer;transition:border-color .15s,transform .12s;position:relative;}
+.lb-item:hover{border-color:rgba(0,0,0,.28);transform:translateY(-2px);}
+.lb-item-thumb{flex:1;display:flex;align-items:center;justify-content:center;padding:8px;background:#faf9f7;aspect-ratio:1;}
+.lb-item-thumb svg{width:40px;height:40px;opacity:.3;}
+.lb-item-foot{padding:5px 7px;border-top:.5px solid rgba(0,0,0,.06);}
+.lb-item-name{font-size:9.5px;color:#1a1a1a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.lb-item-cat{font-size:8.5px;color:#aaa;text-transform:uppercase;letter-spacing:.06em;margin-top:1px;}
+.lb-item-arrow{position:absolute;top:6px;right:7px;opacity:0;font-size:9px;color:#999;transition:opacity .15s;}
+.lb-item:hover .lb-item-arrow{opacity:1;}
+
+.lb-note{font-family:'Cormorant Garamond',serif;font-size:12.5px;font-style:italic;font-weight:300;color:#666;line-height:1.6;border-top:.5px solid rgba(0,0,0,.07);padding-top:12px;}
+
+/* NAV */
+.lb-nav{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-top:.5px solid rgba(0,0,0,.08);}
+.lb-nav-dots{display:flex;gap:6px;align-items:center;}
+.lb-dot{width:5px;height:5px;border-radius:50%;background:rgba(0,0,0,.15);cursor:pointer;transition:background .2s,width .2s;}
+.lb-dot.active{background:#1a1a1a;width:16px;border-radius:3px;}
+.lb-nav-btn{background:none;border:.5px solid rgba(0,0,0,.18);width:30px;height:30px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;color:#555;transition:background .15s;}
+.lb-nav-btn:hover{background:rgba(0,0,0,.06);}
+.lb-nav-btns{display:flex;gap:8px;}
+
+.lb-slide{display:none;}
+.lb-slide.visible{display:block;}
+
+/* transition */
+.lb-inner{transition:opacity .25s;}
+</style>
+
+<div class="lb">
+  <div class="lb-section-label">Lookbook</div>
+
+  <div class="lb-card">
+
+    <!-- SLIDE 1 -->
+    <div class="lb-slide visible" id="slide-0">
+      <div class="lb-inner">
+        <div class="lb-fig-side">
+          <div class="figure-wrap">
+            <svg class="fig-svg" viewBox="0 0 160 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <!-- head -->
+              <ellipse cx="80" cy="38" rx="22" ry="24" fill="#c8b89a" opacity=".6"/>
+              <!-- neck -->
+              <rect x="73" y="58" width="14" height="14" rx="2" fill="#c8b89a" opacity=".5"/>
+              <!-- body / dress -->
+              <path d="M52 72 Q60 68 80 68 Q100 68 108 72 L114 160 Q80 175 46 160 Z" fill="#d4cfc7" opacity=".7"/>
+              <!-- skirt flare -->
+              <path d="M46 155 Q30 190 28 230 L132 230 Q130 190 114 155 Z" fill="#ccc8c0" opacity=".65"/>
+              <!-- left leg -->
+              <path d="M55 228 Q52 290 54 360 Q60 365 68 360 Q70 290 70 228 Z" fill="#c8b89a" opacity=".5"/>
+              <!-- right leg -->
+              <path d="M90 228 Q90 290 92 360 Q100 365 106 360 Q108 290 105 228 Z" fill="#c8b89a" opacity=".5"/>
+              <!-- shoes suggestion -->
+              <ellipse cx="61" cy="362" rx="12" ry="5" fill="#b0a898" opacity=".5"/>
+              <ellipse cx="98" cy="362" rx="12" ry="5" fill="#b0a898" opacity=".5"/>
+              <!-- left arm -->
+              <path d="M52 74 Q38 100 36 145 Q42 148 48 145 Q54 105 60 78 Z" fill="#c8c4bc" opacity=".6"/>
+              <!-- right arm + bag -->
+              <path d="M108 74 Q122 100 124 145 Q118 148 112 145 Q106 105 100 78 Z" fill="#c8c4bc" opacity=".6"/>
+              <!-- bag -->
+              <rect x="118" y="140" width="22" height="16" rx="3" fill="#b0a898" opacity=".55"/>
+            </svg>
+          </div>
+          <div class="lb-look-label">
+            <span class="lb-look-num">Look 01</span>
+            <span class="lb-look-name">Day 1 — Arrival</span>
+          </div>
+        </div>
+
+        <div class="lb-items-side">
+          <div class="lb-occ-row">
+            <span class="lb-tag">Sightseeing</span>
+            <span class="lb-tag">Casual</span>
+          </div>
+          <div class="lb-grid">
+            <div class="lb-item" title="Cotton Dress">
+              <div class="lb-item-thumb">
+                <svg viewBox="0 0 40 40"><path d="M12 8 Q20 4 28 8 L32 16 L24 14 L24 36 L16 36 L16 14 L8 16 Z" fill="#c8c4bc"/></svg>
+              </div>
+              <div class="lb-item-foot"><div class="lb-item-name">Cotton Dress</div><div class="lb-item-cat">Dress</div></div>
+              <span class="lb-item-arrow">↗</span>
+            </div>
+            <div class="lb-item" title="Ballet Flats">
+              <div class="lb-item-thumb">
+                <svg viewBox="0 0 40 40"><path d="M6 24 Q10 18 22 18 Q32 18 36 22 Q34 28 20 28 Q8 28 6 24 Z" fill="#b8b0a4"/></svg>
+              </div>
+              <div class="lb-item-foot"><div class="lb-item-name">Ballet Flats</div><div class="lb-item-cat">Shoes</div></div>
+              <span class="lb-item-arrow">↗</span>
+            </div>
+            <div class="lb-item" title="Crossbody Bag">
+              <div class="lb-item-thumb">
+                <svg viewBox="0 0 40 40"><rect x="8" y="16" width="24" height="16" rx="3" fill="#b8b0a4"/><path d="M16 16 Q16 10 20 10 Q24 10 24 16" stroke="#b8b0a4" stroke-width="2" fill="none"/></svg>
+              </div>
+              <div class="lb-item-foot"><div class="lb-item-name">Crossbody Bag</div><div class="lb-item-cat">Bag</div></div>
+              <span class="lb-item-arrow">↗</span>
+            </div>
+          </div>
+          <div class="lb-note">"Your arrival uniform — wrinkle-resistant, breathable, and elegant enough for an evening passeggiata."</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 2 -->
+    <div class="lb-slide" id="slide-1">
+      <div class="lb-inner">
+        <div class="lb-fig-side" style="background:#e6e2db;">
+          <div class="figure-wrap">
+            <svg class="fig-svg" viewBox="0 0 160 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <ellipse cx="80" cy="38" rx="22" ry="24" fill="#c8b89a" opacity=".6"/>
+              <rect x="73" y="58" width="14" height="14" rx="2" fill="#c8b89a" opacity=".5"/>
+              <!-- tube top -->
+              <rect x="56" y="72" width="48" height="36" rx="2" fill="#b8b4c0" opacity=".7"/>
+              <!-- oversized cardigan/sweater draped -->
+              <path d="M44 72 Q50 68 56 72 L52 148 Q46 150 40 148 Z" fill="#c0bdb0" opacity=".6"/>
+              <path d="M116 72 Q110 68 104 72 L108 148 Q114 150 120 148 Z" fill="#c0bdb0" opacity=".6"/>
+              <path d="M56 72 L104 72 L108 150 L52 150 Z" fill="#ccc8be" opacity=".5"/>
+              <!-- jeans -->
+              <path d="M52 148 L58 290 L76 290 L80 220 L84 290 L102 290 L108 148 Z" fill="#8890a8" opacity=".65"/>
+              <!-- legs -->
+              <rect x="59" y="288" width="16" height="70" rx="3" fill="#8890a8" opacity=".6"/>
+              <rect x="85" y="288" width="16" height="70" rx="3" fill="#8890a8" opacity=".6"/>
+              <!-- shoes -->
+              <ellipse cx="67" cy="360" rx="12" ry="5" fill="#504840" opacity=".5"/>
+              <ellipse cx="93" cy="360" rx="12" ry="5" fill="#504840" opacity=".5"/>
+              <!-- bag strap -->
+              <line x1="104" y1="110" x2="126" y2="150" stroke="#a09888" stroke-width="2" opacity=".5"/>
+              <rect x="120" y="148" width="20" height="14" rx="3" fill="#a09888" opacity=".55"/>
+            </svg>
+          </div>
+          <div class="lb-look-label">
+            <span class="lb-look-num">Look 02</span>
+            <span class="lb-look-name">Day 2 — Dinner Out</span>
+          </div>
+        </div>
+
+        <div class="lb-items-side">
+          <div class="lb-occ-row">
+            <span class="lb-tag">Dinners Out</span>
+            <span class="lb-tag">Nightlife</span>
+          </div>
+          <div class="lb-grid">
+            <div class="lb-item">
+              <div class="lb-item-thumb">
+                <svg viewBox="0 0 40 40"><rect x="10" y="14" width="20" height="14" rx="2" fill="#b8b4c0"/><path d="M10 18 L6 28 M30 18 L34 28" stroke="#b8b4c0" stroke-width="2"/></svg>
+              </div>
+              <div class="lb-item-foot"><div class="lb-item-name">Lace Tube Top</div><div class="lb-item-cat">Top</div></div>
+              <span class="lb-item-arrow">↗</span>
+            </div>
+            <div class="lb-item">
+              <div class="lb-item-thumb">
+                <svg viewBox="0 0 40 40"><path d="M12 8 L14 32 L20 32 L20 20 L20 32 L26 32 L28 8 Z" fill="#8890a8"/></svg>
+              </div>
+              <div class="lb-item-foot"><div class="lb-item-name">Low-rise Denim</div><div class="lb-item-cat">Bottom</div></div>
+              <span class="lb-item-arrow">↗</span>
+            </div>
+            <div class="lb-item">
+              <div class="lb-item-thumb">
+                <svg viewBox="0 0 40 40"><path d="M6 22 Q8 14 20 14 Q28 14 30 22 Q28 32 20 32 Q8 32 6 22 Z" fill="#ccc8be"/><line x1="20" y1="14" x2="20" y2="8" stroke="#ccc8be" stroke-width="3"/></svg>
+              </div>
+              <div class="lb-item-foot"><div class="lb-item-name">Wool Cardigan</div><div class="lb-item-cat">Layer</div></div>
+              <span class="lb-item-arrow">↗</span>
+            </div>
+            <div class="lb-item">
+              <div class="lb-item-thumb">
+                <svg viewBox="0 0 40 40"><ellipse cx="20" cy="24" rx="12" ry="8" fill="#504840"/><rect x="10" y="18" width="20" height="4" rx="1" fill="#403830"/></svg>
+              </div>
+              <div class="lb-item-foot"><div class="lb-item-name">Loafers</div><div class="lb-item-cat">Shoes</div></div>
+              <span class="lb-item-arrow">↗</span>
+            </div>
+            <div class="lb-item">
+              <div class="lb-item-thumb">
+                <svg viewBox="0 0 40 40"><rect x="8" y="16" width="24" height="16" rx="3" fill="#a09888"/><path d="M16 16 Q16 10 20 10 Q24 10 24 16" stroke="#a09888" stroke-width="2" fill="none"/></svg>
+              </div>
+              <div class="lb-item-foot"><div class="lb-item-name">Shoulder Bag</div><div class="lb-item-cat">Bag</div></div>
+              <span class="lb-item-arrow">↗</span>
+            </div>
+          </div>
+          <div class="lb-note">"Layer the silk tube top beneath the wool sweater draped off one shoulder — the unexpected detail that reads continental and completely effortless."</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 3 -->
+    <div class="lb-slide" id="slide-2">
+      <div class="lb-inner">
+        <div class="lb-fig-side" style="background:#e8e4dc;">
+          <div class="figure-wrap">
+            <svg class="fig-svg" viewBox="0 0 160 420" fill="none">
+              <ellipse cx="80" cy="38" rx="22" ry="24" fill="#c8b89a" opacity=".6"/>
+              <rect x="73" y="58" width="14" height="14" rx="2" fill="#c8b89a" opacity=".5"/>
+              <!-- blazer -->
+              <path d="M50 70 Q60 66 80 70 Q100 66 110 70 L116 160 L80 165 L44 160 Z" fill="#c4b8a4" opacity=".7"/>
+              <path d="M70 70 L72 140 L80 145 L88 140 L90 70" fill="#d8d4cc" opacity=".6"/>
+              <!-- trousers wide -->
+              <path d="M44 158 L50 310 L72 310 L80 240 L88 310 L110 310 L116 158 Z" fill="#d0ccc4" opacity=".65"/>
+              <rect x="51" y="308" width="20" height="55" rx="3" fill="#d0ccc4" opacity=".6"/>
+              <rect x="89" y="308" width="20" height="55" rx="3" fill="#d0ccc4" opacity=".6"/>
+              <ellipse cx="61" cy="365" rx="13" ry="5" fill="#807868" opacity=".5"/>
+              <ellipse cx="99" cy="365" rx="13" ry="5" fill="#807868" opacity=".5"/>
+              <!-- left arm -->
+              <path d="M50 72 Q36 100 34 148 Q40 150 46 148 Q52 106 58 76 Z" fill="#c4b8a4" opacity=".65"/>
+              <rect x="28" y="145" width="22" height="14" rx="3" fill="#a09080" opacity=".5"/>
+            </svg>
+          </div>
+          <div class="lb-look-label">
+            <span class="lb-look-num">Look 03</span>
+            <span class="lb-look-name">Day 3 — Rooftop</span>
+          </div>
+        </div>
+
+        <div class="lb-items-side">
+          <div class="lb-occ-row">
+            <span class="lb-tag">Elevated Casual</span>
+            <span class="lb-tag">Nightlife</span>
+          </div>
+          <div class="lb-grid">
+            <div class="lb-item">
+              <div class="lb-item-thumb">
+                <svg viewBox="0 0 40 40"><path d="M10 8 L14 32 L20 32 L26 32 L30 8 L24 10 L20 16 L16 10 Z" fill="#c4b8a4"/></svg>
+              </div>
+              <div class="lb-item-foot"><div class="lb-item-name">Linen Blazer</div><div class="lb-item-cat">Layer</div></div>
+              <span class="lb-item-arrow">↗</span>
+            </div>
+            <div class="lb-item">
+              <div class="lb-item-thumb">
+                <svg viewBox="0 0 40 40"><path d="M10 8 L12 32 L20 32 L28 32 L30 8 Z" fill="#d0ccc4"/></svg>
+              </div>
+              <div class="lb-item-foot"><div class="lb-item-name">Wide Trousers</div><div class="lb-item-cat">Bottom</div></div>
+              <span class="lb-item-arrow">↗</span>
+            </div>
+            <div class="lb-item">
+              <div class="lb-item-thumb">
+                <svg viewBox="0 0 40 40"><rect x="8" y="18" width="24" height="14" rx="3" fill="#a09080"/><path d="M14 18 L14 14 Q14 10 20 10 Q26 10 26 14 L26 18" stroke="#a09080" stroke-width="2" fill="none"/></svg>
+              </div>
+              <div class="lb-item-foot"><div class="lb-item-name">Tote Bag</div><div class="lb-item-cat">Bag</div></div>
+              <span class="lb-item-arrow">↗</span>
+            </div>
+            <div class="lb-item">
+              <div class="lb-item-thumb">
+                <svg viewBox="0 0 40 40"><ellipse cx="20" cy="26" rx="13" ry="7" fill="#807868"/><rect x="10" y="20" width="20" height="4" rx="2" fill="#706858"/></svg>
+              </div>
+              <div class="lb-item-foot"><div class="lb-item-name">Mules</div><div class="lb-item-cat">Shoes</div></div>
+              <span class="lb-item-arrow">↗</span>
+            </div>
+          </div>
+          <div class="lb-note">"The linen blazer over wide trousers creates architecture without effort — thrown over anything, it means business."</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /lb-card -->
+
+  <!-- NAV BAR -->
+  <div class="lb-nav">
+    <button class="lb-nav-btn" id="prevBtn" onclick="changeSlide(-1)">←</button>
+    <div class="lb-nav-dots" id="dots">
+      <div class="lb-dot active" onclick="goTo(0)"></div>
+      <div class="lb-dot" onclick="goTo(1)"></div>
+      <div class="lb-dot" onclick="goTo(2)"></div>
+    </div>
+    <button class="lb-nav-btn" id="nextBtn" onclick="changeSlide(1)">→</button>
+  </div>
+
+</div>
+
+<script>
+let current = 0;
+const total = 3;
+function goTo(n) {
+  document.getElementById('slide-' + current).classList.remove('visible');
+  document.querySelectorAll('.lb-dot')[current].classList.remove('active');
+  current = (n + total) % total;
+  document.getElementById('slide-' + current).classList.add('visible');
+  document.querySelectorAll('.lb-dot')[current].classList.add('active');
+}
+function changeSlide(dir) { goTo(current + dir); }
+</script>

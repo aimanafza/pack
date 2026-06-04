@@ -43,6 +43,16 @@ function IconProfile() {
   )
 }
 
+function IconToday() {
+  return (
+    <svg className={styles.navIcon} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <rect x="2" y="3" width="12" height="11" rx="1.5" />
+      <path d="M5 1v3M11 1v3M2 7h12" strokeLinecap="round" />
+      <circle cx="8" cy="11" r="1.2" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
+
 export default function Sidebar() {
   const { user, token, setUser } = useStore()
   const { logout } = useAuth()
@@ -59,6 +69,7 @@ export default function Sidebar() {
   const navItems = [
     { to: '/dashboard', label: 'Dashboard', Icon: IconDashboard },
     { to: '/wardrobe', label: 'Wardrobe', Icon: IconWardrobe },
+    { to: '/daily', label: 'Daily', Icon: IconToday },
     { to: '/trips', label: 'Trips', Icon: IconTrips },
     { to: '/profile', label: 'Profile', Icon: IconProfile },
   ]

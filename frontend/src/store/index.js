@@ -41,6 +41,21 @@ const useStore = create((set, get) => ({
   packingError: null,
   setPackingLoading: (v) => set({ packingLoading: v }),
   setPackingError: (e) => set({ packingError: e }),
+
+  // Daily styling slice
+  todayLook: null,
+  lookHistory: [],
+  dailyLoading: false,
+  dailyError: null,
+  setTodayLook: (look) => set({ todayLook: look }),
+  setLookHistory: (history) => set({ lookHistory: history }),
+  setDailyLoading: (v) => set({ dailyLoading: v }),
+  setDailyError: (e) => set({ dailyError: e }),
+  chooseDailyOutfit: (outfitIndex) => set((s) => ({
+    todayLook: s.todayLook
+      ? { ...s.todayLook, chosen_outfit_index: outfitIndex, status: 'chosen' }
+      : null
+  })),
 }))
 
 export default useStore

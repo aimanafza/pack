@@ -59,15 +59,15 @@ async def suggest_packing_list(
         raise HTTPException(status_code=404, detail="Trip not found")
 
     wardrobe = await WardrobeItem.find(WardrobeItem.user_id == current_user.id).to_list()
-    style_prefs = current_user.style_preferences.model_dump()
     preferences = current_user.preferences.model_dump()
+    style_dna = current_user.style_dna.model_dump() if current_user.style_dna else None
 
     # Build lookup maps for validation and image injection
     wardrobe_by_id = {str(item.id): item for item in wardrobe}
     wardrobe_ids = set(wardrobe_by_id.keys())
 
     try:
-        raw = await generate_packing_list(trip, wardrobe, style_prefs, preferences)
+        raw = await generate_packing_list(trip, wardrobe, preferences=preferences, style_dna=style_dna)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Stylist error: {str(e)}")
 

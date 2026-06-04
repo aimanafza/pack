@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     FRONTEND_URL: str = "http://localhost:5173"
 
     FAL_API_KEY: str = ""
+    OPENWEATHER_API_KEY: str = ""
 
     RESEND_API_KEY: str = ""
     FRONTEND_URL: str = "http://localhost:5173"

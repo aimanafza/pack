@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
 import { useTrips } from '../hooks/useTrips.js'
@@ -19,6 +19,7 @@ export default function TripsPage() {
   const { fetchWardrobe } = useWardrobe()
   const navigate = useNavigate()
   const { goToNewTrip, gateOpen, missing, closeGate } = useNewTrip()
+  const [search, setSearch] = useState('')
 
   useEffect(() => {
     fetchTrips()
@@ -29,11 +30,20 @@ export default function TripsPage() {
     await deleteTrip(id)
   }
 
-  const upcoming = trips
+  const q = search.trim().toLowerCase()
+
+  const filtered = q
+    ? trips.filter((t) =>
+        t.name?.toLowerCase().includes(q) ||
+        t.destination?.toLowerCase().includes(q)
+      )
+    : trips
+
+  const upcoming = filtered
     .filter(isUpcoming)
     .sort((a, b) => new Date(a.start_date) - new Date(b.start_date))
 
-  const past = trips
+  const past = filtered
     .filter((t) => !isUpcoming(t))
     .sort((a, b) => new Date(b.end_date) - new Date(a.end_date))
 
@@ -42,7 +52,7 @@ export default function TripsPage() {
       <div className={styles.header}>
         <div className={styles.headerLeft}>
           <p className={styles.pageLabel}>The Journeys</p>
-          <h1 className={styles.headline}>Your Trips</h1>
+          <h1 className={styles.headline}>My Trips</h1>
         </div>
         <div className={styles.headerRight}>
           {trips.length > 0 && (
@@ -53,6 +63,25 @@ export default function TripsPage() {
           <button className={styles.btnAdd} onClick={goToNewTrip}>
             New Trip
           </button>
+        </div>
+      </div>
+
+      <div className={styles.searchRow}>
+        <div className={styles.searchWrap}>
+          <svg className={styles.searchIcon} width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <circle cx="6.5" cy="6.5" r="4.5" />
+            <path d="M10.5 10.5l3 3" strokeLinecap="round" />
+          </svg>
+          <input
+            className={styles.searchInput}
+            type="text"
+            placeholder="Search trips..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          {search && (
+            <button className={styles.searchClear} onClick={() => setSearch('')} type="button" aria-label="Clear search">×</button>
+          )}
         </div>
       </div>
 

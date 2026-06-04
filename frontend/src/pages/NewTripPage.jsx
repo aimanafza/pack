@@ -1,9 +1,11 @@
 import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { AnimatePresence } from 'framer-motion'
 import { useTrips } from '../hooks/useTrips.js'
 import api from '../utils/api.js'
 import styles from './NewTripPage.module.css'
 import { CarryOnIcon, CheckedBagIcon, HandbagIcon, BackpackIcon } from '../components/ui/BagIllustration.jsx'
+import WardrobePickerModal from '../components/trips/WardrobePickerModal.jsx'
 
 const OCCASIONS = [
   'Sightseeing',
@@ -95,6 +97,10 @@ export default function NewTripPage() {
   const [reservedItems, setReservedItems] = useState([])
   const [newReservedName, setNewReservedName] = useState('')
   const [newReservedWeight, setNewReservedWeight] = useState('')
+
+  // Anchor items
+  const [anchorItems, setAnchorItems] = useState([])
+  const [showPickerModal, setShowPickerModal] = useState(false)
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -194,6 +200,32 @@ export default function NewTripPage() {
     })
   }
 
+  // ── Anchor items ───────────────────────────────────────────────────
+
+  function handlePickerConfirm(selectedItems) {
+    // Merge with existing: keep notes for items already picked, add new ones
+    setAnchorItems((prev) => {
+      const existingMap = new Map(prev.map((a) => [a.item_id, a]))
+      return selectedItems.map((item) => {
+        const id = item.id || item._id
+        return existingMap.has(id)
+          ? existingMap.get(id)
+          : { item_id: id, name: item.name, image_url: item.image_url, note: '' }
+      })
+    })
+    setShowPickerModal(false)
+  }
+
+  function updateAnchorNote(item_id, note) {
+    setAnchorItems((prev) =>
+      prev.map((a) => (a.item_id === item_id ? { ...a, note } : a))
+    )
+  }
+
+  function removeAnchorItem(item_id) {
+    setAnchorItems((prev) => prev.filter((a) => a.item_id !== item_id))
+  }
+
   // ── Submit ─────────────────────────────────────────────────────────
 
   async function handleSubmit(e) {
@@ -227,6 +259,7 @@ export default function NewTripPage() {
         bags: bagsPayload,
         reserved_items: reservedItems,
         weight_unit: 'kg',
+        anchor_items: anchorItems.map((a) => ({ item_id: a.item_id, note: a.note })),
       })
 
       if (inspirationFiles.length > 0) {
@@ -336,7 +369,57 @@ export default function NewTripPage() {
           </div>
         </div>
 
-        {/* 6. Notes */}
+        {/* 6. Anchor items */}
+        <div className={styles.field}>
+          <label className={styles.label}>Items You're Definitely Bringing <span className={styles.labelOptional}>optional</span></label>
+          <p className={styles.inspirationSubtext}>
+            Select pieces from your wardrobe. Your stylist will build outfits around them.
+          </p>
+
+          {anchorItems.length > 0 && (
+            <div className={styles.anchorList}>
+              {anchorItems.map((a) => (
+                <div key={a.item_id} className={styles.anchorRow}>
+                  <div className={styles.anchorImg}>
+                    {a.image_url ? (
+                      <img src={a.image_url} alt={a.name} className={styles.anchorPhoto} />
+                    ) : (
+                      <div className={styles.anchorPlaceholder} />
+                    )}
+                  </div>
+                  <div className={styles.anchorBody}>
+                    <p className={styles.anchorName}>{a.name}</p>
+                    <input
+                      className={styles.anchorNoteInput}
+                      type="text"
+                      placeholder="Any styling notes? (optional)"
+                      value={a.note}
+                      onChange={(e) => updateAnchorNote(a.item_id, e.target.value)}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    className={styles.anchorRemove}
+                    onClick={() => removeAnchorItem(a.item_id)}
+                    aria-label={`Remove ${a.name}`}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <button
+            type="button"
+            className={styles.anchorPickBtn}
+            onClick={() => setShowPickerModal(true)}
+          >
+            {anchorItems.length === 0 ? '+ Choose from wardrobe' : '+ Add more items'}
+          </button>
+        </div>
+
+        {/* 7. Notes */}
         <div className={styles.field}>
           <label className={styles.label}>Notes to Your Stylist</label>
           <textarea
@@ -347,7 +430,7 @@ export default function NewTripPage() {
           />
         </div>
 
-        {/* 7. Bag builder */}
+        {/* 8. Bag builder */}
         <div className={styles.field}>
           <label className={styles.label}>Your Bags</label>
           <p className={styles.inspirationSubtext}>Add every bag you're travelling with.</p>
@@ -425,7 +508,7 @@ export default function NewTripPage() {
           )}
         </div>
 
-        {/* 8. Reserved items */}
+        {/* 9. Reserved items */}
         {bags.length > 0 && (
           <div className={styles.field}>
             <label className={styles.label}>Reserved Space</label>
@@ -476,7 +559,7 @@ export default function NewTripPage() {
           </div>
         )}
 
-        {/* 9. Live weight total */}
+        {/* 10. Live weight total */}
         {bags.length > 0 && (
           <div className={styles.weightCalc}>
             <p className={styles.weightCalcTitle}>Total Available for Clothes</p>
@@ -501,7 +584,7 @@ export default function NewTripPage() {
           </div>
         )}
 
-        {/* 10. Inspiration upload */}
+        {/* 11. Inspiration upload */}
         <div className={styles.field}>
           <label className={styles.label}>Style Inspiration</label>
           <p className={styles.inspirationSubtext}>
@@ -565,6 +648,16 @@ export default function NewTripPage() {
           {loading ? 'Creating your trip...' : 'Plan This Trip'}
         </button>
       </form>
+
+      <AnimatePresence>
+        {showPickerModal && (
+          <WardrobePickerModal
+            selectedIds={anchorItems.map((a) => a.item_id)}
+            onConfirm={handlePickerConfirm}
+            onClose={() => setShowPickerModal(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   )
 }

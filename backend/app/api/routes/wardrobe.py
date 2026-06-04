@@ -5,8 +5,11 @@ from app.models.user import User
 from app.models.item import WardrobeItem
 from app.api.deps import get_current_user
 from app.services.cloudinary_service import upload_wardrobe_item, delete_wardrobe_item
-from app.services.claude_service import regenerate_style_dna_for_user
+from app.services.claude_service import regenerate_style_dna_for_user, analyse_wardrobe_item_image
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -30,6 +33,19 @@ async def get_wardrobe(current_user: User = Depends(get_current_user)):
     return {"success": True, "data": [item.model_dump() for item in items], "message": ""}
 
 
+@router.post("/analyse-image")
+async def analyse_wardrobe_image(
+    body: dict,
+    current_user: User = Depends(get_current_user),
+):
+    """Analyse an already-uploaded image and return autofill metadata."""
+    image_url = body.get("image_url")
+    if not image_url:
+        raise HTTPException(status_code=400, detail="image_url required")
+    result = await analyse_wardrobe_item_image(image_url)
+    return {"success": True, "data": result}
+
+
 @router.post("/")
 async def add_item(
     background_tasks: BackgroundTasks,
@@ -43,11 +59,28 @@ async def add_item(
     season: str = Form("[]"),
     notes: str = Form(""),
     weight_grams: int = Form(300),
-    image: UploadFile = File(...),
+    image: Optional[UploadFile] = File(None),
+    image_url: Optional[str] = Form(None),
     current_user: User = Depends(get_current_user),
 ):
-    image_data = await image.read()
-    upload_result = await upload_wardrobe_item(image_data, str(current_user.id))
+    # If image was pre-uploaded (AI autofill flow), re-run it through the
+    # wardrobe pipeline so background removal and proper folder/naming are applied.
+    try:
+        if image_url:
+            upload_result = await upload_wardrobe_item(image_url, str(current_user.id))
+        elif image:
+            image_data = await image.read()
+            upload_result = await upload_wardrobe_item(image_data, str(current_user.id))
+        else:
+            raise HTTPException(status_code=400, detail="Either image file or image_url required")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Wardrobe upload failed for user {current_user.id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Image upload failed: {str(e)}")
+
+    url = upload_result["url"]
+    public_id = upload_result["public_id"]
 
     item = WardrobeItem(
         user_id=current_user.id,
@@ -61,11 +94,10 @@ async def add_item(
         season=json.loads(season),
         notes=notes,
         weight_grams=weight_grams,
-        image_url=upload_result["url"],
-        cloudinary_public_id=upload_result["public_id"],
+        image_url=url,
+        cloudinary_public_id=public_id,
     )
     await item.insert()
-    # TODO: auto-regenerate style DNA on wardrobe change (re-enable later)
     # background_tasks.add_task(regenerate_style_dna_for_user, str(current_user.id))
     return {"success": True, "data": item.model_dump(), "message": "Item added"}
 

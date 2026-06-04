@@ -8,7 +8,7 @@ from datetime import date
 from typing import List, Optional
 from app.models.user import User
 from app.models.item import WardrobeItem
-from app.models.trip import Trip, ReservedItem, BagEntry, PackingItem, DesignRationale, Outfit
+from app.models.trip import Trip, ReservedItem, BagEntry, PackingItem, DesignRationale, Outfit, AnchorItem
 from app.api.deps import get_current_user
 from app.services.claude_service import generate_restyle_outfit, generate_single_outfit_image, generate_lookbook_image, build_carpet_image
 
@@ -29,6 +29,11 @@ class BagEntryBody(BaseModel):
     available_grams: int
 
 
+class AnchorItemBody(BaseModel):
+    item_id: str
+    note: str = ""
+
+
 class TripBody(BaseModel):
     name: str
     destination: str
@@ -39,6 +44,7 @@ class TripBody(BaseModel):
     notes: str = ""
     bags: List[BagEntryBody] = []
     reserved_items: List[ReservedItemBody] = []
+    anchor_items: List[AnchorItemBody] = []
     weight_unit: str = "kg"
 
 
@@ -87,6 +93,7 @@ async def create_trip(body: TripBody, current_user: User = Depends(get_current_u
     duration = (body.end_date - body.start_date).days
     bags = [BagEntry(**b.model_dump()) for b in body.bags]
     reserved = [ReservedItem(name=r.name, weight_grams=r.weight_grams) for r in body.reserved_items]
+    anchors = [AnchorItem(item_id=a.item_id, note=a.note) for a in body.anchor_items]
     total_available = sum(b.available_grams for b in bags) - sum(r.weight_grams for r in reserved)
     trip = Trip(
         user_id=current_user.id,
@@ -100,6 +107,7 @@ async def create_trip(body: TripBody, current_user: User = Depends(get_current_u
         notes=body.notes,
         bags=bags,
         reserved_items=reserved,
+        anchor_items=anchors,
         available_clothing_weight_grams=max(0, total_available),
         weight_unit=body.weight_unit,
     )
@@ -270,9 +278,7 @@ async def restyle_outfit(
 
     # Generate avatar image for the new outfit before returning
     avatar = current_user.avatar if hasattr(current_user, "avatar") else None
-    style_aesthetics = []
-    if current_user.style_preferences and hasattr(current_user.style_preferences, "style_aesthetics"):
-        style_aesthetics = current_user.style_preferences.style_aesthetics or []
+    style_aesthetics = current_user.preferences.style_aesthetics if current_user.preferences else []
     try:
         image_url = await generate_single_outfit_image(new_outfit, avatar, trip, style_aesthetics)
         if image_url:
@@ -297,9 +303,7 @@ async def generate_outfit_images(trip_id: str, current_user: User = Depends(get_
         raise HTTPException(status_code=400, detail="No outfits to generate images for")
 
     avatar = current_user.avatar if hasattr(current_user, "avatar") else None
-    style_aesthetics = []
-    if current_user.style_preferences and hasattr(current_user.style_preferences, "style_aesthetics"):
-        style_aesthetics = current_user.style_preferences.style_aesthetics or []
+    style_aesthetics = current_user.preferences.style_aesthetics if current_user.preferences else []
 
     async def _generate_for_outfit(outfit):
         # Skip if image already generated

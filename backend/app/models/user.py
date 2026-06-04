@@ -2,13 +2,17 @@ from beanie import Document, Indexed
 from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import List, Dict, Annotated, Optional
+from app.models.daily import DailyStylingPrefs, StyleInsights, WornHistoryEntry
 
 
-class StylePreferences(BaseModel):
-    occasions: List[str] = []
-    preferred_palette: List[str] = []
-    avoid: List[str] = []
-    notes: str = ""
+class ShoppingProfile(BaseModel):
+    archetype: str = ""             # Curator | Explorer | Nostalgic | Trend Chaser
+    archetype_confidence: float = 0.0
+    style_expansion_intentions: List[str] = []
+    impulse_ratio: float = 0.0
+    total_analyses: int = 0
+    total_bought: int = 0
+    last_updated: Optional[datetime] = None
 
 
 class UserPreferences(BaseModel):
@@ -71,7 +75,6 @@ class User(Document):
     password_hash: str
     name: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    style_preferences: StylePreferences = Field(default_factory=StylePreferences)
     profile_picture: Optional[str] = None
     preferences: UserPreferences = Field(default_factory=UserPreferences)
     style_dna: Optional[StyleDNA] = None
@@ -79,6 +82,11 @@ class User(Document):
     reset_code: Optional[str] = None
     reset_code_expires: Optional[datetime] = None
     dashboard_carpet_url: Optional[str] = None
+    daily_styling_prefs: DailyStylingPrefs = Field(default_factory=DailyStylingPrefs)
+    style_insights: StyleInsights = Field(default_factory=StyleInsights)
+    worn_history: List[WornHistoryEntry] = Field(default_factory=list)
+    shopping_profile: ShoppingProfile = Field(default_factory=ShoppingProfile)
+    extension_connected: bool = False
 
     class Settings:
         name = "users"

@@ -553,33 +553,48 @@
   border-color: var(--color-accent-hover);
 }
 
-/* ── Mobile — stack vertically below 700px ──────────────── */
-@media (max-width: 700px) {
+/* ── Mobile — stack vertically below 767px ──────────────── */
+@media (max-width: 767px) {
   .main {
     flex-direction: column;
     padding-bottom: 72px;
   }
 
   .leftCol {
-    flex: 0 0 45%;
+    flex: 0 0 50%;
+    min-height: 0;
   }
 
   .rightCol {
-    flex: 0 0 55%;
+    flex: 1;
     border-left: none;
     border-top: var(--border-thin);
+    overflow-y: auto;
   }
 
   .carouselSection {
-    flex: 0 0 45%;
+    flex: 0 0 50%;
+    min-height: 0;
   }
 
   .stylistSection {
-    flex: 0 0 55%;
+    flex: 1;
+    overflow-y: auto;
   }
 
   .header {
     padding: 0 var(--space-4);
+  }
+
+  .footer {
+    /* Sit above bottom nav bar when inside sidebar layout — no sidebar on mobile */
+    bottom: 0;
+    height: 64px;
+  }
+
+  .passBtn,
+  .approveBtn {
+    font-size: var(--text-base);
   }
 }
 

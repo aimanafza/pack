@@ -8,6 +8,11 @@ from contextlib import asynccontextmanager
 from app.core.config import settings
 from app.core.database import init_db
 from app.api.routes import auth, wardrobe, trips, pack, inspiration, profile, avatar, waitlist
+from app.api.routes.daily import router as daily_router
+from app.api.routes.weather import router as weather_router
+from app.api.routes.looks import router as looks_router
+from app.api.routes.uploads import router as uploads_router
+from app.api.routes.purchase_analysis import router as purchase_analysis_router
 
 
 @asynccontextmanager
@@ -37,6 +42,7 @@ origins = [
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
+    allow_origin_regex=r"chrome-extension://.*",  # allow all PACK extension IDs
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -50,3 +56,8 @@ app.include_router(pack.router, prefix="/api/v1/pack", tags=["pack"])
 app.include_router(inspiration.router, prefix="/api/v1/trips", tags=["inspiration"])
 app.include_router(profile.router, prefix="/api/v1/profile", tags=["profile"])
 app.include_router(avatar.router, prefix="/api/v1/users", tags=["avatar"])
+app.include_router(daily_router, prefix="/api/v1/daily", tags=["daily"])
+app.include_router(weather_router, prefix="/api/v1/weather", tags=["weather"])
+app.include_router(looks_router, prefix="/api/v1/looks", tags=["looks"])
+app.include_router(uploads_router, prefix="/api/v1/uploads", tags=["uploads"])
+app.include_router(purchase_analysis_router, prefix="/api/v1/purchase-analysis", tags=["purchase-analysis"])

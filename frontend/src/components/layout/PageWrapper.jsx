@@ -1,4 +1,5 @@
 import Sidebar from './Sidebar.jsx'
+import BottomNav from './BottomNav.jsx'
 import styles from './PageWrapper.module.css'
 
 export default function PageWrapper({ children }) {
@@ -10,6 +11,7 @@ export default function PageWrapper({ children }) {
           {children}
         </div>
       </main>
+      <BottomNav />
     </div>
   )
 }
