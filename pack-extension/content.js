@@ -198,6 +198,23 @@
 
     const btn = document.createElement('div')
     btn.id = 'pack-float-btn'
+
+    // 2×2 dot grid — matches Phia's badge accent
+    const dotGrid = `
+      <div style="
+        display: grid;
+        grid-template-columns: 3px 3px;
+        grid-template-rows: 3px 3px;
+        gap: 2.5px;
+        opacity: 0.55;
+      ">
+        <div style="width:3px;height:3px;background:#f7f5f2;border-radius:50%"></div>
+        <div style="width:3px;height:3px;background:#f7f5f2;border-radius:50%"></div>
+        <div style="width:3px;height:3px;background:#f7f5f2;border-radius:50%"></div>
+        <div style="width:3px;height:3px;background:#f7f5f2;border-radius:50%"></div>
+      </div>
+    `
+
     btn.innerHTML = `
       <div style="
         position: fixed;
@@ -205,31 +222,40 @@
         right: 16px;
         width: 48px;
         height: 48px;
-        background: #1a1a18;
-        border-radius: 50%;
+        background: #1a1a1a;
+        border-radius: 12px;
         display: flex;
+        flex-direction: row;
         align-items: center;
         justify-content: center;
+        gap: 5px;
         cursor: pointer;
         z-index: 999999;
-        box-shadow: 0 2px 12px rgba(0,0,0,0.15);
-        font-family: 'Cormorant Garamond', Georgia, serif;
-        font-size: 22px;
-        font-style: italic;
-        color: #f7f5f2;
+        box-shadow: 0 2px 16px rgba(0,0,0,0.18);
         user-select: none;
         transition: transform 0.15s ease, box-shadow 0.15s ease;
-      ">p</div>
+      ">
+        <span style="
+          font-family: 'Cormorant Garamond', Georgia, serif;
+          font-size: 20px;
+          font-style: italic;
+          font-weight: 400;
+          color: #f7f5f2;
+          line-height: 1;
+          letter-spacing: -0.01em;
+        ">p</span>
+        ${dotGrid}
+      </div>
     `
 
     const inner = btn.firstElementChild
     inner.addEventListener('mouseenter', () => {
-      inner.style.transform = 'scale(1.08)'
-      inner.style.boxShadow = '0 4px 20px rgba(0,0,0,0.22)'
+      inner.style.transform = 'scale(1.07)'
+      inner.style.boxShadow = '0 4px 24px rgba(0,0,0,0.26)'
     })
     inner.addEventListener('mouseleave', () => {
       inner.style.transform = 'scale(1)'
-      inner.style.boxShadow = '0 2px 12px rgba(0,0,0,0.15)'
+      inner.style.boxShadow = '0 2px 16px rgba(0,0,0,0.18)'
     })
 
     btn.addEventListener('click', () => {
