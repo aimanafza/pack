@@ -3,7 +3,7 @@
 
 PACK is a full-stack web application that acts as a personal stylist for travel. You upload your wardrobe, build an avatar that looks like you, and get photorealistic outfit suggestions showing your avatar wearing your actual clothes — before you pack.
 
-**Live app:** [pack-capstone.vercel.app](https://pack-capstone.vercel.app)
+**Live app:** coming soon
 
 ---
 
