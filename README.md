@@ -50,10 +50,3 @@ pack-capstone/
 ├── PACK_SPEC.md     # Full product specification
 └── CLAUDE.md        # Claude Code instructions
 ```
-
----
-
-## Built for
-
-CP192 Mini Capstone — Minerva University, Spring 2026  
-Aiman Afzal Arain
