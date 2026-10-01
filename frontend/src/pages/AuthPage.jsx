@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import useStore from '../store/index.js'
 import LoginForm from '../components/auth/LoginForm.jsx'
-import SignupForm from '../components/auth/SignupForm.jsx'
 import ForgotPasswordForm from '../components/auth/ForgotPasswordForm.jsx'
 import styles from './AuthPage.module.css'
 
@@ -22,29 +21,9 @@ export default function AuthPage() {
 
       <div className={styles.right}>
         <div className={styles.formWrapper}>
-          {(mode === 'login' || mode === 'signup') && (
-            <div className={styles.toggle}>
-              <button
-                className={`${styles.toggleBtn} ${mode === 'login' ? styles.active : ''}`}
-                onClick={() => setMode('login')}
-                type="button"
-              >
-                Sign in
-              </button>
-              <button
-                className={`${styles.toggleBtn} ${mode === 'signup' ? styles.active : ''}`}
-                onClick={() => setMode('signup')}
-                type="button"
-              >
-                Create account
-              </button>
-            </div>
-          )}
-
           {mode === 'login' && (
             <LoginForm onForgotPassword={() => setMode('forgot')} />
           )}
-          {mode === 'signup' && <SignupForm />}
           {(mode === 'forgot' || mode === 'reset') && (
             <ForgotPasswordForm
               initialMode={mode}

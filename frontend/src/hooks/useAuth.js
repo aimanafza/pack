@@ -27,26 +27,10 @@ export function useAuth() {
     }
   }
 
-  async function register(name, email, password) {
-    setLoading(true)
-    setError('')
-    try {
-      const { data } = await api.post('/api/v1/auth/register', { name, email, password })
-      setToken(data.data.token)
-      setUser(data.data.user)
-      navigate('/onboarding')
-    } catch (err) {
-      const detail = err.response?.data?.detail
-      setError(Array.isArray(detail) ? 'Check your input and try again.' : detail || 'Something went wrong. Try again.')
-    } finally {
-      setLoading(false)
-    }
-  }
-
   function logout() {
     storeLogout()
     navigate('/auth')
   }
 
-  return { login, register, logout, loading, error, setError }
+  return { login, logout, loading, error, setError }
 }

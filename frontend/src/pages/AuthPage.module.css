@@ -50,34 +50,6 @@
   max-width: 360px;
 }
 
-/* Mode toggle */
-.toggle {
-  display: flex;
-  gap: var(--space-6);
-  margin-bottom: var(--space-10);
-}
-
-.toggleBtn {
-  font-family: var(--font-body);
-  font-size: var(--text-base);
-  font-weight: 400;
-  color: var(--color-text-tertiary);
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  transition: color 0.15s;
-  line-height: 1;
-}
-
-.toggleBtn:hover {
-  color: var(--color-text-secondary);
-}
-
-.toggleBtn.active {
-  color: var(--color-text-primary);
-}
-
 /* Mobile: stack panels */
 @media (max-width: 768px) {
   .page {
