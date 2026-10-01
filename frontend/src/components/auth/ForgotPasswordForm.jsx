@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import api from '../../utils/api.js'
 import styles from './LoginForm.module.css'
 
@@ -11,11 +12,13 @@ export default function ForgotPasswordForm({ initialMode, initialEmail, onEmailS
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [noAccount, setNoAccount] = useState(false)
   const [success, setSuccess] = useState('')
 
   async function handleRequestCode(e) {
     e.preventDefault()
     setError('')
+    setNoAccount(false)
     setLoading(true)
     try {
       const { data } = await api.post('/api/v1/auth/forgot-password', { email })
@@ -26,7 +29,11 @@ export default function ForgotPasswordForm({ initialMode, initialEmail, onEmailS
       }
       setStep('reset')
     } catch (err) {
-      setError(err?.response?.data?.detail || 'Something went wrong.')
+      if (err?.response?.status === 404) {
+        setNoAccount(true)
+      } else {
+        setError(err?.response?.data?.detail || 'Something went wrong.')
+      }
     } finally {
       setLoading(false)
     }
@@ -69,6 +76,11 @@ export default function ForgotPasswordForm({ initialMode, initialEmail, onEmailS
         </div>
 
         {error && <p className={styles.formError}>{error}</p>}
+        {noAccount && (
+          <p className={styles.formError}>
+            No account found for that email. <Link to="/" className={styles.forgotLink}>Join the waitlist</Link> to get access.
+          </p>
+        )}
 
         <div className={styles.field}>
           <label className={styles.label} htmlFor="forgot-email">Email</label>

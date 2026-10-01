@@ -84,7 +84,7 @@ async def login(body: LoginBody):
 async def forgot_password(body: ForgotPasswordBody):
     user = await User.find_one(User.email == body.email)
     if not user:
-        return {"success": True, "data": None, "message": "If that email is registered, a code has been sent."}
+        raise HTTPException(status_code=404, detail="No account found for that email.")
 
     code = "".join(random.choices(string.digits, k=6))
     user.reset_code = code
@@ -95,7 +95,7 @@ async def forgot_password(body: ForgotPasswordBody):
     return {
         "success": True,
         "data": None,
-        "message": "If that email is registered, a reset code has been sent.",
+        "message": "A reset code has been sent.",
     }
 
 
