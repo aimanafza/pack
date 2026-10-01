@@ -9,6 +9,7 @@ class WaitlistEntry(Document):
     status: str = "pending"
     created_at: datetime = Field(default_factory=datetime.utcnow)
     invite_token: Optional[str] = None
+    invite_token_expires: Optional[datetime] = None
     token_used: bool = False
 
     class Settings:
