@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import useStore from '../store/index.js'
+import WaitlistForm from '../components/landing/WaitlistForm.jsx'
 import styles from './LandingPage.module.css'
 
 const STEPS = [
@@ -45,7 +46,7 @@ export default function LandingPage() {
           <p className={styles.heroSubhead}>
             Your AI personal stylist. Every trip, perfectly packed.
           </p>
-          <Link to="/auth" className={styles.ctaBtn}>Start Packing</Link>
+          <WaitlistForm />
           <p className={styles.ctaNote}>Free to use. No credit card required.</p>
         </div>
         <div className={styles.heroRight} aria-hidden="true">
@@ -113,7 +114,7 @@ export default function LandingPage() {
       {/* Section 4 — Bottom CTA */}
       <section className={styles.bottomCta}>
         <h2 className={styles.bottomHeadline}>Every trip deserves the right wardrobe.</h2>
-        <Link to="/auth" className={styles.ctaBtn}>Create Your Account</Link>
+        <WaitlistForm />
       </section>
 
       <footer className={styles.footer}>
