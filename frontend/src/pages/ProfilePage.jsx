@@ -8,6 +8,7 @@ import { useNewTrip } from '../hooks/useNewTrip.js'
 import { useDailyStyling } from '../hooks/useDailyStyling.js'
 import api from '../utils/api.js'
 import { useWeightUnit } from '../utils/weight.js'
+import { markTallLook } from '../utils/looks.js'
 import styles from './ProfilePage.module.css'
 import PreferencesModal from '../components/profile/PreferencesModal.jsx'
 import WardrobeGateModal from '../components/trips/WardrobeGateModal.jsx'
@@ -500,6 +501,7 @@ export default function ProfilePage() {
                       src={outfit.generated_image_url || outfit.lookbook_image_url}
                       alt={outfit.day_label || outfit.name}
                       className={styles.lookbookCardPhoto}
+                      onLoad={markTallLook}
                     />
                   ) : (
                     <div className={styles.lookbookCardPlaceholder}>

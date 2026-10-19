@@ -919,6 +919,12 @@ Reference photos attached — study them and incorporate what you see."""
     return response.content[0].text.strip()
 
 
+# Every full-length look image is generated at this shape so the frames that show
+# them (lookbook, approved looks) can match it exactly with no empty bands.
+# fal's nano-banana-pro/edit reads aspect_ratio; it ignores image_size.
+LOOK_ASPECT_RATIO = "2:3"
+
+
 async def run_fal_generation(prompt: str, photo_urls: list[str]) -> list[str]:
     """Call fal.ai nano-banana-pro and return variation URLs."""
     import fal_client
@@ -932,7 +938,7 @@ async def run_fal_generation(prompt: str, photo_urls: list[str]) -> list[str]:
             "prompt": prompt,
             "image_urls": photo_urls,
             "num_images": 3,
-            "image_size": "portrait_9_16",
+            "aspect_ratio": LOOK_ASPECT_RATIO,
         },
     )
     return [img["url"] for img in result["images"]]
@@ -1134,7 +1140,7 @@ White background only. No location context."""
             "prompt": prompt,
             "image_urls": reference_urls,
             "num_images": 1,
-            "image_size": "portrait_9_16",
+            "aspect_ratio": LOOK_ASPECT_RATIO,
         },
     )
     images = result.get("images", [])
@@ -1172,7 +1178,7 @@ async def generate_single_outfit_image(outfit, user_avatar, trip, style_aestheti
             "prompt": prompt,
             "image_urls": reference_urls,
             "num_images": 1,
-            "image_size": "portrait_9_16",
+            "aspect_ratio": LOOK_ASPECT_RATIO,
         },
     )
     images = result.get("images", [])
@@ -1453,7 +1459,7 @@ async def build_carpet_image(user) -> Optional[str]:
                 "prompt": assembled_prompt,
                 "image_urls": image_urls,
                 "num_images": 1,
-                "image_size": "landscape_16_9",
+                "aspect_ratio": "16:9",
             },
         )
     except Exception as e:
@@ -1608,7 +1614,7 @@ async def generate_look_avatar_image(
                 "prompt": fal_prompt,
                 "image_urls": [base_url],
                 "num_images": 1,
-                "image_size": "portrait_9_16",
+                "aspect_ratio": LOOK_ASPECT_RATIO,
             },
         )
         images = result.get("images", [])
