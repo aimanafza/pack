@@ -149,13 +149,14 @@
   margin: 0;
 }
 
-/* Link inside a sentence: same size and colour as the surrounding text */
+/* Link inside a sentence: same size as the surrounding text */
 .inlineLink {
   font: inherit;
   font-weight: 500;
-  color: inherit;
+  color: var(--color-text-secondary);
   text-decoration: underline;
   text-underline-offset: 2px;
+  transition: color 0.15s;
 }
 
 .inlineLink:hover {
