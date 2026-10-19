@@ -11,6 +11,7 @@
 }
 
 .image {
+  position: relative;
   width: 100%;
   aspect-ratio: 4 / 3;
   background: var(--color-bg-tertiary);
@@ -135,12 +136,6 @@
   border-color: var(--color-text-primary);
 }
 
-.actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
-
 .btnPack {
   background: transparent;
   border: var(--border-medium);
@@ -162,21 +157,35 @@
   color: var(--color-text-inverse);
 }
 
+/* Small round button over the photo's top-right corner */
 .btnDelete {
-  background: none;
-  border: none;
-  min-width: 32px;
-  min-height: 32px;
-  padding: var(--space-1);
-  font-size: 18px;
-  line-height: 1;
-  color: var(--color-text-tertiary);
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--color-bg-primary);
+  border: var(--border-thin);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  color: var(--color-text-secondary);
   cursor: pointer;
-  transition: color 0.15s;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+/* A larger invisible hit area so it stays easy to tap */
+.btnDelete::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
 }
 
 .btnDelete:hover {
   color: var(--color-text-primary);
+  border-color: var(--color-border-dark);
 }
 
 /* Inline delete confirm */
@@ -246,8 +255,7 @@
   color: var(--color-text-primary);
 }
 
-/* Half-width cards on phones: tighter padding, smaller type, and the footer
-   wraps so the status pill and actions never squeeze each other. */
+/* Half-width cards on phones: tighter padding and smaller type. */
 @media (max-width: 767px) {
   .body {
     padding: var(--space-3);
@@ -267,8 +275,12 @@
   }
 
   .footer {
-    flex-wrap: wrap;
     gap: var(--space-2);
+  }
+
+  .btnDelete {
+    top: var(--space-2);
+    right: var(--space-2);
   }
 
   .btnPack {

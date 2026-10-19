@@ -27,6 +27,7 @@ export default function TripCard({ trip, onDelete }) {
   return (
     <motion.div
       className={styles.card}
+      data-confirming={confirmingDelete || undefined}
       onClick={() => !confirmingDelete && navigate(`/trips/${trip.id}`)}
       whileHover={{ y: confirmingDelete ? 0 : -2 }}
       transition={{ duration: 0.15 }}
@@ -36,6 +37,18 @@ export default function TripCard({ trip, onDelete }) {
           <img src={cover} alt={trip.destination} className={styles.img} />
         ) : (
           <span className={styles.initial} aria-hidden="true">{trip.destination.charAt(0)}</span>
+        )}
+        {!confirmingDelete && (
+          <button
+            className={styles.btnDelete}
+            onClick={(e) => { e.stopPropagation(); setConfirmingDelete(true) }}
+            type="button"
+            aria-label="Delete trip"
+          >
+            <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+              <path d="M1 1l8 8M9 1l-8 8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+            </svg>
+          </button>
         )}
       </div>
 
@@ -82,25 +95,15 @@ export default function TripCard({ trip, onDelete }) {
             <span className={`${styles.status} ${hasPacking ? styles.statusPacked : ''}`}>
               {hasPacking ? 'packed' : trip.status}
             </span>
-            <div className={styles.actions}>
-              {hasPacking && (
-                <button
-                  className={styles.btnPack}
-                  onClick={(e) => { e.stopPropagation(); navigate(`/trips/${trip.id}/pack`) }}
-                  type="button"
-                >
-                  View List
-                </button>
-              )}
+            {hasPacking && (
               <button
-                className={styles.btnDelete}
-                onClick={(e) => { e.stopPropagation(); setConfirmingDelete(true) }}
+                className={styles.btnPack}
+                onClick={(e) => { e.stopPropagation(); navigate(`/trips/${trip.id}/pack`) }}
                 type="button"
-                aria-label="Delete trip"
               >
-                ×
+                View List
               </button>
-            </div>
+            )}
           </div>
         )}
       </div>

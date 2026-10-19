@@ -148,8 +148,15 @@
   grid-column: 1 / -1;
 }
 
-.pastList {
+/* Dim each past card rather than the whole list, so a card asking to confirm
+   a delete can come back to full strength. */
+.pastList > * {
   opacity: 0.6;
+  transition: opacity 0.15s;
+}
+
+.pastList > [data-confirming] {
+  opacity: 1;
 }
 
 .empty {
