@@ -27,7 +27,6 @@ export default function TripCard({ trip, onDelete }) {
   return (
     <motion.div
       className={styles.card}
-      data-confirming={confirmingDelete || undefined}
       onClick={() => !confirmingDelete && navigate(`/trips/${trip.id}`)}
       whileHover={{ y: confirmingDelete ? 0 : -2 }}
       transition={{ duration: 0.15 }}
