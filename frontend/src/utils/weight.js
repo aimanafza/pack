@@ -5,7 +5,7 @@ import useStore from '../store/index.js'
 const GRAMS_PER_LB = 453.592
 
 export function useWeightUnit() {
-  return useStore((s) => s.user?.weight_unit) === 'lb' ? 'lb' : 'kg'
+  return useStore((s) => s.weightUnit)
 }
 
 // Number in the user's unit: two decimals for small amounts, one for large

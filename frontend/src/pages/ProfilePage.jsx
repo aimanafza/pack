@@ -64,6 +64,7 @@ function isUpcoming(trip) {
 export default function ProfilePage() {
   const user = useStore((s) => s.user)
   const updateUser = useStore((s) => s.updateUser)
+  const setWeightUnit = useStore((s) => s.setWeightUnit)
   const weightUnit = useWeightUnit()
   const [unitError, setUnitError] = useState('')
   const lookHistory = useStore((s) => s.lookHistory)
@@ -90,7 +91,9 @@ export default function ProfilePage() {
     fetchHistory(50, 0)
     // Fetch full user to get persisted style_dna
     api.get('/api/v1/auth/me').then(({ data }) => {
-      updateUser(data.data)
+      // Fill the user in if the first load missed it (updateUser alone skips an empty user)
+      if (useStore.getState().user) updateUser(data.data)
+      else useStore.getState().setUser(data.data)
       if (data.data.style_dna) {
         setStyleDNA(data.data.style_dna)
         analyzedRef.current = true
@@ -206,11 +209,11 @@ export default function ProfilePage() {
     if (next === weightUnit) return
     const previous = weightUnit
     setUnitError('')
-    updateUser({ weight_unit: next })
+    setWeightUnit(next)
     try {
       await api.patch('/api/v1/auth/me/weight-unit', { weight_unit: next })
     } catch {
-      updateUser({ weight_unit: previous })
+      setWeightUnit(previous)
       setUnitError("That didn't save. Check your connection and try again.")
     }
   }
