@@ -36,6 +36,21 @@ class ResetPasswordBody(BaseModel):
     new_password: str
 
 
+def _user_profile(user: User) -> dict:
+    """Profile the frontend needs right after sign-in, so the dashboard can
+    pick its hero image without waiting for a second request."""
+    return {
+        "id": str(user.id),
+        "name": user.name,
+        "email": user.email,
+        "profile_picture": user.profile_picture,
+        "preferences": user.preferences.model_dump(),
+        "style_dna": user.style_dna.model_dump() if user.style_dna else None,
+        "avatar": user.avatar.model_dump() if user.avatar else None,
+        "dashboard_carpet_url": user.dashboard_carpet_url,
+    }
+
+
 @router.post("/register")
 async def register(body: RegisterBody):
     waitlist_entry = await WaitlistEntry.find_one(WaitlistEntry.invite_token == body.invite_token)
@@ -62,7 +77,7 @@ async def register(body: RegisterBody):
     token = create_access_token(str(user.id))
     return {
         "success": True,
-        "data": {"token": token, "user": {"id": str(user.id), "name": user.name, "email": user.email}},
+        "data": {"token": token, "user": _user_profile(user)},
         "message": "",
     }
 
@@ -75,7 +90,7 @@ async def login(body: LoginBody):
     token = create_access_token(str(user.id))
     return {
         "success": True,
-        "data": {"token": token, "user": {"id": str(user.id), "name": user.name, "email": user.email}},
+        "data": {"token": token, "user": _user_profile(user)},
         "message": "",
     }
 
@@ -121,20 +136,7 @@ async def reset_password(body: ResetPasswordBody):
 
 @router.get("/me")
 async def me(current_user: User = Depends(get_current_user)):
-    return {
-        "success": True,
-        "data": {
-            "id": str(current_user.id),
-            "name": current_user.name,
-            "email": current_user.email,
-            "profile_picture": current_user.profile_picture,
-            "preferences": current_user.preferences.model_dump(),
-            "style_dna": current_user.style_dna.model_dump() if current_user.style_dna else None,
-            "avatar": current_user.avatar.model_dump() if current_user.avatar else None,
-            "dashboard_carpet_url": current_user.dashboard_carpet_url,
-        },
-        "message": "",
-    }
+    return {"success": True, "data": _user_profile(current_user), "message": ""}
 
 
 @router.patch("/me/preferences")

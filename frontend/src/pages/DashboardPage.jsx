@@ -166,8 +166,19 @@ export default function DashboardPage() {
     return () => clearInterval(interval)
   }, [trips, outfitsApproved, user?.dashboard_carpet_url])
 
-  // Hero background: carpet image if generated, otherwise most recent wardrobe item
-  const heroBgUrl = user?.dashboard_carpet_url || wardrobe[0]?.image_url
+  // Login and /auth/me both return dashboard_carpet_url. If the stored user
+  // lacks it (older partial profile), load it once instead of guessing.
+  const profileLoaded = !!user && 'dashboard_carpet_url' in user
+  useEffect(() => {
+    if (user && !profileLoaded) {
+      api.get('/api/v1/auth/me').then(({ data }) => setUser(data.data)).catch(() => {})
+    }
+  }, [user, profileLoaded, setUser])
+
+  // Hero background: carpet image if generated, otherwise the first wardrobe item.
+  // Nothing until the profile is known, so a user with a carpet never sees the
+  // wardrobe photo first and then a swap.
+  const heroBgUrl = profileLoaded ? (user.dashboard_carpet_url || wardrobe[0]?.image_url) : null
 
   return (
     <div className={styles.page}>
