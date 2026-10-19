@@ -639,6 +639,41 @@
   margin: 0 0 var(--space-4) 0;
 }
 
+/* ─── Weight unit ─────────────────────────────────────── */
+.unitToggle {
+  display: inline-flex;
+  padding: 3px;
+  border: var(--border-thin);
+  border-radius: var(--radius-pill);
+  background: var(--color-bg-secondary);
+}
+
+.unitBtn {
+  min-height: 40px;
+  padding: 0 var(--space-5);
+  border: none;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.unitBtnActive {
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  box-shadow: 0 0 0 0.5px var(--color-border-medium);
+}
+
+.unitError {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--color-text-primary);
+  margin: var(--space-3) 0 0;
+}
+
 /* ─── Empty + utility ─────────────────────────────────── */
 .emptyState {
   font-family: var(--font-body);

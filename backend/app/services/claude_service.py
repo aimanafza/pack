@@ -1630,16 +1630,17 @@ Return ONLY valid JSON, no markdown, no preamble, no explanation:
   "name": "short descriptive name, e.g. 'White linen shirt' or 'Black leather ankle boot'",
   "category": "one of: top, bottom, dress, outerwear, shoes, bag, accessory",
   "subcategory": "specific type e.g. tank top, blazer, midi skirt, loafer, tote bag",
+  "garment_type": "the plain kind of item in 1 to 3 lowercase words, singular, no colour, fit or style words, e.g. jeans, skirt, tank top, blouse, sweater, blazer, dress, ankle boot, sneaker, sandal, tote bag, crossbody bag, sunglasses, watch",
   "color": ["primary color", "secondary color if present"],
   "fabric": "one of: linen, cotton, silk, wool, synthetic, denim, leather, other",
   "formality": ["one or more of: casual, smart-casual, business, formal, elevated-casual, nightlife"],
   "occasions": ["one or more of: casual, travel, dinner, work, nightlife, beach, sport, formal"],
   "season": ["one or more of: spring, summer, fall, winter"],
-  "weight_grams": 300,
+  "weight_grams": 0,
   "notes": "any notable details worth capturing: print description, hardware details, special construction, brand if visible, condition, etc."
 }
 
-weight_grams should be an integer estimate. Typical ranges: tops 150-400, bottoms 300-700, shoes 400-900, outerwear 500-1200, bags 200-800, accessories 50-200.
+weight_grams is your own integer estimate of what this exact item weighs. Judge it from the garment type, the fabric and how much of it there is: heavy denim, wool knits and leather weigh far more than silk, linen or jersey, and a maxi dress weighs more than a cami. It is a fallback; PACK checks it against researched averages.
 Be precise with colors (say 'burgundy' not just 'red', 'ivory' not just 'white'). If the image is unclear or shows multiple items, do your best with what's visible. Never return null for required fields — use your best judgment.
 """
 
@@ -1674,10 +1675,108 @@ async def analyse_wardrobe_item_image(image_url: str) -> dict:
                 ]
             }]
         )
-        return _safe_json_loads(response.content[0].text.strip())
+        result = _safe_json_loads(response.content[0].text.strip())
     except Exception as e:
         print(f"Wardrobe item analysis failed: {e}")
         return {}
+
+    result["weight_grams"] = await estimate_item_weight(
+        category=result.get("category", ""),
+        garment_type=result.get("garment_type") or result.get("subcategory") or "",
+        fabric=result.get("fabric", ""),
+        fallback_grams=result.get("weight_grams"),
+    )
+    return result
+
+
+# ── Item weight lookup ───────────────────────────────────────────────────────
+# Image -> garment type + fabric -> saved reference weight. Only the first time a
+# combination appears (say "jeans" in "denim") does Claude search the web for
+# typical weights; the average is saved and every later upload reuses it free.
+
+_WEIGHT_RESEARCH_SYSTEM = """You research how much clothing and accessories typically weigh, for a packing app that keeps travellers under airline weight limits.
+
+Search the web for the typical weight of the item you're given, made in the given fabric, in an adult size medium. Look at several sources (retailer product specs, shipping weights, fabric weight guides) and take a sensible average. Ignore packaging weight.
+
+After searching, reply with the JSON object alone, no summary or explanation before or after it:
+{"weight_grams": 520, "low_grams": 400, "high_grams": 680}"""
+
+_WEIGHT_MIN_GRAMS = 10
+_WEIGHT_MAX_GRAMS = 5000
+
+
+def _weight_key(garment_type: str, fabric: str) -> str:
+    garment = re.sub(r"[^a-z ]", "", (garment_type or "").lower()).strip()
+    garment = re.sub(r"\s+", " ", garment)
+    return f"{garment}|{(fabric or 'other').lower().strip()}"
+
+
+def _sane_grams(value) -> int:
+    try:
+        grams = int(round(float(value)))
+    except (TypeError, ValueError):
+        return 0
+    return grams if _WEIGHT_MIN_GRAMS <= grams <= _WEIGHT_MAX_GRAMS else 0
+
+
+async def estimate_item_weight(category: str, garment_type: str, fabric: str, fallback_grams=None) -> int:
+    """Typical weight in grams for this kind of item in this fabric. Reuses a saved
+    reference when one exists; otherwise researches it once and saves it. Falls back
+    to the image-based estimate (or 300 g) if research fails."""
+    from app.models.weight_reference import WeightReference
+    from pymongo.errors import DuplicateKeyError
+
+    fallback = _sane_grams(fallback_grams) or 300
+    if not garment_type:
+        return fallback
+
+    key = _weight_key(garment_type, fabric)
+    existing = await WeightReference.find_one(WeightReference.key == key)
+    if existing:
+        return existing.weight_grams
+
+    try:
+        garment, material = key.split("|")
+        response = await client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=1000,
+            system=_WEIGHT_RESEARCH_SYSTEM,
+            tools=[{"type": "web_search_20250305", "name": "web_search", "max_uses": 3}],
+            messages=[{"role": "user", "content": f"Item: {garment} ({category or 'clothing'})\nFabric: {material}"}],
+        )
+        text = "".join(b.text for b in response.content if getattr(b, "type", "") == "text" and getattr(b, "text", None))
+        # Claude sometimes explains its sources first; the answer is the JSON object at the end
+        match = re.findall(r"\{[^{}]*\"weight_grams\"[^{}]*\}", text)
+        found = json.loads(match[-1]) if match else {}
+        grams = _sane_grams(found.get("weight_grams"))
+        if not grams:
+            return fallback
+        sources = []
+        for block in response.content:
+            if getattr(block, "type", "") == "web_search_tool_result":
+                for hit in (getattr(block, "content", None) or [])[:3]:
+                    url = hit.get("url") if isinstance(hit, dict) else getattr(hit, "url", None)
+                    if url and url not in sources:
+                        sources.append(url)
+        reference = WeightReference(
+            key=key,
+            category=category or "",
+            garment_type=garment,
+            fabric=material,
+            weight_grams=grams,
+            low_grams=_sane_grams(found.get("low_grams")),
+            high_grams=_sane_grams(found.get("high_grams")),
+            sources=sources[:6],
+        )
+        try:
+            await reference.insert()
+        except DuplicateKeyError:
+            pass  # another upload researched the same item at the same moment
+        logger.info("Weight reference saved: %s = %sg", key, grams)
+        return grams
+    except Exception:
+        logger.exception("Weight research failed for %s", key)
+        return fallback
 
 
 # ── Purchase Analysis ─────────────────────────────────────────────────────────

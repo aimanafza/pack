@@ -3,15 +3,11 @@ import { useParams, Link } from 'react-router-dom'
 import { useTrips } from '../hooks/useTrips.js'
 import useStore from '../store/index.js'
 import api from '../utils/api.js'
+import { formatWeight, useWeightUnit } from '../utils/weight.js'
 import styles from './PackingPage.module.css'
 
 const itemKey = (item) => item.wardrobe_item_id || item.name
 const gramsOf = (item) => Math.round((item.estimated_weight_kg || 0) * 1000)
-
-// 300 -> "0.3 kg", 250 -> "0.25 kg", 6100 -> "6.1 kg"
-function formatKg(grams) {
-  return `${parseFloat((grams / 1000).toFixed(2))} kg`
-}
 
 // Build flat deduplicated items from approved outfits only, tagging each with outfit name
 function buildApprovedItems(trip) {
@@ -55,7 +51,7 @@ function planIsCurrent(plan, items, reserved, bags) {
   return plan.bags.length === bagIds.length && plan.bags.every((b, i) => b.bag_id === bagIds[i])
 }
 
-function PackingRow({ item, checked, onCheck }) {
+function PackingRow({ item, checked, onCheck, unit }) {
   return (
     <label className={`${styles.checkRow} ${checked ? styles.checkRowChecked : ''}`}>
       <input
@@ -76,13 +72,13 @@ function PackingRow({ item, checked, onCheck }) {
         <span className={styles.itemName}>{item.name}</span>
         {item.outfitLabel && <span className={styles.itemOutfit}>{item.outfitLabel}</span>}
       </span>
-      <span className={styles.itemWeight}>{formatKg(gramsOf(item))}</span>
+      <span className={styles.itemWeight}>{formatWeight(gramsOf(item), unit)}</span>
     </label>
   )
 }
 
 // Toiletries, chargers and the like: they count toward the weight but aren't on the checklist
-function ReservedRow({ item }) {
+function ReservedRow({ item, unit }) {
   return (
     <div className={styles.checkRow}>
       <span className={styles.checkboxSpacer} aria-hidden="true" />
@@ -93,7 +89,7 @@ function ReservedRow({ item }) {
         <span className={styles.itemName}>{item.name}</span>
         <span className={styles.itemOutfit}>Other items</span>
       </span>
-      <span className={styles.itemWeight}>{formatKg(item.weight_grams || 0)}</span>
+      <span className={styles.itemWeight}>{formatWeight(item.weight_grams || 0, unit)}</span>
     </div>
   )
 }
@@ -103,6 +99,7 @@ export default function PackingPage() {
   const { fetchTrip, checkItem } = useTrips()
   const activeTrip = useStore((s) => s.activeTrip)
   const setActiveTrip = useStore((s) => s.setActiveTrip)
+  const unit = useWeightUnit()
   const [trip, setTrip] = useState(activeTrip?.id === id ? activeTrip : null)
   const [loadError, setLoadError] = useState(false)
   // Optimistic checked state keyed by wardrobe_item_id or item.name
@@ -236,10 +233,10 @@ export default function PackingPage() {
           {/* Weight */}
           <aside className={styles.weightPanel} aria-label="Packing weight">
             <p className={styles.sectionLabel}>Total weight</p>
-            <p className={styles.weightTotal}>{formatKg(totalGrams)}</p>
+            <p className={styles.weightTotal}>{formatWeight(totalGrams, unit)}</p>
             {limitGrams > 0 && (
               <>
-                <p className={styles.weightOf}>of {formatKg(limitGrams)} allowed</p>
+                <p className={styles.weightOf}>of {formatWeight(limitGrams, unit)} allowed</p>
                 <div className={styles.meter} aria-hidden="true">
                   <span
                     className={styles.meterFill}
@@ -248,10 +245,10 @@ export default function PackingPage() {
                 </div>
                 <p className={`${styles.weightStatus} ${remainingGrams < 0 ? styles.weightStatusOver : ''}`}>
                   {remainingGrams > 0
-                    ? `${formatKg(remainingGrams)} to spare`
+                    ? `${formatWeight(remainingGrams, unit)} to spare`
                     : remainingGrams === 0
                       ? 'Right at your limit'
-                      : `${formatKg(-remainingGrams)} over your limit`}
+                      : `${formatWeight(-remainingGrams, unit)} over your limit`}
                 </p>
               </>
             )}
@@ -259,18 +256,18 @@ export default function PackingPage() {
             <dl className={styles.breakdown}>
               <div className={styles.breakdownRow}>
                 <dt>Clothes</dt>
-                <dd>{formatKg(clothesGrams)}</dd>
+                <dd>{formatWeight(clothesGrams, unit)}</dd>
               </div>
               {reservedGrams > 0 && (
                 <div className={styles.breakdownRow}>
                   <dt>Other items</dt>
-                  <dd>{formatKg(reservedGrams)}</dd>
+                  <dd>{formatWeight(reservedGrams, unit)}</dd>
                 </div>
               )}
               {emptyBagGrams > 0 && (
                 <div className={styles.breakdownRow}>
                   <dt>{bags.length === 1 ? 'The bag itself' : 'The bags themselves'}</dt>
-                  <dd>{formatKg(emptyBagGrams)}</dd>
+                  <dd>{formatWeight(emptyBagGrams, unit)}</dd>
                 </div>
               )}
             </dl>
@@ -338,8 +335,8 @@ export default function PackingPage() {
                     <div className={styles.bagHeader}>
                       <h2 className={styles.bagName}>{bag.label}</h2>
                       <span className={styles.bagWeight}>
-                        {formatKg(bag.weight_grams)}
-                        {bag.available_grams > 0 && ` of ${formatKg(bag.available_grams)}`}
+                        {formatWeight(bag.weight_grams, unit)}
+                        {bag.available_grams > 0 && ` of ${formatWeight(bag.available_grams, unit)}`}
                       </span>
                     </div>
                     {bag.note && <p className={styles.bagNote}>{bag.note}</p>}
@@ -349,9 +346,9 @@ export default function PackingPage() {
                         const item = itemsByKey.get(key)
                         if (!item) return null
                         return item.reserved ? (
-                          <ReservedRow key={key} item={item} />
+                          <ReservedRow key={key} item={item} unit={unit} />
                         ) : (
-                          <PackingRow key={key} item={item} checked={isChecked(item)} onCheck={handleCheck} />
+                          <PackingRow key={key} item={item} checked={isChecked(item)} onCheck={handleCheck} unit={unit} />
                         )
                       })}
                     </div>
@@ -365,12 +362,12 @@ export default function PackingPage() {
                     <div className={styles.categoryHeader}>
                       <p className={styles.categoryLabel}>{category}</p>
                       <span className={styles.categoryWeight}>
-                        {formatKg(items.reduce((s, i) => s + gramsOf(i), 0))}
+                        {formatWeight(items.reduce((s, i) => s + gramsOf(i), 0), unit)}
                       </span>
                     </div>
                     <div className={styles.categoryItems}>
                       {items.map((item) => (
-                        <PackingRow key={itemKey(item)} item={item} checked={isChecked(item)} onCheck={handleCheck} />
+                        <PackingRow key={itemKey(item)} item={item} checked={isChecked(item)} onCheck={handleCheck} unit={unit} />
                       ))}
                     </div>
                   </section>

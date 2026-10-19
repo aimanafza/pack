@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
+from typing import Literal
 from pydantic import BaseModel
 from datetime import datetime, timedelta
 import random
@@ -48,6 +49,7 @@ def _user_profile(user: User) -> dict:
         "style_dna": user.style_dna.model_dump() if user.style_dna else None,
         "avatar": user.avatar.model_dump() if user.avatar else None,
         "dashboard_carpet_url": user.dashboard_carpet_url,
+        "weight_unit": user.weight_unit,
     }
 
 
@@ -137,6 +139,17 @@ async def reset_password(body: ResetPasswordBody):
 @router.get("/me")
 async def me(current_user: User = Depends(get_current_user)):
     return {"success": True, "data": _user_profile(current_user), "message": ""}
+
+
+class WeightUnitBody(BaseModel):
+    weight_unit: Literal["kg", "lb"]
+
+
+# Its own route because /me/preferences replaces the whole preferences object
+@router.patch("/me/weight-unit")
+async def update_weight_unit(body: WeightUnitBody, current_user: User = Depends(get_current_user)):
+    await current_user.set({"weight_unit": body.weight_unit})
+    return {"success": True, "data": {"weight_unit": body.weight_unit}, "message": "Weight unit saved"}
 
 
 @router.patch("/me/preferences")

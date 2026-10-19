@@ -7,6 +7,7 @@ import { useWardrobe } from '../hooks/useWardrobe.js'
 import { useNewTrip } from '../hooks/useNewTrip.js'
 import { useDailyStyling } from '../hooks/useDailyStyling.js'
 import api from '../utils/api.js'
+import { useWeightUnit } from '../utils/weight.js'
 import styles from './ProfilePage.module.css'
 import PreferencesModal from '../components/profile/PreferencesModal.jsx'
 import WardrobeGateModal from '../components/trips/WardrobeGateModal.jsx'
@@ -63,6 +64,8 @@ function isUpcoming(trip) {
 export default function ProfilePage() {
   const user = useStore((s) => s.user)
   const updateUser = useStore((s) => s.updateUser)
+  const weightUnit = useWeightUnit()
+  const [unitError, setUnitError] = useState('')
   const lookHistory = useStore((s) => s.lookHistory)
   const { trips, fetchTrips } = useTrips()
   const { wardrobe, fetchWardrobe } = useWardrobe()
@@ -197,6 +200,20 @@ export default function ProfilePage() {
         lookIndex: i,
       }))
     })
+
+  // Switch right away, put it back if the save fails
+  async function changeWeightUnit(next) {
+    if (next === weightUnit) return
+    const previous = weightUnit
+    setUnitError('')
+    updateUser({ weight_unit: next })
+    try {
+      await api.patch('/api/v1/auth/me/weight-unit', { weight_unit: next })
+    } catch {
+      updateUser({ weight_unit: previous })
+      setUnitError("That didn't save. Check your connection and try again.")
+    }
+  }
 
   function scrollRef(ref, dir) {
     ref.current?.scrollBy({ left: dir * 320, behavior: 'smooth' })
@@ -549,6 +566,32 @@ export default function ProfilePage() {
         <Link to="/profile/shopping" className={styles.seeFullLink}>
           View shopping history →
         </Link>
+      </section>
+
+      {/* Weight unit */}
+      <section className={styles.section}>
+        <div className={styles.sectionTop}>
+          <p className={styles.sectionLabel}>WEIGHT UNIT</p>
+        </div>
+        <p className={styles.sectionSub}>How weights show across PACK, from your wardrobe to your bags.</p>
+        <div className={styles.unitToggle} role="radiogroup" aria-label="Weight unit">
+          {[
+            { value: 'kg', label: 'Kilograms' },
+            { value: 'lb', label: 'Pounds' },
+          ].map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              role="radio"
+              aria-checked={weightUnit === option.value}
+              className={`${styles.unitBtn} ${weightUnit === option.value ? styles.unitBtnActive : ''}`}
+              onClick={() => changeWeightUnit(option.value)}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+        {unitError && <p className={styles.unitError} role="alert">{unitError}</p>}
       </section>
 
       <AnimatePresence>

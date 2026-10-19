@@ -8,11 +8,12 @@ from app.models.waitlist import WaitlistEntry
 from app.models.daily import DailyLook
 from app.models.look import Look
 from app.models.purchase_analysis import PurchaseAnalysis
+from app.models.weight_reference import WeightReference
 
 
 async def init_db():
     client = AsyncIOMotorClient(settings.MONGODB_URL)
     await init_beanie(
         database=client[settings.DATABASE_NAME],
-        document_models=[User, WardrobeItem, Trip, WaitlistEntry, DailyLook, Look, PurchaseAnalysis],
+        document_models=[User, WardrobeItem, Trip, WaitlistEntry, DailyLook, Look, PurchaseAnalysis, WeightReference],
     )

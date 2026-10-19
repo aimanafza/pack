@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useWardrobe } from '../../hooks/useWardrobe.js'
 import api from '../../utils/api.js'
+import { toGrams, toUnit, useWeightUnit } from '../../utils/weight.js'
 import styles from './UploadModal.module.css'
 
 const CATEGORIES = ['top', 'bottom', 'dress', 'outerwear', 'shoes', 'bag', 'accessory']
@@ -38,7 +39,9 @@ export default function UploadModal({ onClose }) {
   const [occasions, setOccasions] = useState([])
   const [season, setSeason] = useState([])
   const [notes, setNotes] = useState('')
-  const [weightGrams, setWeightGrams] = useState(300)
+  const unit = useWeightUnit()
+  // Typed in the user's unit, saved in grams
+  const [weightInput, setWeightInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [customOccasion, setCustomOccasion] = useState('')
@@ -121,7 +124,7 @@ export default function UploadModal({ onClose }) {
     if (seasonFilled.length > 0) { setSeason(seasonFilled); filled.add('season') }
 
     if (result.weight_grams && typeof result.weight_grams === 'number') {
-      setWeightGrams(result.weight_grams)
+      setWeightInput(String(toUnit(result.weight_grams, unit)))
       filled.add('weightGrams')
     }
 
@@ -207,7 +210,7 @@ export default function UploadModal({ onClose }) {
       fd.append('occasions', JSON.stringify(occasions))
       fd.append('season', JSON.stringify(season))
       fd.append('notes', notes.trim())
-      fd.append('weight_grams', String(weightGrams || 300))
+      fd.append('weight_grams', String(toGrams(weightInput, unit) || 300))
 
       // If image was pre-uploaded for analysis, pass the URL.
       // Backend re-runs it through upload_wardrobe_item so background removal
@@ -443,16 +446,16 @@ export default function UploadModal({ onClose }) {
               </div>
 
               <div className={styles.field}>
-                <AiLabel fieldName="weightGrams">Weight (grams)</AiLabel>
+                <AiLabel fieldName="weightGrams">Weight ({unit})</AiLabel>
                 <input
                   className={styles.input}
                   type="number"
-                  min="1"
-                  max="5000"
-                  step="10"
-                  value={weightGrams}
-                  onChange={(e) => { setWeightGrams(parseInt(e.target.value) || 300); clearAiField('weightGrams') }}
-                  placeholder="300"
+                  min="0"
+                  step="0.01"
+                  inputMode="decimal"
+                  value={weightInput}
+                  onChange={(e) => { setWeightInput(e.target.value); clearAiField('weightGrams') }}
+                  placeholder={String(toUnit(300, unit))}
                 />
               </div>
             </div>

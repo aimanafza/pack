@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
 import api from '../utils/api.js'
+import { formatWeight, toGrams, toUnit, useWeightUnit } from '../utils/weight.js'
 import StyleThisItemModal from '../components/wardrobe/StyleThisItemModal.jsx'
 import styles from './WardrobeItemDetailPage.module.css'
 
@@ -12,11 +13,6 @@ const FORMALITIES = ['casual', 'smart-casual', 'elevated casual', 'business casu
 const OCCASIONS = ['work', 'casual', 'formal', 'travel', 'dinner', 'beach', 'hiking', 'nightlife']
 const SEASONS = ['spring', 'summer', 'fall', 'winter', 'all']
 
-function formatWeight(grams) {
-  if (!grams) return null
-  if (grams >= 1000) return `${(grams / 1000).toFixed(1).replace(/\.0$/, '')} kg`
-  return `${grams} g`
-}
 
 function Pill({ label }) {
   return <span className={styles.pill}>{label}</span>
@@ -37,6 +33,7 @@ function TogglePill({ label, active, onClick }) {
 export default function WardrobeItemDetailPage() {
   const { item_id } = useParams()
   const navigate = useNavigate()
+  const unit = useWeightUnit()
   const [item, setItem] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -59,7 +56,7 @@ export default function WardrobeItemDetailPage() {
   const [editOccasions, setEditOccasions] = useState([])
   const [editSeason, setEditSeason] = useState([])
   const [editNotes, setEditNotes] = useState('')
-  const [editWeight, setEditWeight] = useState(300)
+  const [editWeight, setEditWeight] = useState('')
 
   useEffect(() => {
     async function fetchAll() {
@@ -93,7 +90,7 @@ export default function WardrobeItemDetailPage() {
     setEditOccasions([...(item.occasions || [])])
     setEditSeason([...(item.season || [])])
     setEditNotes(item.notes || '')
-    setEditWeight(item.weight_grams || 300)
+    setEditWeight(String(toUnit(item.weight_grams || 300, unit)))
     setEditing(true)
   }
 
@@ -114,7 +111,7 @@ export default function WardrobeItemDetailPage() {
         occasions: editOccasions,
         season: editSeason,
         notes: editNotes.trim(),
-        weight_grams: editWeight,
+        weight_grams: toGrams(editWeight, unit) || 300,
       })
       setItem(data.data)
       setEditing(false)
@@ -301,15 +298,15 @@ export default function WardrobeItemDetailPage() {
             </div>
 
             <div className={styles.editField}>
-              <label className={styles.editLabel}>Weight (grams)</label>
+              <label className={styles.editLabel}>Weight ({unit})</label>
               <input
                 className={styles.editInput}
                 type="number"
-                min="1"
-                max="5000"
-                step="10"
+                min="0"
+                step="0.01"
+                inputMode="decimal"
                 value={editWeight}
-                onChange={(e) => setEditWeight(parseInt(e.target.value) || 300)}
+                onChange={(e) => setEditWeight(e.target.value)}
               />
             </div>
 
@@ -347,8 +344,8 @@ export default function WardrobeItemDetailPage() {
             <p className={styles.categoryLabel}>{item.category}{item.subcategory ? ` / ${item.subcategory}` : ''}</p>
             <h1 className={styles.name}>{item.name}</h1>
 
-            {item.weight_grams && (
-              <p className={styles.weight}>{formatWeight(item.weight_grams)}</p>
+            {item.weight_grams > 0 && (
+              <p className={styles.weight}>{formatWeight(item.weight_grams, unit)}</p>
             )}
 
             <hr className={styles.divider} />

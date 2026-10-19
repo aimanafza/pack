@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import styles from './ItemCard.module.css'
 import ConfirmModal from '../ui/ConfirmModal.jsx'
+import { formatWeight, useWeightUnit } from '../../utils/weight.js'
 
 function IconEdit() {
   return (
@@ -25,14 +26,9 @@ export const cardVariants = {
   show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: 'easeOut' } },
 }
 
-function formatWeight(grams) {
-  if (!grams) return null
-  if (grams >= 1000) return `${(grams / 1000).toFixed(1).replace(/\.0$/, '')}kg`
-  return `~${grams}g`
-}
-
 export default function ItemCard({ item, onDelete, onEdit }) {
   const navigate = useNavigate()
+  const unit = useWeightUnit()
   const [confirmDelete, setConfirmDelete] = useState(false)
   const itemId = item.id || item._id
 
@@ -83,8 +79,8 @@ export default function ItemCard({ item, onDelete, onEdit }) {
         <p className={styles.name}>{item.name}</p>
         <div className={styles.metaRow}>
           <p className={styles.category}>{item.category}</p>
-          {item.weight_grams && (
-            <p className={styles.weight}>{formatWeight(item.weight_grams)}</p>
+          {item.weight_grams > 0 && (
+            <p className={styles.weight}>{formatWeight(item.weight_grams, unit)}</p>
           )}
         </div>
       </div>
