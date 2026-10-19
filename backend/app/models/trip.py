@@ -69,6 +69,24 @@ class PackingList(BaseModel):
     versatility_note: str = ""         # e.g. "Your jeans work across 3 outfits"
 
 
+class BagPlan(BaseModel):
+    bag_id: str
+    label: str
+    bag_type: str = ""
+    item_keys: List[str] = []       # wardrobe_item_id, item name, or "reserved:<name>"
+    weight_grams: int = 0           # contents only, computed server-side
+    available_grams: int = 0        # what the bag can hold after its own weight
+    note: str = ""                  # how to pack this bag
+
+
+class PackingPlan(BaseModel):
+    generated_at: datetime = Field(default_factory=datetime.utcnow)
+    signature: str = ""             # items + bags the plan was made for; a change means it's stale
+    bags: List[BagPlan] = []
+    tips: List[str] = []
+    over_by_grams: int = 0          # how far the whole load is over every bag's capacity
+
+
 class AnchorItem(BaseModel):
     item_id: str          # wardrobe item ObjectId as string
     note: str = ""        # optional styling note from the user
@@ -101,6 +119,7 @@ class Trip(Document):
     inspiration_images: List[InspirationImage] = []
     vibe_analysis: Optional[VibeAnalysis] = None
     packing_list: Optional[PackingList] = None
+    packing_plan: Optional[PackingPlan] = None
     approved_outfits: List[str] = []
     rejected_outfits: List[str] = []
     bags: List[BagEntry] = []

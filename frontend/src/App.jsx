@@ -62,7 +62,7 @@ export default function App() {
         <Route path="/daily" element={<WithLayout><DailyStylingPage /></WithLayout>} />
         {/* Swipe review + packing: no sidebar, distraction-free full-width */}
         <Route path="/trips/:id/review" element={<PrivateRoute><SwipeReviewPage /></PrivateRoute>} />
-        <Route path="/trips/:id/pack" element={<PrivateRoute><PackingPage /></PrivateRoute>} />
+        <Route path="/trips/:id/pack" element={<WithLayout><PackingPage /></WithLayout>} />
         {/* Extension auth bridge — no sidebar, full page */}
         <Route path="/auth/extension-login" element={<ExtensionLoginPage />} />
         {/* Shopping history — profile sub-pages */}

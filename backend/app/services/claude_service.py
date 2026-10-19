@@ -1814,3 +1814,160 @@ Analyse this purchase honestly."""
 
     result["outfit_collages"] = outfit_collages
     return result
+
+
+# ── Packing plan ("Optimise space") ──────────────────────────────────────────
+# Splits the approved packing list across the trip's bags and writes short
+# packing advice. Results are saved on the trip with a signature of the items
+# and bags, so opening the page again costs nothing until the list changes.
+
+_PACKING_PLAN_SYSTEM = """You are PACK's packing expert. You decide which bag each item goes in and how to pack each bag so everything fits and stays within airline weight limits.
+
+You receive the trip, the bags (each with the weight in grams it can still hold) and the items (each with a key and a weight in grams).
+
+Rules:
+- Put every item key in exactly one bag. Use only the keys and bag_ids you were given.
+- Keep each bag's total at or under its capacity_grams when you can. A capacity of 0 means no limit was given.
+- Carry-on and handbag: valuables, chargers, one change of clothes, anything fragile, what is needed on arrival.
+- Checked bag: shoes, denim, heavy knits, liquids over 100ml, bulky items.
+- Spread weight so no bag is close to its limit while another is nearly empty.
+- If everything cannot fit, say in the tips which of the heaviest items to wear on the travel day.
+
+Notes and tips:
+- One "note" per bag, 1 to 2 sentences, practical: what goes at the bottom, what to roll, what to fold, where shoes go.
+- 3 to 5 "tips" for the whole trip, each one sentence, specific to these items (name them), not generic advice.
+- Write weights in kilograms with at most one decimal (5.5 kg), never in grams.
+- Warm, direct, plain language. Never use em dashes.
+
+Return only JSON:
+{"bags": [{"bag_id": "...", "item_keys": ["..."], "note": "..."}], "tips": ["..."]}"""
+
+
+def _no_em_dashes(text: str) -> str:
+    return re.sub(r"\s*—\s*", ", ", text or "").strip()
+
+
+def packing_load(trip) -> list[dict]:
+    """Everything going in the bags: unique items from approved outfits, plus
+    the non-clothing items the user reserved weight for when creating the trip.
+    Weights match what the packing page shows."""
+    load, seen = [], set()
+    if trip.packing_list:
+        approved = set(trip.approved_outfits or [])
+        for outfit in trip.packing_list.outfits:
+            if outfit.name not in approved:
+                continue
+            for item in outfit.items:
+                key = item.wardrobe_item_id or item.name
+                if key in seen:
+                    continue
+                seen.add(key)
+                load.append({
+                    "key": key,
+                    "name": item.name,
+                    "category": item.category,
+                    "weight_grams": round((item.estimated_weight_kg or 0) * 1000),
+                })
+    for reserved in trip.reserved_items or []:
+        load.append({
+            "key": f"reserved:{reserved.name}",
+            "name": reserved.name,
+            "category": "other",
+            "weight_grams": reserved.weight_grams or 0,
+        })
+    return load
+
+
+def trip_bags(trip) -> list[dict]:
+    """The trip's bags, or a single unnamed bag for trips made before bags existed."""
+    if trip.bags:
+        return [
+            {"bag_id": b.bag_id, "label": b.label, "bag_type": b.bag_type, "capacity_grams": max(0, b.available_grams)}
+            for b in trip.bags
+        ]
+    return [{"bag_id": "bag_main", "label": "Your bag", "bag_type": "", "capacity_grams": 0}]
+
+
+def packing_plan_signature(load: list[dict], bags: list[dict]) -> str:
+    import hashlib
+
+    basis = {
+        "items": sorted((i["key"], i["weight_grams"]) for i in load),
+        "bags": [(b["bag_id"], b["capacity_grams"]) for b in bags],
+    }
+    return hashlib.sha1(json.dumps(basis).encode()).hexdigest()
+
+
+async def build_packing_plan(trip):
+    """Ask Claude to assign items to bags, then enforce the rules in code: every
+    item lands in exactly one real bag and the weights are our own sums."""
+    from app.models.trip import BagPlan, PackingPlan
+
+    load = packing_load(trip)
+    bags = trip_bags(trip)
+    by_key = {i["key"]: i for i in load}
+    by_bag = {b["bag_id"]: b for b in bags}
+
+    brief = {
+        "trip": {"destination": trip.destination, "days": trip.duration_days, "climate": trip.climate},
+        "bags": [
+            {"bag_id": b["bag_id"], "label": b["label"], "type": b["bag_type"], "capacity_grams": b["capacity_grams"]}
+            for b in bags
+        ],
+        "items": [
+            {"key": i["key"], "name": i["name"], "category": i["category"], "weight_grams": i["weight_grams"]}
+            for i in load
+        ],
+    }
+    response = await client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=2000,
+        system=_PACKING_PLAN_SYSTEM,
+        messages=[{"role": "user", "content": json.dumps(brief)}],
+    )
+    text = next((b.text for b in response.content if getattr(b, "type", "") == "text"), "")
+    result = _safe_json_loads(text)
+
+    assigned: dict[str, list[str]] = {b["bag_id"]: [] for b in bags}
+    notes: dict[str, str] = {}
+    placed = set()
+    for pick in result.get("bags", []):
+        bag_id = pick.get("bag_id")
+        if bag_id not in by_bag:
+            continue
+        notes[bag_id] = _no_em_dashes(pick.get("note", ""))
+        for key in pick.get("item_keys", []):
+            if key in by_key and key not in placed:
+                assigned[bag_id].append(key)
+                placed.add(key)
+
+    def contents(bag_id):
+        return sum(by_key[k]["weight_grams"] for k in assigned[bag_id])
+
+    # Anything Claude missed goes where there is the most room, heaviest first
+    leftovers = sorted((i for i in load if i["key"] not in placed), key=lambda i: -i["weight_grams"])
+    for item in leftovers:
+        target = max(bags, key=lambda b: (b["capacity_grams"] or 10**9) - contents(b["bag_id"]))
+        assigned[target["bag_id"]].append(item["key"])
+
+    total_load = sum(i["weight_grams"] for i in load)
+    total_capacity = sum(b["capacity_grams"] for b in bags)
+    over_by = max(0, total_load - total_capacity) if total_capacity else 0
+
+    return PackingPlan(
+        signature=packing_plan_signature(load, bags),
+        bags=[
+            BagPlan(
+                bag_id=b["bag_id"],
+                label=b["label"],
+                bag_type=b["bag_type"],
+                item_keys=assigned[b["bag_id"]],
+                weight_grams=contents(b["bag_id"]),
+                available_grams=b["capacity_grams"],
+                note=notes.get(b["bag_id"], ""),
+            )
+            for b in bags
+        ],
+        tips=[_no_em_dashes(t) for t in result.get("tips", []) if isinstance(t, str) and t.strip()][:5],
+        over_by_grams=over_by,
+    )
