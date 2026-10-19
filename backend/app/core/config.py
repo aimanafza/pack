@@ -24,6 +24,16 @@ class Settings(BaseSettings):
     EMAIL_FROM_INTERNAL: str = "no-reply@textpack.co"
     CHROME_EXTENSION_ID: str = ""
 
+    LINQ_API_TOKEN: str = ""
+    LINQ_WEBHOOK_SECRET: str = ""
+    LINQ_API_BASE_URL: str = "https://api.linqapp.com/api/partner/v3"
+
+    # Voice note transcription — provider/model are config, not code, so
+    # switching (e.g. to OpenAI) later is an env var change.
+    TRANSCRIPTION_PROVIDER: str = "groq"
+    TRANSCRIPTION_MODEL: str = "whisper-large-v3"
+    GROQ_API_KEY: str = ""
+
     class Config:
         env_file = ".env"
         env_ignore_empty = True

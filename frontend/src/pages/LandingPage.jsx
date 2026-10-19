@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import useStore from '../store/index.js'
+import IMessageCTA from '../components/landing/IMessageCTA.jsx'
 import styles from './LandingPage.module.css'
 
 const STEPS = [
@@ -67,7 +68,17 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Section 3 — Extension */}
+      {/* Section 3 — Text Pack (placeholder CTA, main action until the redesign) */}
+      <section className={styles.imessageSection}>
+        <p className={styles.sectionLabel}>TEXT YOUR STYLIST</p>
+        <h2 className={styles.imessageHeadline}>Pack lives in iMessage now.</h2>
+        <p className={styles.imessageSubtext}>
+          No app to download. Text Pack and start building your wardrobe right from your phone.
+        </p>
+        <IMessageCTA />
+      </section>
+
+      {/* Section 4 — Extension */}
       <section className={styles.extensionSection}>
         <p className={styles.sectionLabel}>THE PACK EXTENSION</p>
         <h2 className={styles.extensionHeadline}>Your wardrobe, everywhere you shop.</h2>
@@ -110,7 +121,7 @@ export default function LandingPage() {
         </p>
       </section>
 
-      {/* Section 4 — Bottom CTA */}
+      {/* Section 5 — Bottom CTA */}
       <section className={styles.bottomCta}>
         <h2 className={styles.bottomHeadline}>Every trip deserves the right wardrobe.</h2>
         <Link to="/auth" className={styles.ctaBtn}>Create Your Account</Link>

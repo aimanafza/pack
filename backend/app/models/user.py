@@ -2,6 +2,7 @@ from beanie import Document, Indexed
 from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import List, Dict, Annotated, Optional
+from pymongo import ASCENDING, IndexModel
 from app.models.daily import DailyStylingPrefs, StyleInsights, WornHistoryEntry
 
 
@@ -72,8 +73,10 @@ class Avatar(BaseModel):
 
 class User(Document):
     email: Annotated[str, Indexed(unique=True)]
-    password_hash: str
+    password_hash: Optional[str] = None
     name: str
+    phone: Optional[str] = None
+    phone_verified: bool = False
     created_at: datetime = Field(default_factory=datetime.utcnow)
     profile_picture: Optional[str] = None
     preferences: UserPreferences = Field(default_factory=UserPreferences)
@@ -81,6 +84,9 @@ class User(Document):
     avatar: Optional[Avatar] = None
     reset_code: Optional[str] = None
     reset_code_expires: Optional[datetime] = None
+    login_code: Optional[str] = None
+    login_code_expires: Optional[datetime] = None
+    login_code_attempts: int = 0
     dashboard_carpet_url: Optional[str] = None
     daily_styling_prefs: DailyStylingPrefs = Field(default_factory=DailyStylingPrefs)
     style_insights: StyleInsights = Field(default_factory=StyleInsights)
@@ -90,3 +96,6 @@ class User(Document):
 
     class Settings:
         name = "users"
+        indexes = [
+            IndexModel([("phone", ASCENDING)], unique=True, sparse=True, name="phone_unique_sparse"),
+        ]

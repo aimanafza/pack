@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
 from pydantic import BaseModel
 from datetime import datetime, timedelta
+import logging
 import random
 import string
 from app.models.user import User, UserPreferences
@@ -8,10 +9,15 @@ from app.models.waitlist import WaitlistEntry
 from app.core.security import hash_password, verify_password
 from app.services.auth_service import create_access_token
 from app.services.cloudinary_service import upload_profile_picture
-from app.services.email import send_reset_code_email
+from app.services.email import send_reset_code_email, send_login_code_email
 from app.api.deps import get_current_user
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter()
+
+LOGIN_CODE_EXPIRE_MINUTES = 15
+LOGIN_CODE_MAX_ATTEMPTS = 5
 
 
 class RegisterBody(BaseModel):
@@ -34,6 +40,15 @@ class ResetPasswordBody(BaseModel):
     email: str
     code: str
     new_password: str
+
+
+class RequestLoginCodeBody(BaseModel):
+    email: str
+
+
+class VerifyLoginCodeBody(BaseModel):
+    email: str
+    code: str
 
 
 @router.post("/register")
@@ -70,7 +85,7 @@ async def register(body: RegisterBody):
 @router.post("/login")
 async def login(body: LoginBody):
     user = await User.find_one(User.email == body.email)
-    if not user or not verify_password(body.password, user.password_hash):
+    if not user or not user.password_hash or not verify_password(body.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid email or password")
     token = create_access_token(str(user.id))
     return {
@@ -117,6 +132,65 @@ async def reset_password(body: ResetPasswordBody):
     await user.save()
 
     return {"success": True, "data": None, "message": "Password updated. You can now sign in."}
+
+
+@router.post("/request-login-code")
+async def request_login_code(body: RequestLoginCodeBody):
+    user = await User.find_one(User.email == body.email)
+    generic_message = {
+        "success": True,
+        "data": None,
+        "message": "If that email has a Pack account, a code has been sent.",
+    }
+    if not user:
+        return generic_message
+
+    code = "".join(random.choices(string.digits, k=6))
+    user.login_code = code
+    user.login_code_expires = datetime.utcnow() + timedelta(minutes=LOGIN_CODE_EXPIRE_MINUTES)
+    user.login_code_attempts = 0
+    await user.save()
+
+    try:
+        send_login_code_email(user.email, code)
+    except Exception:
+        logger.exception("Failed to send login code email to %s", user.email)
+    return generic_message
+
+
+@router.post("/verify-login-code")
+async def verify_login_code(body: VerifyLoginCodeBody):
+    invalid = HTTPException(status_code=400, detail="Invalid or expired code.")
+    user = await User.find_one(User.email == body.email)
+    if not user or not user.login_code or not user.login_code_expires:
+        raise invalid
+    if datetime.utcnow() > user.login_code_expires:
+        user.login_code = None
+        user.login_code_expires = None
+        await user.save()
+        raise HTTPException(status_code=400, detail="Code expired. Request a new one.")
+    if user.login_code_attempts >= LOGIN_CODE_MAX_ATTEMPTS:
+        user.login_code = None
+        user.login_code_expires = None
+        await user.save()
+        raise HTTPException(status_code=400, detail="Too many attempts. Request a new code.")
+    if body.code != user.login_code:
+        user.login_code_attempts += 1
+        await user.save()
+        remaining = LOGIN_CODE_MAX_ATTEMPTS - user.login_code_attempts
+        raise HTTPException(status_code=400, detail=f"Incorrect code. {remaining} attempt(s) left.")
+
+    user.login_code = None
+    user.login_code_expires = None
+    user.login_code_attempts = 0
+    await user.save()
+
+    token = create_access_token(str(user.id))
+    return {
+        "success": True,
+        "data": {"token": token, "user": {"id": str(user.id), "name": user.name, "email": user.email}},
+        "message": "",
+    }
 
 
 @router.get("/me")

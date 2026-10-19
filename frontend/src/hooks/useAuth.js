@@ -27,10 +27,27 @@ export function useAuth() {
     }
   }
 
+  async function loginWithCode(email, code) {
+    setLoading(true)
+    setError('')
+    try {
+      const { data } = await api.post('/api/v1/auth/verify-login-code', { email, code })
+      setToken(data.data.token)
+      setUser(data.data.user)
+      localStorage.setItem('pack_returning', 'true')
+      navigate('/dashboard')
+    } catch (err) {
+      const detail = err.response?.data?.detail
+      setError(Array.isArray(detail) ? 'Check your input and try again.' : detail || 'Something went wrong. Try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   function logout() {
     storeLogout()
     navigate('/auth')
   }
 
-  return { login, logout, loading, error, setError }
+  return { login, loginWithCode, logout, loading, error, setError }
 }

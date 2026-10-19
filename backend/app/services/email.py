@@ -52,6 +52,38 @@ def send_reset_code_email(email: str, code: str) -> None:
     _send(email, "Your Pack reset code", html, settings.EMAIL_FROM_USER)
 
 
+def send_phone_verification_email(email: str, code: str) -> None:
+    html = f"""
+    <div style="font-family: Georgia, serif; max-width: 560px; margin: 0 auto; padding: 40px 32px; color: #1A1A18;">
+      <p style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; color: #9c9890; margin-bottom: 32px;">PACK</p>
+      <h2 style="font-size: 28px; font-weight: 300; margin: 0 0 16px;">Confirm it's you</h2>
+      <p style="font-size: 15px; font-weight: 300; color: #5a5852; line-height: 1.6; margin: 0 0 24px;">
+        Text this code back to Pack on iMessage to finish setting up your account. It expires in 15 minutes.
+      </p>
+      <p style="font-size: 36px; letter-spacing: 0.2em; font-family: sans-serif; font-weight: 600; margin: 0 0 32px;">{code}</p>
+      <p style="font-size: 11px; font-family: sans-serif; color: #9c9890; line-height: 1.6;">
+        If you didn't text Pack, you can ignore this email.
+      </p>
+    </div>
+    """
+    _send(email, "Confirm your Pack account", html, settings.EMAIL_FROM_USER)
+
+
+def send_login_code_email(email: str, code: str) -> None:
+    html = f"""
+    <div style="font-family: Georgia, serif; max-width: 560px; margin: 0 auto; padding: 40px 32px; color: #1A1A18;">
+      <p style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; color: #9c9890; margin-bottom: 32px;">PACK</p>
+      <h2 style="font-size: 28px; font-weight: 300; margin: 0 0 16px;">Your sign-in code</h2>
+      <p style="font-size: 15px; font-weight: 300; color: #5a5852; line-height: 1.6; margin: 0 0 24px;">
+        Enter this code to sign in to Pack. It expires in 15 minutes.
+      </p>
+      <p style="font-size: 36px; letter-spacing: 0.2em; font-family: sans-serif; font-weight: 600; margin: 0 0 32px;">{code}</p>
+      <p style="font-size: 11px; font-family: sans-serif; color: #9c9890; line-height: 1.6;">
+        If you didn't request this, you can ignore this email.
+      </p>
+    </div>
+    """
+    _send(email, "Your Pack sign-in code", html, settings.EMAIL_FROM_USER)
 
 
 def send_invite_email(applicant_email: str, token: str, expires_in_days: int) -> None:

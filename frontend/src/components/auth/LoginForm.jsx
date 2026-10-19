@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useAuth } from '../../hooks/useAuth.js'
 import styles from './LoginForm.module.css'
 
-export default function LoginForm({ onForgotPassword }) {
+export default function LoginForm({ onForgotPassword, onCodeLogin }) {
   const { login, loading, error } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -56,6 +56,12 @@ export default function LoginForm({ onForgotPassword }) {
       <button className={styles.submit} type="submit" disabled={loading}>
         {loading ? 'Signing in...' : 'Sign In'}
       </button>
+
+      {onCodeLogin && (
+        <button type="button" className={styles.forgotLink} onClick={onCodeLogin}>
+          Sign in with a code instead
+        </button>
+      )}
     </form>
   )
 }

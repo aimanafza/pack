@@ -3,6 +3,7 @@ import { Navigate } from 'react-router-dom'
 import useStore from '../store/index.js'
 import LoginForm from '../components/auth/LoginForm.jsx'
 import ForgotPasswordForm from '../components/auth/ForgotPasswordForm.jsx'
+import EmailCodeLoginForm from '../components/auth/EmailCodeLoginForm.jsx'
 import styles from './AuthPage.module.css'
 
 export default function AuthPage() {
@@ -22,7 +23,10 @@ export default function AuthPage() {
       <div className={styles.right}>
         <div className={styles.formWrapper}>
           {mode === 'login' && (
-            <LoginForm onForgotPassword={() => setMode('forgot')} />
+            <LoginForm
+              onForgotPassword={() => setMode('forgot')}
+              onCodeLogin={() => setMode('code')}
+            />
           )}
           {(mode === 'forgot' || mode === 'reset') && (
             <ForgotPasswordForm
@@ -32,6 +36,9 @@ export default function AuthPage() {
               onBack={() => setMode('login')}
               onDone={() => setMode('login')}
             />
+          )}
+          {mode === 'code' && (
+            <EmailCodeLoginForm onBack={() => setMode('login')} />
           )}
         </div>
       </div>

@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 
 from app.core.config import settings
 from app.core.database import init_db
-from app.api.routes import auth, wardrobe, trips, pack, inspiration, profile, avatar, waitlist
+from app.api.routes import auth, wardrobe, trips, pack, inspiration, profile, avatar, waitlist, imessage
 from app.api.routes.daily import router as daily_router
 from app.api.routes.weather import router as weather_router
 from app.api.routes.looks import router as looks_router
@@ -66,3 +66,4 @@ app.include_router(weather_router, prefix="/api/v1/weather", tags=["weather"])
 app.include_router(looks_router, prefix="/api/v1/looks", tags=["looks"])
 app.include_router(uploads_router, prefix="/api/v1/uploads", tags=["uploads"])
 app.include_router(purchase_analysis_router, prefix="/api/v1/purchase-analysis", tags=["purchase-analysis"])
+app.include_router(imessage.router, prefix="/api/v1/imessage", tags=["imessage"])
