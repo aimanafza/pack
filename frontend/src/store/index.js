@@ -13,6 +13,8 @@ const useStore = create((set, get) => ({
   },
   logout: () => {
     localStorage.removeItem('pack_token')
+    // The dashboard caches the carpet image URL per device; the next person shouldn't see it.
+    localStorage.removeItem('pack_carpet_url')
     set({ user: null, token: null })
   },
 

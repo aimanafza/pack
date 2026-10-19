@@ -82,6 +82,7 @@ class User(Document):
     reset_code: Optional[str] = None
     reset_code_expires: Optional[datetime] = None
     dashboard_carpet_url: Optional[str] = None
+    carpet_generation_started_at: Optional[datetime] = None
     daily_styling_prefs: DailyStylingPrefs = Field(default_factory=DailyStylingPrefs)
     style_insights: StyleInsights = Field(default_factory=StyleInsights)
     worn_history: List[WornHistoryEntry] = Field(default_factory=list)

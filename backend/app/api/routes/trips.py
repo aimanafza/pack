@@ -10,7 +10,7 @@ from app.models.user import User
 from app.models.item import WardrobeItem
 from app.models.trip import Trip, ReservedItem, BagEntry, PackingItem, DesignRationale, Outfit, AnchorItem
 from app.api.deps import get_current_user
-from app.services.claude_service import generate_restyle_outfit, generate_single_outfit_image, generate_lookbook_image, build_carpet_image
+from app.services.claude_service import generate_restyle_outfit, generate_single_outfit_image, generate_lookbook_image, maybe_start_carpet
 
 router = APIRouter()
 
@@ -164,13 +164,7 @@ async def approve_outfit(
     trip.status = "packed" if (total and reviewed >= total) else "reviewing"
     await trip.save()
 
-    # Trigger carpet generation after the 5th distinct approved outfit across all trips,
-    # but only if the carpet hasn't been generated yet for this user.
-    if not getattr(current_user, "dashboard_carpet_url", None):
-        all_trips = await Trip.find(Trip.user_id == current_user.id).to_list()
-        total_approved = sum(len(t.approved_outfits) for t in all_trips)
-        if total_approved >= 5:
-            background_tasks.add_task(build_carpet_image, current_user)
+    await maybe_start_carpet(current_user, background_tasks)
 
     return {"success": True, "data": trip.model_dump(), "message": "Outfit approved"}
 

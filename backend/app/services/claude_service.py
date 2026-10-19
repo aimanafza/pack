@@ -1182,177 +1182,276 @@ async def generate_single_outfit_image(outfit, user_avatar, trip, style_aestheti
     return images[0]["url"]
 
 
-def _select_distinct_outfits(approved_outfit_objects: list, count: int = 3) -> list:
-    """Pick up to `count` outfits that are as visually distinct as possible.
+CARPET_MIN_LOOKS = 4
+# A generation in progress (or one that failed) blocks a new paid attempt for this long.
+CARPET_RETRY_MINUTES = 15
+# Avatar + 2 garment photos per look keeps the request under fal's reference-image limit.
+CARPET_REFS_PER_LOOK = 2
+_CATEGORY_PRIORITY = ["dress", "top", "bottom", "outerwear", "shoes", "bag", "accessory"]
 
-    Distinctness is determined by occasion_tag first (different occasion types),
-    then by item category mix. Groups by occasion_tag and takes one per group,
-    filling the remainder from leftover outfits.
-    """
-    if len(approved_outfit_objects) <= count:
-        return approved_outfit_objects
 
-    # Group by occasion_tag
-    groups: dict[str, list] = {}
-    for outfit in approved_outfit_objects:
-        tag = (outfit.occasion_tag or outfit.occasion or "other").strip().upper()
-        # Normalise to broad category so similar tags don't fragment
-        if any(k in tag for k in ["EVENING", "FORMAL", "GALA", "DINNER"]):
-            key = "evening"
-        elif any(k in tag for k in ["BEACH", "RESORT", "POOL", "CASUAL"]):
-            key = "casual"
-        elif any(k in tag for k in ["TRAVEL", "TRANSIT", "ARRIVAL"]):
-            key = "travel"
-        elif any(k in tag for k in ["WORK", "BUSINESS", "MEETING"]):
-            key = "work"
-        else:
-            key = tag or "other"
-        groups.setdefault(key, []).append(outfit)
+def _wardrobe_item_view(item: WardrobeItem) -> dict:
+    return {
+        "id": str(item.id),
+        "name": item.name,
+        "category": item.category,
+        "color": item.color,
+        "fabric": item.fabric,
+        "image_url": item.image_url,
+    }
 
-    # Take one from each group (most occasion variety first)
-    selected = []
-    for group_outfits in groups.values():
-        if len(selected) >= count:
+
+async def gather_carpet_candidates(user) -> list[dict]:
+    """Every distinct look the user has: approved trip outfits plus all generated
+    daily outfits, reduced to pieces that still exist in their wardrobe."""
+    from app.models.daily import DailyLook  # local import to avoid circular
+
+    wardrobe = {
+        str(i.id): i
+        for i in await WardrobeItem.find(WardrobeItem.user_id == user.id).to_list()
+    }
+
+    raw_looks = []
+    for trip in await Trip.find(Trip.user_id == user.id).to_list():
+        if not trip.packing_list:
+            continue
+        approved = set(trip.approved_outfits or [])
+        for outfit in trip.packing_list.outfits:
+            if outfit.name in approved:
+                raw_looks.append({
+                    "source": "trip",
+                    "preferred": True,
+                    "occasion": outfit.occasion_tag or outfit.occasion or "",
+                    "item_ids": [p.wardrobe_item_id for p in outfit.items if p.wardrobe_item_id],
+                })
+
+    for look in await DailyLook.find(DailyLook.user_id == user.id).to_list():
+        for outfit in look.generated_outfits:
+            raw_looks.append({
+                "source": "daily",
+                "preferred": look.chosen_outfit_index == outfit.outfit_index,
+                "occasion": look.occasion or "",
+                "item_ids": list(outfit.item_ids),
+            })
+
+    # Preferred (approved / chosen) looks win when two looks use the same pieces.
+    raw_looks.sort(key=lambda look: not look["preferred"])
+    seen: set[frozenset] = set()
+    candidates = []
+    for look in raw_looks:
+        ids = [i for i in dict.fromkeys(look["item_ids"]) if i in wardrobe]
+        key = frozenset(ids)
+        if len(ids) < 2 or key in seen:
+            continue
+        seen.add(key)
+        candidates.append({
+            "key": len(candidates),
+            "source": look["source"],
+            "preferred": look["preferred"],
+            "occasion": look["occasion"],
+            "items": [_wardrobe_item_view(wardrobe[i]) for i in ids],
+        })
+    return candidates
+
+
+_CARPET_SELECT_SYSTEM = """You are PACK's stylist choosing looks for one editorial image that shows the same person four times.
+
+Choose exactly 4 looks that are as visually different from each other as possible: different silhouettes, colour stories and occasions. Two chosen looks must not share any item. Prefer looks marked "preferred": true when that doesn't cost distinctness. If fewer than 4 looks are genuinely different, return only the ones that are.
+
+Return ONLY valid JSON, no preamble:
+{"looks": [{"key": 0, "distinct_because": "one short sentence"}]}"""
+
+
+async def select_carpet_looks(candidates: list[dict]) -> list[dict]:
+    """Ask Claude for 4 clearly different looks, then enforce the rules in code:
+    real candidate keys, no repeats, no shared wardrobe items."""
+    brief = [
+        {
+            "key": c["key"],
+            "preferred": c["preferred"],
+            "occasion": c["occasion"],
+            "items": [
+                {"id": i["id"], "name": i["name"], "category": i["category"], "color": i["color"]}
+                for i in c["items"]
+            ],
+        }
+        for c in candidates
+    ]
+    response = await client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=1000,
+        system=_CARPET_SELECT_SYSTEM,
+        messages=[{"role": "user", "content": f"Looks:\n{json.dumps(brief)}"}],
+    )
+    text = next((b.text for b in response.content if getattr(b, "type", "") == "text"), "")
+    picks = _safe_json_loads(text).get("looks", [])
+
+    by_key = {c["key"]: c for c in candidates}
+    chosen, chosen_keys, used_items = [], set(), set()
+    for pick in picks:
+        look = by_key.get(pick.get("key"))
+        if not look or look["key"] in chosen_keys:
+            continue
+        ids = {i["id"] for i in look["items"]}
+        if ids & used_items:
+            continue
+        chosen_keys.add(look["key"])
+        used_items |= ids
+        chosen.append({**look, "distinct_because": pick.get("distinct_because", "")})
+        if len(chosen) == CARPET_MIN_LOOKS:
             break
-        selected.append(group_outfits[0])
+    return chosen
 
-    # Fill remaining slots from outfits not yet selected
-    if len(selected) < count:
-        selected_ids = {id(o) for o in selected}
-        for outfit in approved_outfit_objects:
-            if len(selected) >= count:
-                break
-            if id(outfit) not in selected_ids:
-                selected.append(outfit)
 
-    return selected[:count]
+def _describe_item(item: dict) -> str:
+    colors = " and ".join(item["color"]) if item.get("color") else ""
+    fabric = f" {item['fabric']}" if item.get("fabric") else ""
+    return f"{colors}{fabric} {item['name']} ({item['category']})".strip()
+
+
+async def maybe_start_carpet(user, background_tasks) -> dict:
+    """Start carpet generation if the user qualifies and none is already running.
+    Returns a status the dashboard uses to decide whether to wait for it."""
+    from datetime import datetime, timedelta
+    from app.models.user import User  # local import to avoid circular
+
+    if user.dashboard_carpet_url:
+        return {"status": "ready", "dashboard_carpet_url": user.dashboard_carpet_url}
+    if not (user.avatar and user.avatar.base_url):
+        return {"status": "needs_avatar"}
+
+    now = datetime.utcnow()
+    started = user.carpet_generation_started_at
+    if started and now - started < timedelta(minutes=CARPET_RETRY_MINUTES):
+        return {"status": "generating"}
+
+    candidates = await gather_carpet_candidates(user)
+    if len(candidates) < CARPET_MIN_LOOKS:
+        return {"status": "needs_more_looks", "looks": len(candidates), "needed": CARPET_MIN_LOOKS}
+
+    # Claim the slot atomically so two requests can't both start a paid generation.
+    cutoff = now - timedelta(minutes=CARPET_RETRY_MINUTES)
+    claimed = await User.get_motor_collection().update_one(
+        {
+            "_id": user.id,
+            "dashboard_carpet_url": None,
+            "$or": [
+                {"carpet_generation_started_at": None},
+                {"carpet_generation_started_at": {"$lt": cutoff}},
+            ],
+        },
+        {"$set": {"carpet_generation_started_at": now}},
+    )
+    if claimed.modified_count != 1:
+        return {"status": "generating"}
+
+    user.carpet_generation_started_at = now
+    background_tasks.add_task(build_carpet_image, user)
+    return {"status": "generating"}
+
+
+_CARPET_POSES = [
+    "Lying on stomach, propped on elbows, reading an open Vogue magazine with the cover visible.",
+    "Lying on back, one knee bent, holding a phone above face, small white earphones in, eyes closed.",
+    "Sitting cross-legged, leaning back on both hands, looking slightly off to the side, relaxed.",
+    "Kneeling, sitting back on heels, flipping through a stack of record sleeves.",
+]
+_CARPET_POSITIONS = ["far LEFT", "centre-left", "centre-right", "far RIGHT"]
 
 
 async def build_carpet_image(user) -> Optional[str]:
-    """Generate the dashboard hero carpet image for a user.
-
-    Called after the user's 5th distinct approved outfit. Generates once only:
-    if user.dashboard_carpet_url already exists it is returned immediately without
-    calling fal.ai again.
-    """
-    # --- Guard: already generated ---
+    """Generate the dashboard hero carpet image: the user's avatar four times,
+    each wearing a different look built only from their own wardrobe.
+    Generates once; the URL is stored on the user and never regenerated."""
     if getattr(user, "dashboard_carpet_url", None):
         return user.dashboard_carpet_url
 
-    # --- Guard: need an avatar to use as reference ---
     avatar = getattr(user, "avatar", None)
     if not avatar or not getattr(avatar, "base_url", None):
-        logger.warning(f"build_carpet_image: user {user.id} has no avatar base_url — skipping")
+        logger.warning(f"build_carpet_image: user {user.id} has no avatar base_url, skipping")
         return None
 
-    # --- Collect approved outfits from all trips ---
-    from app.models.trip import Trip  # local import to avoid circular
-
-    all_trips = await Trip.find(Trip.user_id == user.id).to_list()
-
-    approved_outfit_objects = []
-    seen_names: set[str] = set()
-    for trip in all_trips:
-        if not trip.packing_list:
-            continue
-        approved_names = set(trip.approved_outfits or [])
-        for outfit in trip.packing_list.outfits:
-            if outfit.name in approved_names and outfit.name not in seen_names:
-                seen_names.add(outfit.name)
-                approved_outfit_objects.append(outfit)
-
-    if len(approved_outfit_objects) < 3:
-        logger.warning(
-            f"build_carpet_image: user {user.id} has only {len(approved_outfit_objects)} "
-            "approved outfit(s) — need at least 3, skipping"
-        )
+    candidates = await gather_carpet_candidates(user)
+    if len(candidates) < CARPET_MIN_LOOKS:
+        logger.warning(f"build_carpet_image: user {user.id} has {len(candidates)} distinct looks, need {CARPET_MIN_LOOKS}")
         return None
 
-    # --- Select 3 most visually distinct looks ---
-    outfits = _select_distinct_outfits(approved_outfit_objects, count=3)
+    try:
+        looks = await select_carpet_looks(candidates)
+    except Exception as e:
+        logger.error(f"build_carpet_image: look selection failed for user {user.id}: {e}")
+        return None
+    if len(looks) < CARPET_MIN_LOOKS:
+        logger.warning(f"build_carpet_image: only {len(looks)} clearly different looks for user {user.id}, skipping")
+        return None
 
-    def _describe_pieces(outfit) -> str:
-        pieces = [item.name for item in outfit.items if item.name]
-        if not pieces:
-            return "a complete outfit"
-        return ", ".join(pieces)
+    # Reference images: avatar first, then each figure's key garments in order.
+    image_urls = [avatar.base_url]
+    figure_lines = []
+    for n, look in enumerate(looks):
+        refs = sorted(
+            look["items"],
+            key=lambda i: _CATEGORY_PRIORITY.index(i["category"]) if i["category"] in _CATEGORY_PRIORITY else len(_CATEGORY_PRIORITY),
+        )[:CARPET_REFS_PER_LOOK]
+        first_ref = len(image_urls) + 1
+        image_urls.extend(i["image_url"] for i in refs)
+        ref_span = f"images {first_ref}-{len(image_urls)}" if len(refs) > 1 else f"image {first_ref}"
+        figure_lines += [
+            f"Figure {n + 1} ({_CARPET_POSITIONS[n]} of the carpet): wearing exactly these pieces, "
+            f"{'; '.join(_describe_item(i) for i in look['items'])}. "
+            f"The garments in {ref_span} show what the main pieces look like.",
+            _CARPET_POSES[n],
+            "",
+        ]
 
-    outfit_1, outfit_2, outfit_3 = outfits[0], outfits[1], outfits[2]
-
-    # --- Assemble avatar fields ---
     features_to_preserve = ", ".join(
         getattr(avatar.preferences, "features_to_preserve", []) or []
     ) or "natural likeness, skin tone, facial features"
-
     hijab = getattr(avatar.appearance, "hijab", False)
-    hijab_line = (
-        "The person is wearing a hijab in all three figures."
-        if hijab
-        else ""
-    )
 
-    # --- Build the prompt ---
-    # Figures are arranged LEFT TO RIGHT across the wide carpet so the
-    # composition reads as horizontal and fills a landscape frame correctly.
     prompt_lines = [
-        "Use the person in the reference image provided as the subject.",
-        "Recreate their exact face, skin tone, hair, and likeness in all",
-        "three figures. Do not change their appearance.",
+        "Image 1 is the person. Use them as the subject and recreate their exact face,",
+        "skin tone, hair and likeness in all four figures. Do not change their appearance.",
         "",
-        "WIDE HORIZONTAL overhead bird's-eye editorial photograph, camera",
-        "pointing straight down at 90 degrees. Ultrawide 16:9 landscape",
-        "composition. Three versions of this same person arranged",
-        "LEFT TO RIGHT across a large ornate Persian carpet with intricate",
-        "floral and medallion patterns in deep reds, greens, and gold.",
-        "The carpet fills the entire frame edge to edge.",
-        "No background visible outside the carpet.",
-        "All three figures must be fully visible and evenly spaced",
-        "across the full width of the frame.",
+        "WIDE HORIZONTAL overhead bird's-eye editorial photograph, camera pointing straight",
+        "down at 90 degrees. Ultrawide 16:9 landscape composition. Four versions of this same",
+        "person arranged LEFT TO RIGHT, evenly spaced, across a large ornate Persian carpet",
+        "with intricate floral and medallion patterns in deep reds, greens and gold. The carpet",
+        "fills the entire frame edge to edge. No background visible outside the carpet.",
+        "All four figures must be fully visible.",
         "",
         f"Preserve exactly: {features_to_preserve}.",
     ]
-    if hijab_line:
-        prompt_lines.append(hijab_line)
+    if hijab:
+        prompt_lines.append("The person is wearing a hijab in all four figures.")
     prompt_lines += [
         "",
-        f"Figure 1 (LEFT third of carpet): wearing {_describe_pieces(outfit_1)}.",
-        f"{outfit_1.styling_notes or outfit_1.styling_note}. Lying on stomach, propped on elbows,",
-        "reading an open Vogue magazine. The magazine cover is visible.",
+        "Each figure wears a different outfit, taken only from the garments described and shown",
+        "for that figure. Match their colour, fabric and cut. Do not add, swap or invent clothing,",
+        "and do not mix garments between figures.",
         "",
-        f"Figure 2 (CENTER of carpet): wearing {_describe_pieces(outfit_2)}.",
-        f"{outfit_2.styling_notes or outfit_2.styling_note}. Lying on back, one knee bent, holding",
-        "phone above face, small white earphones in, eyes closed.",
+        *figure_lines,
+        "Scattered naturally between the figures: a vintage record player with a spinning vinyl,",
+        "two or three record sleeves face-up, a film camera, a half-drunk glass, a small stack of",
+        "fashion books.",
         "",
-        f"Figure 3 (RIGHT third of carpet): wearing {_describe_pieces(outfit_3)}.",
-        f"{outfit_3.styling_notes or outfit_3.styling_note}. Sitting cross-legged, leaning back on",
-        "both hands, looking slightly off to the side, relaxed.",
-        "",
-        "Scattered naturally between the figures on the carpet: a",
-        "vintage record player with a spinning vinyl, two or three record",
-        "sleeves face-up, a film camera, a half-drunk glass, a small stack",
-        "of fashion books.",
-        "",
-        "Soft warm diffused lighting from above. Slight film grain.",
-        "Editorial fashion photography aesthetic. Ultra-realistic.",
-        "Shot on medium format camera.",
+        "Soft warm diffused lighting from above. Slight film grain. Editorial fashion photography",
+        "aesthetic. Ultra-realistic. Shot on medium format camera.",
     ]
     assembled_prompt = "\n".join(prompt_lines)
 
-    # --- Call fal.ai ---
-    # Uses nano-banana-pro/edit (the image-to-image endpoint active in this codebase)
-    # so the avatar base_url is honoured as a visual reference for the subject's likeness.
     import fal_client
     import os
     os.environ["FAL_KEY"] = settings.FAL_API_KEY
 
-    logger.info(f"build_carpet_image: calling fal.ai for user {user.id}")
+    logger.info(f"build_carpet_image: calling fal.ai for user {user.id} with {len(image_urls)} reference images")
     try:
         result = await asyncio.to_thread(
             fal_client.run,
             "fal-ai/nano-banana-pro/edit",
             arguments={
                 "prompt": assembled_prompt,
-                "image_urls": [avatar.base_url],
+                "image_urls": image_urls,
                 "num_images": 1,
                 "image_size": "landscape_16_9",
             },
@@ -1365,22 +1464,18 @@ async def build_carpet_image(user) -> Optional[str]:
     if not images:
         logger.warning(f"build_carpet_image: fal.ai returned no images for user {user.id}")
         return None
-
     fal_url = images[0]["url"]
 
-    # --- Upload to Cloudinary and persist ---
     from app.services.cloudinary_service import upload_carpet_image  # local import
 
     try:
-        cloudinary_result = await upload_carpet_image(fal_url, str(user.id))
-        permanent_url = cloudinary_result["url"]
+        permanent_url = (await upload_carpet_image(fal_url, str(user.id)))["url"]
     except Exception as e:
         logger.error(f"build_carpet_image: Cloudinary upload failed for user {user.id}: {e}")
-        # Fall back to the fal.ai URL so the user still gets their image
         permanent_url = fal_url
 
-    user.dashboard_carpet_url = permanent_url
-    await user.save()
+    # $set only this field so changes made to the user during generation aren't overwritten.
+    await user.set({"dashboard_carpet_url": permanent_url})
     logger.info(f"build_carpet_image: saved carpet URL for user {user.id}")
     return permanent_url
 
