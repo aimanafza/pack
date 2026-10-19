@@ -8,7 +8,7 @@ import { useNewTrip } from '../hooks/useNewTrip.js'
 import { useDailyStyling } from '../hooks/useDailyStyling.js'
 import api from '../utils/api.js'
 import { useWeightUnit } from '../utils/weight.js'
-import { markTallLook } from '../utils/looks.js'
+import LookPhoto from '../components/looks/LookPhoto.jsx'
 import styles from './ProfilePage.module.css'
 import PreferencesModal from '../components/profile/PreferencesModal.jsx'
 import WardrobeGateModal from '../components/trips/WardrobeGateModal.jsx'
@@ -497,11 +497,9 @@ export default function ProfilePage() {
               >
                 <div className={styles.lookbookCardImg}>
                   {(outfit.generated_image_url || outfit.lookbook_image_url) ? (
-                    <img
+                    <LookPhoto
                       src={outfit.generated_image_url || outfit.lookbook_image_url}
                       alt={outfit.day_label || outfit.name}
-                      className={styles.lookbookCardPhoto}
-                      onLoad={markTallLook}
                     />
                   ) : (
                     <div className={styles.lookbookCardPlaceholder}>
@@ -538,11 +536,7 @@ export default function ProfilePage() {
                 <div key={look.id || look._id} className={styles.lookbookCard}>
                   <div className={styles.lookbookCardImg}>
                     {look.avatar_image_url ? (
-                      <img
-                        src={look.avatar_image_url}
-                        alt={look.name}
-                        className={styles.lookbookCardPhoto}
-                      />
+                      <LookPhoto src={look.avatar_image_url} alt={look.name} />
                     ) : (
                       <div className={styles.lookbookCardPlaceholder}>
                         <span className={styles.lookbookCardPlaceholderText}>{look.name || 'Look'}</span>

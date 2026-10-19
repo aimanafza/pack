@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { formatWeight, useWeightUnit } from '../utils/weight.js'
-import { markTallLook } from '../utils/looks.js'
+import LookPhoto from './looks/LookPhoto.jsx'
 import styles from './LookbookSection.module.css'
 
 /* ─── Item Drawer ─────────────────────────────────────────────────── */
@@ -147,11 +147,11 @@ export default function LookbookSection({ trip, outfits }) {
         {/* LEFT — figure */}
         <div className={styles.figSide}>
           {lookbookUrl ? (
-            <img
+            <LookPhoto
+              key={lookbookUrl}
               src={lookbookUrl}
               alt={outfit.name || outfit.day_label}
-              className={styles.figImg}
-              onLoad={markTallLook}
+              className={styles.figPhoto}
             />
           ) : (
             <div className={styles.figPlaceholder} />
