@@ -3,6 +3,14 @@ import { Link } from 'react-router-dom'
 import api from '../../utils/api.js'
 import styles from './LoginForm.module.css'
 
+function BackArrow() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
 export default function ForgotPasswordForm({ initialMode, initialEmail, onEmailSet, onBack, onDone }) {
   const [step, setStep] = useState(initialMode === 'reset' ? 'reset' : 'email')
   const [email, setEmail] = useState(initialEmail || '')
@@ -70,7 +78,7 @@ export default function ForgotPasswordForm({ initialMode, initialEmail, onEmailS
     return (
       <form className={styles.form} onSubmit={handleRequestCode} noValidate>
         <div className={styles.forgotHeader}>
-          <button type="button" className={styles.backLink} onClick={onBack}>← Back to sign in</button>
+          <button type="button" className={styles.backLink} onClick={onBack}><BackArrow />Back to sign in</button>
           <h2 className={styles.forgotTitle}>Reset your password</h2>
           <p className={styles.forgotSub}>Enter your email and we'll send you a reset code.</p>
         </div>
@@ -78,7 +86,7 @@ export default function ForgotPasswordForm({ initialMode, initialEmail, onEmailS
         {error && <p className={styles.formError}>{error}</p>}
         {noAccount && (
           <p className={styles.formError}>
-            No account found for that email. <Link to="/" className={styles.forgotLink}>Join the waitlist</Link> to get access.
+            No account found for that email. <Link to="/" className={styles.inlineLink}>Join the waitlist</Link> to get access.
           </p>
         )}
 
@@ -105,7 +113,7 @@ export default function ForgotPasswordForm({ initialMode, initialEmail, onEmailS
   return (
     <form className={styles.form} onSubmit={handleReset} noValidate>
       <div className={styles.forgotHeader}>
-        <button type="button" className={styles.backLink} onClick={() => setStep('email')}>← Back</button>
+        <button type="button" className={styles.backLink} onClick={() => setStep('email')}><BackArrow />Back</button>
         <h2 className={styles.forgotTitle}>Enter your code</h2>
         <p className={styles.forgotSub}>Check your email for the 6-digit code.</p>
       </div>
