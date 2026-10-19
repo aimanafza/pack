@@ -12,8 +12,6 @@ class Settings(BaseSettings):
     CLOUDINARY_CLOUD_NAME: str = ""
     CLOUDINARY_API_KEY: str = ""
     CLOUDINARY_API_SECRET: str = ""
-    FRONTEND_URL: str = "http://localhost:5173"
-
     FAL_API_KEY: str = ""
     OPENWEATHER_API_KEY: str = ""
 
@@ -24,6 +22,7 @@ class Settings(BaseSettings):
     WAITLIST_ADMIN_EMAIL: str = "aimanafzal47@gmail.com"
     EMAIL_FROM_USER: str = "hey@textpack.co"
     EMAIL_FROM_INTERNAL: str = "no-reply@textpack.co"
+    CHROME_EXTENSION_ID: str = ""
 
     class Config:
         env_file = ".env"

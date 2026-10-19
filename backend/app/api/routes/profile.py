@@ -14,11 +14,7 @@ limiter = Limiter(key_func=get_remote_address)
 
 
 @router.post("/analyze-style")
-
-
-
 @limiter.limit("20/hour")
-
 async def analyze_style(
     request: Request,
     current_user: User = Depends(get_current_user),

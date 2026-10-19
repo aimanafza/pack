@@ -85,7 +85,7 @@ class UnapproveOutfitsBody(BaseModel):
 @router.get("/")
 async def get_trips(current_user: User = Depends(get_current_user)):
     trips = await Trip.find(Trip.user_id == current_user.id).to_list()
-    return {"success": True, "data": [t.model_dump() for t in trips], "message": ""}
+    return {"success": True, "data": [t.model_dump(mode="json") for t in trips], "message": ""}
 
 
 @router.post("/")
@@ -112,7 +112,7 @@ async def create_trip(body: TripBody, current_user: User = Depends(get_current_u
         weight_unit=body.weight_unit,
     )
     await trip.insert()
-    return {"success": True, "data": trip.model_dump(), "message": "Trip created"}
+    return {"success": True, "data": trip.model_dump(mode="json"), "message": "Trip created"}
 
 
 @router.get("/{trip_id}")
@@ -120,7 +120,7 @@ async def get_trip(trip_id: str, current_user: User = Depends(get_current_user))
     trip = await Trip.get(trip_id)
     if not trip or trip.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Trip not found")
-    return {"success": True, "data": trip.model_dump(), "message": ""}
+    return {"success": True, "data": trip.model_dump(mode="json"), "message": ""}
 
 
 @router.put("/{trip_id}")
@@ -135,7 +135,7 @@ async def update_trip(trip_id: str, body: TripUpdateBody, current_user: User = D
     updates['duration_days'] = (end - start).days
     if updates:
         await trip.set(updates)
-    return {"success": True, "data": trip.model_dump(), "message": "Trip updated"}
+    return {"success": True, "data": trip.model_dump(mode="json"), "message": "Trip updated"}
 
 
 @router.delete("/{trip_id}")
@@ -172,7 +172,7 @@ async def approve_outfit(
         if total_approved >= 5:
             background_tasks.add_task(build_carpet_image, current_user)
 
-    return {"success": True, "data": trip.model_dump(), "message": "Outfit approved"}
+    return {"success": True, "data": trip.model_dump(mode="json"), "message": "Outfit approved"}
 
 
 @router.patch("/{trip_id}/reject-outfit")
@@ -186,7 +186,7 @@ async def reject_outfit(trip_id: str, body: RejectOutfitBody, current_user: User
     reviewed = len(trip.approved_outfits) + len(trip.rejected_outfits)
     trip.status = "packed" if (total and reviewed >= total) else "reviewing"
     await trip.save()
-    return {"success": True, "data": trip.model_dump(), "message": "Outfit rejected"}
+    return {"success": True, "data": trip.model_dump(mode="json"), "message": "Outfit rejected"}
 
 
 @router.post("/{trip_id}/outfits/restyle")
@@ -291,7 +291,7 @@ async def restyle_outfit(
         trip.packing_list.outfits.append(new_outfit)
         await trip.save()
 
-    return {"success": True, "data": new_outfit.model_dump(), "message": "Restyled"}
+    return {"success": True, "data": new_outfit.model_dump(mode="json"), "message": "Restyled"}
 
 
 @router.post("/{trip_id}/generate-outfit-images")
@@ -321,7 +321,7 @@ async def generate_outfit_images(trip_id: str, current_user: User = Depends(get_
     await asyncio.gather(*[_generate_for_outfit(o) for o in trip.packing_list.outfits])
     await trip.save()
 
-    return {"success": True, "data": trip.model_dump(), "message": "Outfit images generated"}
+    return {"success": True, "data": trip.model_dump(mode="json"), "message": "Outfit images generated"}
 
 
 @router.patch("/{trip_id}/unapprove-outfits")
@@ -345,7 +345,7 @@ async def unapprove_outfits(
 
     trip.status = "reviewing" if trip.approved_outfits else "planning"
     await trip.save()
-    return {"success": True, "data": trip.model_dump(), "message": "Outfits unapproved"}
+    return {"success": True, "data": trip.model_dump(mode="json"), "message": "Outfits unapproved"}
 
 
 @router.post("/{trip_id}/outfits/{outfit_id}/lookbook-image")
@@ -402,4 +402,4 @@ async def check_item(trip_id: str, body: CheckItemBody, current_user: User = Dep
                 if item.wardrobe_item_id == body.item_id or item.name == body.item_id:
                     item.checked = body.checked
         await trip.save()
-    return {"success": True, "data": trip.model_dump(), "message": ""}
+    return {"success": True, "data": trip.model_dump(mode="json"), "message": ""}

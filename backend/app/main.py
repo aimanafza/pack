@@ -39,10 +39,15 @@ origins = [
     "http://127.0.0.1:5174",
 ]
 
+extension_id = settings.CHROME_EXTENSION_ID
+extension_regex = (
+    rf"chrome-extension://{extension_id}" if extension_id else None
+)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_origin_regex=r"chrome-extension://.*",  # allow all PACK extension IDs
+    allow_origin_regex=extension_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

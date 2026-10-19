@@ -14,6 +14,13 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+def _parse_json_field(field_name: str, value: str):
+    try:
+        return json.loads(value)
+    except (json.JSONDecodeError, TypeError):
+        raise HTTPException(status_code=422, detail=f"Invalid JSON for field '{field_name}'.")
+
+
 class ItemUpdateBody(BaseModel):
     name: Optional[str] = None
     category: Optional[str] = None
@@ -87,11 +94,11 @@ async def add_item(
         name=name,
         category=category,
         subcategory=subcategory,
-        color=json.loads(color),
+        color=_parse_json_field("color", color),
         fabric=fabric,
-        formality=json.loads(formality),
-        occasions=json.loads(occasions),
-        season=json.loads(season),
+        formality=_parse_json_field("formality", formality),
+        occasions=_parse_json_field("occasions", occasions),
+        season=_parse_json_field("season", season),
         notes=notes,
         weight_grams=weight_grams,
         image_url=url,

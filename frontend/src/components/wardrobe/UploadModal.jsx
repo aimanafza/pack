@@ -46,7 +46,6 @@ export default function UploadModal({ onClose }) {
 
   // AI autofill state
   const [analysing, setAnalysing] = useState(false)
-  const [hasAnalysed, setHasAnalysed] = useState(false)
   const [aiFilledFields, setAiFilledFields] = useState(new Set())
 
   function clearAiField(fieldName) {
@@ -75,18 +74,15 @@ export default function UploadModal({ onClose }) {
       const url = data.data.url
       setPreUploadedUrl(url)
 
-      // Only analyse once per image selection
-      if (!hasAnalysed) {
-        setAnalysing(true)
-        try {
-          const res = await api.post('/api/v1/wardrobe/analyse-image', { image_url: url })
-          const result = res.data.data || {}
-          applyAnalysis(result)
-        } catch {
-          // Fail silently — user fills manually
-        } finally {
-          setAnalysing(false)
-        }
+      setAnalysing(true)
+      try {
+        const res = await api.post('/api/v1/wardrobe/analyse-image', { image_url: url })
+        const result = res.data.data || {}
+        applyAnalysis(result)
+      } catch {
+        // Fail silently — user fills manually
+      } finally {
+        setAnalysing(false)
       }
     } catch {
       // Pre-upload failed — fall back to file upload on submit
@@ -128,7 +124,6 @@ export default function UploadModal({ onClose }) {
     if (result.notes) { setNotes(result.notes); filled.add('notes') }
 
     setAiFilledFields(filled)
-    setHasAnalysed(true)
   }
 
   function handleColorKeyDown(e) {
