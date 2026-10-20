@@ -1637,6 +1637,7 @@ Return ONLY valid JSON, no markdown, no preamble, no explanation:
   "category": "one of: top, bottom, dress, outerwear, shoes, bag, accessory",
   "subcategory": "specific type e.g. tank top, blazer, midi skirt, loafer, tote bag",
   "garment_type": "the plain kind of item in 1 to 3 lowercase words, singular, no colour, fit or style words, e.g. jeans, skirt, tank top, blouse, sweater, blazer, dress, ankle boot, sneaker, sandal, tote bag, crossbody bag, sunglasses, watch",
+  "weight_details": ["only details that clearly add weight, chosen from: sequins, beading, embroidery, lace overlay, fringe, metal hardware, padding, heavy lining, feathers; empty list if none"],
   "color": ["primary color", "secondary color if present"],
   "fabric": "one of: linen, cotton, silk, wool, synthetic, denim, leather, other",
   "formality": ["one or more of: casual, smart-casual, business, formal, elevated-casual, nightlife"],
@@ -1646,7 +1647,8 @@ Return ONLY valid JSON, no markdown, no preamble, no explanation:
   "notes": "any notable details worth capturing: print description, hardware details, special construction, brand if visible, condition, etc."
 }
 
-weight_grams is your own integer estimate of what this exact item weighs. Judge it from the garment type, the fabric and how much of it there is: heavy denim, wool knits and leather weigh far more than silk, linen or jersey, and a maxi dress weighs more than a cami. It is a fallback; PACK checks it against researched averages.
+weight_grams is your own integer estimate of what this exact item weighs. Judge it from the garment type, the fabric and how much of it there is: heavy denim, wool knits and leather weigh far more than silk, linen or jersey, and a maxi dress weighs more than a cami. Embellishment adds real weight: an all-over sequin or beaded piece can weigh twice its plain version. It is a fallback; PACK checks it against researched averages.
+weight_details lists only details that cover enough of the item to change its weight: a sequin top counts, a single beaded button does not. Use the exact words from the list.
 Be precise with colors (say 'burgundy' not just 'red', 'ivory' not just 'white'). If the image is unclear or shows multiple items, do your best with what's visible. Never return null for required fields — use your best judgment.
 """
 
@@ -1690,6 +1692,7 @@ async def analyse_wardrobe_item_image(image_url: str) -> dict:
         category=result.get("category", ""),
         garment_type=result.get("garment_type") or result.get("subcategory") or "",
         fabric=result.get("fabric", ""),
+        details=result.get("weight_details") or [],
         fallback_grams=result.get("weight_grams"),
     )
     return result
@@ -1702,7 +1705,7 @@ async def analyse_wardrobe_item_image(image_url: str) -> dict:
 
 _WEIGHT_RESEARCH_SYSTEM = """You research how much clothing and accessories typically weigh, for a packing app that keeps travellers under airline weight limits.
 
-Search the web for the typical weight of the item you're given, made in the given fabric, in an adult size medium. Look at several sources (retailer product specs, shipping weights, fabric weight guides) and take a sensible average. Ignore packaging weight.
+Search the web for the typical weight of the item you're given, made in the given fabric, in an adult size medium. If details are listed (sequins, beading, embroidery and so on), find the weight of an item with those details, not the plain version: embellishment can double a garment's weight. Look at several sources (retailer product specs, shipping weights, fabric weight guides) and take a sensible average. Ignore packaging weight.
 
 After searching, reply with the JSON object alone, no summary or explanation before or after it:
 {"weight_grams": 520, "low_grams": 400, "high_grams": 680}"""
@@ -1711,10 +1714,26 @@ _WEIGHT_MIN_GRAMS = 10
 _WEIGHT_MAX_GRAMS = 5000
 
 
-def _weight_key(garment_type: str, fabric: str) -> str:
+# Details that change a garment's weight enough to be researched separately.
+# A fixed list keeps the saved keys consistent ("sequins", never "sequined" or "paillettes").
+WEIGHT_DETAILS = (
+    "sequins", "beading", "embroidery", "lace overlay", "fringe",
+    "metal hardware", "padding", "heavy lining", "feathers",
+)
+
+
+def _clean_details(details) -> list[str]:
+    found = {str(d).lower().strip() for d in (details or [])}
+    return [d for d in WEIGHT_DETAILS if d in found]
+
+
+def _weight_key(garment_type: str, fabric: str, details=None) -> str:
+    """"jeans|denim" for a plain item, "halter top|synthetic|sequins" with details."""
     garment = re.sub(r"[^a-z ]", "", (garment_type or "").lower()).strip()
     garment = re.sub(r"\s+", " ", garment)
-    return f"{garment}|{(fabric or 'other').lower().strip()}"
+    key = f"{garment}|{(fabric or 'other').lower().strip()}"
+    cleaned = _clean_details(details)
+    return f"{key}|{'+'.join(cleaned)}" if cleaned else key
 
 
 def _sane_grams(value) -> int:
@@ -1725,7 +1744,7 @@ def _sane_grams(value) -> int:
     return grams if _WEIGHT_MIN_GRAMS <= grams <= _WEIGHT_MAX_GRAMS else 0
 
 
-async def estimate_item_weight(category: str, garment_type: str, fabric: str, fallback_grams=None) -> int:
+async def estimate_item_weight(category: str, garment_type: str, fabric: str, details=None, fallback_grams=None) -> int:
     """Typical weight in grams for this kind of item in this fabric. Reuses a saved
     reference when one exists; otherwise researches it once and saves it. Falls back
     to the image-based estimate (or 300 g) if research fails."""
@@ -1736,19 +1755,21 @@ async def estimate_item_weight(category: str, garment_type: str, fabric: str, fa
     if not garment_type:
         return fallback
 
-    key = _weight_key(garment_type, fabric)
+    detail_list = _clean_details(details)
+    key = _weight_key(garment_type, fabric, detail_list)
     existing = await WeightReference.find_one(WeightReference.key == key)
     if existing:
         return existing.weight_grams
 
     try:
-        garment, material = key.split("|")
+        garment, material = key.split("|")[:2]
+        detail_line = f"\nDetails: {', '.join(detail_list)}" if detail_list else ""
         response = await client.messages.create(
             model="claude-sonnet-4-6",
             max_tokens=1000,
             system=_WEIGHT_RESEARCH_SYSTEM,
             tools=[{"type": "web_search_20250305", "name": "web_search", "max_uses": 3}],
-            messages=[{"role": "user", "content": f"Item: {garment} ({category or 'clothing'})\nFabric: {material}"}],
+            messages=[{"role": "user", "content": f"Item: {garment} ({category or 'clothing'})\nFabric: {material}{detail_line}"}],
         )
         text = "".join(b.text for b in response.content if getattr(b, "type", "") == "text" and getattr(b, "text", None))
         # Claude sometimes explains its sources first; the answer is the JSON object at the end
@@ -1769,6 +1790,7 @@ async def estimate_item_weight(category: str, garment_type: str, fabric: str, fa
             category=category or "",
             garment_type=garment,
             fabric=material,
+            details=detail_list,
             weight_grams=grams,
             low_grams=_sane_grams(found.get("low_grams")),
             high_grams=_sane_grams(found.get("high_grams")),
