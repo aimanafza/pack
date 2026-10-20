@@ -1,3 +1,4 @@
+import asyncio
 from fastapi import APIRouter, Depends, UploadFile, File
 from app.models.user import User
 from app.api.deps import get_current_user
@@ -21,7 +22,7 @@ async def upload_image(
 ):
     """Upload an image to Cloudinary (inspiration images, etc.) and return the URL."""
     image_data = await image.read()
-    result = cloudinary.uploader.upload(
+    result = await asyncio.to_thread(cloudinary.uploader.upload,
         image_data,
         folder=f"pack/inspiration/{current_user.id}",
         transformation=[

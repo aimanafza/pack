@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import cloudinary
 import cloudinary.uploader
@@ -5,6 +6,8 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
+# The Cloudinary SDK is synchronous. Every call below runs in a worker thread
+# (asyncio.to_thread) so an upload never makes the whole server wait.
 cloudinary.config(
     cloud_name=settings.CLOUDINARY_CLOUD_NAME,
     api_key=settings.CLOUDINARY_API_KEY,
@@ -42,7 +45,7 @@ async def upload_wardrobe_item(file, user_id: str) -> dict:
 
     folder = f"pack/wardrobe/{user_id}"
     try:
-        result = cloudinary.uploader.upload(
+        result = await asyncio.to_thread(cloudinary.uploader.upload,
             file,
             folder=folder,
             resource_type="image",
@@ -52,16 +55,16 @@ async def upload_wardrobe_item(file, user_id: str) -> dict:
         return {"url": result["secure_url"], "public_id": result["public_id"], "background_removed": True}
     except Exception as e:
         logger.error(f"Background removal failed for user {user_id}, saving the original photo: {e}")
-        result = cloudinary.uploader.upload(file, folder=folder, resource_type="image")
+        result = await asyncio.to_thread(cloudinary.uploader.upload, file, folder=folder, resource_type="image")
         return {"url": result["secure_url"], "public_id": result["public_id"], "background_removed": False}
 
 
 async def delete_wardrobe_item(public_id: str) -> None:
-    cloudinary.uploader.destroy(public_id)
+    await asyncio.to_thread(cloudinary.uploader.destroy, public_id)
 
 
 async def upload_inspiration_image(file, user_id: str, trip_id: str) -> dict:
-    result = cloudinary.uploader.upload(
+    result = await asyncio.to_thread(cloudinary.uploader.upload,
         file,
         folder=f"pack/inspiration/{user_id}/{trip_id}",
         transformation=[
@@ -76,7 +79,7 @@ async def upload_inspiration_image(file, user_id: str, trip_id: str) -> dict:
 
 
 async def delete_inspiration_image(public_id: str) -> None:
-    cloudinary.uploader.destroy(public_id)
+    await asyncio.to_thread(cloudinary.uploader.destroy, public_id)
 
 
 async def upload_avatar_permanent(url: str, user_id: str) -> dict:
@@ -85,7 +88,7 @@ async def upload_avatar_permanent(url: str, user_id: str) -> dict:
     async with httpx.AsyncClient() as http:
         r = await http.get(url)
         image_data = r.content
-    result = cloudinary.uploader.upload(
+    result = await asyncio.to_thread(cloudinary.uploader.upload,
         image_data,
         folder="pack/avatars",
         public_id=f"avatar_{user_id}",
@@ -102,7 +105,7 @@ async def upload_avatar_permanent(url: str, user_id: str) -> dict:
 
 
 async def upload_avatar_ref(file, user_id: str, slot: str) -> dict:
-    result = cloudinary.uploader.upload(
+    result = await asyncio.to_thread(cloudinary.uploader.upload,
         file,
         folder=f"pack/avatar_refs/{user_id}",
         public_id=f"{slot}_{user_id}",
@@ -124,7 +127,7 @@ async def upload_carpet_image(url: str, user_id: str) -> dict:
     async with httpx.AsyncClient() as http:
         r = await http.get(url)
         image_data = r.content
-    result = cloudinary.uploader.upload(
+    result = await asyncio.to_thread(cloudinary.uploader.upload,
         image_data,
         folder="pack/carpets",
         public_id=f"carpet_{user_id}",
@@ -141,7 +144,7 @@ async def upload_carpet_image(url: str, user_id: str) -> dict:
 
 
 async def upload_profile_picture(file, user_id: str) -> dict:
-    result = cloudinary.uploader.upload(
+    result = await asyncio.to_thread(cloudinary.uploader.upload,
         file,
         folder="pack/profile_pictures",
         public_id=f"user_{user_id}",

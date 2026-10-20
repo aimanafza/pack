@@ -88,8 +88,9 @@ export default function UploadModal({ onClose }) {
           const res = await api.post('/api/v1/wardrobe/analyse-image', { image_url: url })
           const result = res.data.data || {}
           applyAnalysis(result)
-        } catch {
-          // Fail silently — user fills manually
+        } catch (err) {
+          // Usually silent: the user fills it in by hand. A monthly limit gets said out loud.
+          if (err.response?.status === 429) setError(err.response.data.detail)
         } finally {
           setAnalysing(false)
         }
@@ -227,8 +228,12 @@ export default function UploadModal({ onClose }) {
 
       await uploadItem(fd)
       onClose()
-    } catch {
-      setError('Upload failed. Check your connection and try again.')
+    } catch (err) {
+      setError(
+        err.response?.status === 429
+          ? err.response.data.detail
+          : 'Upload failed. Check your connection and try again.'
+      )
     } finally {
       setLoading(false)
     }

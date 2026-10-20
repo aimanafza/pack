@@ -8,6 +8,7 @@ from app.models.item import WardrobeItem
 from app.api.deps import get_current_user
 from app.services.cloudinary_service import upload_wardrobe_item, delete_wardrobe_item
 from app.services.claude_service import regenerate_style_dna_for_user, analyse_wardrobe_item_image
+from app.services import usage_service
 import json
 import logging
 
@@ -35,6 +36,12 @@ async def get_wardrobe(current_user: User = Depends(get_current_user)):
     return {"success": True, "data": [item.model_dump() for item in items], "message": ""}
 
 
+@router.get("/usage")
+async def get_upload_usage(current_user: User = Depends(get_current_user)):
+    """How many new items and autofill reads are left this month."""
+    return {"success": True, "data": await usage_service.summary(current_user), "message": ""}
+
+
 @router.post("/analyse-image")
 async def analyse_wardrobe_image(
     body: dict,
@@ -44,7 +51,16 @@ async def analyse_wardrobe_image(
     image_url = body.get("image_url")
     if not image_url:
         raise HTTPException(status_code=400, detail="image_url required")
+    # No point reading a photo that can't be saved this month
+    usage = await usage_service.summary(current_user)
+    if usage["items"]["left"] == 0:
+        raise HTTPException(status_code=429, detail=usage_service.items_limit_message(current_user))
+    if not await usage_service.reserve(current_user, "photos_read"):
+        raise HTTPException(status_code=429, detail=usage_service.reads_limit_message(current_user))
     result = await analyse_wardrobe_item_image(image_url)
+    if not result:
+        # The read failed, so it shouldn't count
+        await usage_service.release(current_user, "photos_read")
     return {"success": True, "data": result}
 
 
@@ -66,6 +82,9 @@ async def add_item(
     temp_public_id: Optional[str] = Form(None),
     current_user: User = Depends(get_current_user),
 ):
+    if not await usage_service.reserve(current_user, "items_added"):
+        raise HTTPException(status_code=429, detail=usage_service.items_limit_message(current_user))
+
     # If image was pre-uploaded (AI autofill flow), re-run it through the
     # wardrobe pipeline so background removal and proper folder/naming are applied.
     try:
@@ -77,10 +96,12 @@ async def add_item(
         else:
             raise HTTPException(status_code=400, detail="Either image file or image_url required")
     except HTTPException:
+        await usage_service.release(current_user, "items_added")
         raise
     except Exception as e:
+        await usage_service.release(current_user, "items_added")
         logger.error(f"Wardrobe upload failed for user {current_user.id}: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Image upload failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="We couldn't upload that photo. Try again in a moment.")
 
     url = upload_result["url"]
     public_id = upload_result["public_id"]

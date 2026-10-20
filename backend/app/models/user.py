@@ -83,6 +83,7 @@ class User(Document):
     reset_code_expires: Optional[datetime] = None
     dashboard_carpet_url: Optional[str] = None
     carpet_generation_started_at: Optional[datetime] = None
+    plan: str = "free"  # key into app.core.plans.PLAN_LIMITS
     weight_unit: str = "kg"  # kg | lb, display only: weights are always stored in grams
     daily_styling_prefs: DailyStylingPrefs = Field(default_factory=DailyStylingPrefs)
     style_insights: StyleInsights = Field(default_factory=StyleInsights)

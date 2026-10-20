@@ -248,10 +248,17 @@ async def _auto_add_to_wardrobe(
     from app.models.item import WardrobeItem
     from app.services.claude_service import analyse_wardrobe_item_image
     from app.services.cloudinary_service import upload_wardrobe_item
+    from app.services import usage_service
 
     user = await User.get(PydanticObjectId(user_id))
     analysis = await PurchaseAnalysis.get(PydanticObjectId(analysis_id))
     if not user or not analysis or not product_image_url:
+        return
+
+    # Extension adds come out of the same monthly allowance as uploads
+    if not await usage_service.reserve(user, "items_added"):
+        analysis.wardrobe_add_error = usage_service.items_limit_message(user)
+        await analysis.save()
         return
 
     try:
@@ -283,5 +290,6 @@ async def _auto_add_to_wardrobe(
         await analysis.save()
 
     except Exception as e:
+        await usage_service.release(user, "items_added")
         import logging
         logging.getLogger(__name__).error(f"Auto-add to wardrobe failed: {e}")
