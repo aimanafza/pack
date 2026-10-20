@@ -159,3 +159,15 @@ async def upload_profile_picture(file, user_id: str) -> dict:
         "url": result["secure_url"],
         "public_id": result["public_id"],
     }
+
+
+async def upload_draft_photo(file, user_id: str) -> dict:
+    """A bulk-upload photo waiting for review: a plain upload (no background removal,
+    so it costs no transformations). It's deleted once the item is saved or discarded."""
+    result = await asyncio.to_thread(
+        cloudinary.uploader.upload,
+        file,
+        folder=f"pack/drafts/{user_id}",
+        resource_type="image",
+    )
+    return {"url": result["secure_url"], "public_id": result["public_id"]}
