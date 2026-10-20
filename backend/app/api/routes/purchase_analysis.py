@@ -247,7 +247,7 @@ async def _auto_add_to_wardrobe(
     run Claude Vision autofill, and save as a wardrobe item."""
     from app.models.item import WardrobeItem
     from app.services.claude_service import analyse_wardrobe_item_image
-    import cloudinary.uploader
+    from app.services.cloudinary_service import upload_wardrobe_item
 
     user = await User.get(PydanticObjectId(user_id))
     analysis = await PurchaseAnalysis.get(PydanticObjectId(analysis_id))
@@ -255,29 +255,9 @@ async def _auto_add_to_wardrobe(
         return
 
     try:
-        # Upload to Cloudinary with background removal
-        try:
-            upload_result = cloudinary.uploader.upload(
-                product_image_url,
-                folder="pack/wardrobe",
-                eager=[{"effect": "e_bgremoval"}],
-                eager_async=False,
-            )
-            cloudinary_url = (
-                upload_result.get("eager", [{}])[0].get("secure_url")
-                or upload_result.get("secure_url")
-            )
-        except Exception:
-            # Fallback without background removal
-            upload_result = cloudinary.uploader.upload(
-                product_image_url,
-                folder="pack/wardrobe",
-                resource_type="image",
-            )
-            cloudinary_url = upload_result.get("secure_url", "")
-
-        if not cloudinary_url:
-            return
+        # Same pipeline as the add-item form: the user's own folder, background removed
+        upload_result = await upload_wardrobe_item(product_image_url, user_id)
+        cloudinary_url = upload_result["url"]
 
         # Run Claude Vision autofill
         metadata = await analyse_wardrobe_item_image(cloudinary_url)

@@ -27,10 +27,18 @@ async def upload_wardrobe_item(file, user_id: str) -> dict:
     import httpx
 
     if isinstance(file, str):
-        async with httpx.AsyncClient(timeout=30) as http:
-            r = await http.get(file)
-            r.raise_for_status()
-            file = r.content
+        try:
+            # Shops often turn away requests that don't look like a browser
+            headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"}
+            async with httpx.AsyncClient(timeout=30, follow_redirects=True, headers=headers) as http:
+                r = await http.get(file)
+                r.raise_for_status()
+                file = r.content
+        except Exception:
+            # Some shops refuse our download; Cloudinary can usually fetch those itself.
+            # Its own URLs are the exception, so those still have to fail here.
+            if "res.cloudinary.com" in file:
+                raise
 
     folder = f"pack/wardrobe/{user_id}"
     try:
