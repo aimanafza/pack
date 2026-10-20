@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useParams, Link, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useTrips } from '../hooks/useTrips.js'
 import api from '../utils/api.js'
@@ -8,6 +8,7 @@ import VerticalItemCarousel from '../components/review/VerticalItemCarousel.jsx'
 import PassSheet from '../components/review/PassSheet.jsx'
 import RestyleSelectionSheet from '../components/review/RestyleSelectionSheet.jsx'
 import styles from './SwipeReviewPage.module.css'
+import BackLink from '../components/ui/BackLink.jsx'
 
 // ── Static outfits for layout/animation testing ────────────────────────────
 const STATIC_OUTFITS = [
@@ -364,9 +365,9 @@ export default function SwipeReviewPage() {
     <div className={styles.page}>
       {/* ── Header ──────────────────────────────────────────── */}
       <header className={styles.header}>
-        <Link to={`/trips/${id}`} className={styles.backLink}>
-          ← {trip?.name ?? 'Back'}
-        </Link>
+        <div className={styles.backLink}>
+          <BackLink to={`/trips/${id}`}>{trip?.name ?? 'Back'}</BackLink>
+        </div>
         <div className={styles.headerCenter}>
           <span className={styles.dayLabel}>
             DAY {dayNumber}{dayLabel ? ` · ${dayLabel.toUpperCase()}` : ''}

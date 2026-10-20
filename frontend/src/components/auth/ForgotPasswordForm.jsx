@@ -2,14 +2,8 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../../utils/api.js'
 import styles from './LoginForm.module.css'
+import BackLink from '../ui/BackLink.jsx'
 
-function BackArrow() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  )
-}
 
 export default function ForgotPasswordForm({ initialMode, initialEmail, onEmailSet, onBack, onDone }) {
   const [step, setStep] = useState(initialMode === 'reset' ? 'reset' : 'email')
@@ -78,7 +72,7 @@ export default function ForgotPasswordForm({ initialMode, initialEmail, onEmailS
     return (
       <form className={styles.form} onSubmit={handleRequestCode} noValidate>
         <div className={styles.forgotHeader}>
-          <button type="button" className={styles.backLink} onClick={onBack}><BackArrow />Back to sign in</button>
+          <BackLink onClick={onBack}>Back to sign in</BackLink>
           <h2 className={styles.forgotTitle}>Reset your password</h2>
           <p className={styles.forgotSub}>Enter your email and we'll send you a reset code.</p>
         </div>
@@ -113,7 +107,7 @@ export default function ForgotPasswordForm({ initialMode, initialEmail, onEmailS
   return (
     <form className={styles.form} onSubmit={handleReset} noValidate>
       <div className={styles.forgotHeader}>
-        <button type="button" className={styles.backLink} onClick={() => setStep('email')}><BackArrow />Back</button>
+        <BackLink onClick={() => setStep('email')}>Back</BackLink>
         <h2 className={styles.forgotTitle}>Enter your code</h2>
         <p className={styles.forgotSub}>Check your email for the 6-digit code.</p>
       </div>

@@ -7,6 +7,7 @@ import { formatWeight, toGrams, toUnit, useWeightUnit } from '../utils/weight.js
 import styles from './NewTripPage.module.css'
 import { CarryOnIcon, CheckedBagIcon, HandbagIcon, BackpackIcon } from '../components/ui/BagIllustration.jsx'
 import WardrobePickerModal from '../components/trips/WardrobePickerModal.jsx'
+import BackLink from '../components/ui/BackLink.jsx'
 
 const OCCASIONS = [
   'Sightseeing',
@@ -284,9 +285,7 @@ export default function NewTripPage() {
   return (
     <div className={styles.page}>
       <div className={styles.header}>
-        <button className={styles.back} onClick={() => navigate('/trips')} type="button">
-          ← Trips
-        </button>
+        <BackLink to="/trips" className={styles.back}>Trips</BackLink>
         <p className={styles.pageLabel}>New Trip</p>
         <h1 className={styles.headline}>Where are you going?</h1>
       </div>

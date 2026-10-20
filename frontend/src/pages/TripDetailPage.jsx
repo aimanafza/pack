@@ -5,6 +5,7 @@ import { useTrips } from '../hooks/useTrips.js'
 import TripDetail from '../components/trips/TripDetail.jsx'
 import api from '../utils/api.js'
 import styles from './TripDetailPage.module.css'
+import BackLink from '../components/ui/BackLink.jsx'
 
 export default function TripDetailPage() {
   const { id } = useParams()
@@ -105,9 +106,7 @@ export default function TripDetailPage() {
 
   return (
     <>
-      <button className={styles.backLink} onClick={() => navigate('/trips')} type="button">
-        ← Trips
-      </button>
+      <BackLink to="/trips" className={styles.backLink}>Trips</BackLink>
       <TripDetail
         trip={activeTrip}
         onGeneratePacking={handleGeneratePacking}

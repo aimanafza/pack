@@ -5,6 +5,7 @@ import useStore from '../store/index.js'
 import api from '../utils/api.js'
 import { formatWeight, useWeightUnit } from '../utils/weight.js'
 import styles from './PackingPage.module.css'
+import BackLink from '../components/ui/BackLink.jsx'
 
 const itemKey = (item) => item.wardrobe_item_id || item.name
 const gramsOf = (item) => Math.round((item.estimated_weight_kg || 0) * 1000)
@@ -203,12 +204,7 @@ export default function PackingPage() {
   return (
     <div className={styles.page}>
       <header className={styles.header}>
-        <Link to={`/trips/${id}`} className={styles.backLink}>
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-            <path d="M8.5 3L4.5 7l4 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          {trip.name}
-        </Link>
+        <BackLink to={`/trips/${id}`} className={styles.backLink}>{trip.name}</BackLink>
         <p className={styles.modeLabel}>Packing mode</p>
 
         {allPacked ? (

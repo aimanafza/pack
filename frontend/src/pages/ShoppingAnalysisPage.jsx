@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import api from '../utils/api.js'
 import styles from './ShoppingAnalysisPage.module.css'
+import BackLink from '../components/ui/BackLink.jsx'
 
 const SCORE_LABELS = {
   versatility:     'Versatility',
@@ -15,7 +16,6 @@ const SCORE_LABELS = {
 
 export default function ShoppingAnalysisPage() {
   const { analysis_id } = useParams()
-  const navigate = useNavigate()
   const [analysis, setAnalysis] = useState(null)
   const [loading, setLoading] = useState(true)
   const [addingToWardrobe, setAddingToWardrobe] = useState(false)
@@ -71,9 +71,7 @@ export default function ShoppingAnalysisPage() {
   return (
     <>
       <div className={styles.header}>
-        <button className={styles.back} onClick={() => navigate('/profile/shopping')} type="button">
-          ← Shopping history
-        </button>
+        <BackLink to="/profile/shopping">Shopping history</BackLink>
       </div>
 
       <div className={styles.layout}>

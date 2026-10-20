@@ -5,6 +5,7 @@ import api from '../utils/api.js'
 import { formatWeight, toGrams, toUnit, useWeightUnit } from '../utils/weight.js'
 import StyleThisItemModal from '../components/wardrobe/StyleThisItemModal.jsx'
 import styles from './WardrobeItemDetailPage.module.css'
+import BackLink from '../components/ui/BackLink.jsx'
 
 
 const CATEGORIES = ['top', 'bottom', 'dress', 'outerwear', 'shoes', 'bag', 'accessory']
@@ -154,9 +155,7 @@ export default function WardrobeItemDetailPage() {
 
   return (
     <div className={styles.page}>
-      <button className={styles.back} onClick={() => navigate('/wardrobe')} type="button">
-        ← Your Wardrobe
-      </button>
+      <BackLink to="/wardrobe" className={styles.back}>Wardrobe</BackLink>
 
       <div className={styles.layout}>
         {/* Left: image */}

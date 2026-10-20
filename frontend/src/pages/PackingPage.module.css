@@ -36,22 +36,10 @@
 }
 
 .backLink {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  min-height: 44px;
-  font-family: var(--font-body);
-  font-size: var(--text-sm);
-  color: var(--color-text-tertiary);
-  text-decoration: none;
-  transition: color 0.15s;
   align-self: flex-start;
   margin: calc(-1 * var(--space-3)) 0 0;
 }
 
-.backLink:hover {
-  color: var(--color-text-primary);
-}
 
 .modeLabel,
 .sectionLabel,

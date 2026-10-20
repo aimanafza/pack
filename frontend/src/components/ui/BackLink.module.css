@@ -1,0 +1,29 @@
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 44px;
+  padding: 0;
+  background: none;
+  border: none;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 400;
+  color: var(--color-text-tertiary);
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.backLink:hover {
+  color: var(--color-text-primary);
+}
+
+.backLink:focus-visible {
+  outline: 1px solid var(--color-text-primary);
+  outline-offset: 2px;
+}
+
+.backLink svg {
+  flex-shrink: 0;
+}

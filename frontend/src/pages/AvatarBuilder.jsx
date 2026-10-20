@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import useStore from '../store/index.js'
 import api from '../utils/api.js'
 import styles from './AvatarBuilder.module.css'
+import BackLink from '../components/ui/BackLink.jsx'
 
 const TOTAL_STEPS = 5
 
@@ -73,7 +74,7 @@ function BuildAvatar({ defaultAppearance, defaultFitProfile, defaultPreferences,
   return (
     <div className={styles.page}>
       <div className={styles.topBar}>
-        <button className={styles.backBtn} onClick={goBack} type="button">← Back</button>
+        <BackLink onClick={goBack} className={styles.backBtn}>Back</BackLink>
         <span className={styles.stepIndicator}>STEP {currentStep} OF {TOTAL_STEPS}</span>
         <div className={styles.topBarSpacer} />
       </div>
@@ -143,7 +144,7 @@ function UpdateAvatar({ avatar, onStartBuild }) {
   return (
     <div className={styles.page}>
       <div className={styles.topBar}>
-        <button className={styles.backBtn} onClick={() => navigate('/profile')} type="button">← Back</button>
+        <BackLink to="/profile" className={styles.backBtn}>Profile</BackLink>
         <span className={styles.stepIndicator}>YOUR AVATAR</span>
         <div className={styles.topBarSpacer} />
       </div>
@@ -301,7 +302,7 @@ function QuickRegenerate({ avatar, onBack }) {
   return (
     <div className={styles.page}>
       <div className={styles.topBar}>
-        <button className={styles.backBtn} onClick={onBack} type="button">← Back</button>
+        <BackLink onClick={onBack} className={styles.backBtn}>Back</BackLink>
         <span className={styles.stepIndicator}>QUICK REGENERATE</span>
         <div className={styles.topBarSpacer} />
       </div>
@@ -491,7 +492,7 @@ function EditDetails({ avatar, onBack }) {
     return (
       <div className={styles.page}>
         <div className={styles.topBar}>
-          <button className={styles.backBtn} onClick={() => setVariations([])} type="button">← Back</button>
+          <BackLink onClick={() => setVariations([])} className={styles.backBtn}>Back</BackLink>
           <span className={styles.stepIndicator}>CHOOSE YOUR AVATAR</span>
           <div className={styles.topBarSpacer} />
         </div>
@@ -525,7 +526,7 @@ function EditDetails({ avatar, onBack }) {
   return (
     <div className={styles.page}>
       <div className={styles.topBar}>
-        <button className={styles.backBtn} onClick={onBack} type="button">← Back</button>
+        <BackLink onClick={onBack} className={styles.backBtn}>Back</BackLink>
         <span className={styles.stepIndicator}>EDIT DETAILS</span>
         <div className={styles.topBarSpacer} />
       </div>

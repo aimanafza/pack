@@ -5,6 +5,7 @@ import { missingLabel, capitalise } from '../utils/itemFields.js'
 import { formatWeight, useWeightUnit } from '../utils/weight.js'
 import BulkItemEditor from '../components/wardrobe/BulkItemEditor.jsx'
 import styles from '../components/wardrobe/BulkUpload.module.css'
+import BackLink from '../components/ui/BackLink.jsx'
 
 const plural = (n, word) => `${n} ${n === 1 ? word : `${word}s`}`
 
@@ -67,12 +68,7 @@ export default function BulkUploadPage() {
 
   return (
     <div className={styles.page}>
-      <Link to="/wardrobe" className={styles.backLink}>
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-          <path d="M8.5 3L4.5 7l4 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-        Wardrobe
-      </Link>
+      <BackLink to="/wardrobe" className={styles.backLink}>Wardrobe</BackLink>
       <header className={styles.header}>
         <div>
           <p className={styles.pageLabel}>New pieces</p>
