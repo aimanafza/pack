@@ -27,6 +27,8 @@ export default function QuickView({ item, onClose, onDelete }) {
   const unit = useWeightUnit()
   const [phone] = useState(isPhone)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const confirmingRef = useRef(false)
+  confirmingRef.current = confirmDelete
   const closeRef = useRef(null)
   const dragControls = useDragControls()
   const itemId = item.id || item._id
@@ -38,7 +40,10 @@ export default function QuickView({ item, onClose, onDelete }) {
     document.body.style.overflow = 'hidden'
 
     function handleKey(e) {
-      if (e.key === 'Escape') onClose()
+      if (e.key !== 'Escape') return
+      // Escape backs out of the remove question first, then the quick view
+      if (confirmingRef.current) setConfirmDelete(false)
+      else onClose()
     }
     window.addEventListener('keydown', handleKey)
     return () => {
