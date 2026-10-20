@@ -60,6 +60,13 @@
   border-color: var(--color-border-dark);
 }
 
+.close:focus-visible,
+.detailsLink:focus-visible,
+.remove:focus-visible {
+  outline: 1px solid var(--color-text-primary);
+  outline-offset: 2px;
+}
+
 .imageSide {
   background: var(--color-bg-secondary);
   display: flex;
@@ -189,18 +196,25 @@
 .detailsLink {
   display: inline-flex;
   align-items: center;
-  min-height: 44px;
+  min-height: 40px;
+  padding: 0 var(--space-5);
+  background: transparent;
+  border: var(--border-medium);
+  border-radius: 0;
   font-family: var(--font-body);
-  font-size: var(--text-sm);
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
   color: var(--color-text-primary);
-  text-decoration: underline;
-  text-decoration-color: var(--color-border-medium);
-  text-underline-offset: 4px;
-  transition: text-decoration-color 0.15s;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
 }
 
 .detailsLink:hover {
-  text-decoration-color: var(--color-text-primary);
+  background: var(--color-text-primary);
+  color: var(--color-text-inverse);
 }
 
 .remove {

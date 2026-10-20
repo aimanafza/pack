@@ -148,7 +148,7 @@ export default function QuickView({ item, onClose, onDelete }) {
 
             <div className={styles.actions}>
               <Link to={`/wardrobe/${itemId}`} className={styles.detailsLink} onClick={onClose}>
-                View full details →
+                View details
               </Link>
               {onDelete && (
                 <button type="button" className={styles.remove} onClick={() => setConfirmDelete(true)}>
