@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import useBulkUpload from './bulkUpload.js'
 
 // The weight unit is remembered on this device too, so it shows correctly
 // before the profile request finishes, or if that request fails.
@@ -49,13 +50,12 @@ const useStore = create((set, get) => ({
     // The dashboard caches the carpet image URL per device; the next person shouldn't see it.
     localStorage.removeItem('pack_carpet_url')
     localStorage.removeItem('pack_weight_unit')
+    // Stop any bulk upload and forget its photos so the next person can't see them
+    useBulkUpload.getState().reset()
     set({ user: null, token: null, weightUnit: 'kg' })
   },
 
   // Wardrobe slice
-  // Photos picked in the add-item form, handed to the bulk upload screen
-  pendingUploads: [],
-  setPendingUploads: (files) => set({ pendingUploads: files }),
   wardrobe: [],
   wardrobeLoading: false,
   setWardrobe: (wardrobe) => set({ wardrobe }),

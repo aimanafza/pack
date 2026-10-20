@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
-import useStore from '../../store/index.js'
+import useBulkUpload from '../../store/bulkUpload.js'
 import { useWardrobe } from '../../hooks/useWardrobe.js'
 import api from '../../utils/api.js'
 import { toGrams, toUnit, useWeightUnit } from '../../utils/weight.js'
@@ -12,7 +12,7 @@ export default function UploadModal({ onClose }) {
   const { uploadItem } = useWardrobe()
   const fileInputRef = useRef(null)
   const navigate = useNavigate()
-  const setPendingUploads = useStore((s) => s.setPendingUploads)
+  const startUploads = useBulkUpload((s) => s.startUploads)
   const [dragging, setDragging] = useState(false)
 
   const [imageFile, setImageFile] = useState(null)
@@ -57,9 +57,9 @@ export default function UploadModal({ onClose }) {
     const files = [...(fileList || [])].filter((f) => f.type.startsWith('image/'))
     if (files.length === 0) return
     if (files.length > 1) {
-      setPendingUploads(files)
+      startUploads(files)
       onClose()
-      navigate('/wardrobe/upload')
+      navigate('/wardrobe/review')
       return
     }
     handleSingleImage(files[0])

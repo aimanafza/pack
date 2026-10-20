@@ -128,6 +128,36 @@
   outline-offset: 2px;
 }
 
+/* Wardrobe banner while a bulk upload is under way or waiting */
+.banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+  padding: var(--space-4) var(--space-5);
+  margin-bottom: var(--space-6);
+  background: var(--color-bg-primary);
+  border: var(--border-thin);
+  border-radius: var(--radius-md);
+}
+
+.bannerText {
+  flex: 1;
+  min-width: 0;
+}
+
+.bannerMessage {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+  margin: 0 0 var(--space-3);
+}
+
+.banner .btnOutline {
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
 /* Progress */
 .progress {
   margin-bottom: var(--space-6);

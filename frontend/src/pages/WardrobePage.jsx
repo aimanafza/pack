@@ -4,6 +4,7 @@ import { useWardrobe } from '../hooks/useWardrobe.js'
 import WardrobeGrid from '../components/wardrobe/WardrobeGrid.jsx'
 import UploadModal from '../components/wardrobe/UploadModal.jsx'
 import ConfirmModal from '../components/ui/ConfirmModal.jsx'
+import BulkUploadBanner from '../components/wardrobe/BulkUploadBanner.jsx'
 import styles from './WardrobePage.module.css'
 
 const FILTERS = [
@@ -160,6 +161,8 @@ export default function WardrobePage() {
           </div>
         )}
       </div>
+
+      <BulkUploadBanner />
 
       <div className={styles.searchRow}>
         <div className={styles.searchWrap}>

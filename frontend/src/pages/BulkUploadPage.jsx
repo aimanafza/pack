@@ -1,45 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import useStore from '../store/index.js'
-import api from '../utils/api.js'
-import { resizeImage } from '../utils/resizeImage.js'
+import useBulkUpload, { EDITABLE, IN_PROGRESS, summarise } from '../store/bulkUpload.js'
 import { missingField, capitalise } from '../utils/itemFields.js'
 import { formatWeight, useWeightUnit } from '../utils/weight.js'
 import BulkItemEditor from '../components/wardrobe/BulkItemEditor.jsx'
 import styles from '../components/wardrobe/BulkUpload.module.css'
 
-const POLL_MS = 2500
-const UPLOAD_CONCURRENCY = 3
-const IN_PROGRESS = ['uploading', 'queued', 'reading']
-const EDITABLE = ['ready', 'failed']
-
-const EMPTY_FIELDS = {
-  name: '', category: '', subcategory: '', color: [], fabric: '',
-  formality: [], occasions: [], season: [], notes: '', weight_grams: 0,
-}
-
-const fromDraft = (d) => ({
-  draftId: d.id,
-  batchId: d.batch_id,
-  status: d.status,
-  fields: d.fields,
-  error: d.error,
-  image_url: d.image_url,
-})
-
 const plural = (n, word) => `${n} ${n === 1 ? word : `${word}s`}`
-
-// Run `worker` over `list`, at most `limit` at a time
-async function inPool(list, limit, worker) {
-  let next = 0
-  const lanes = Array.from({ length: Math.min(limit, list.length) }, async () => {
-    while (next < list.length) {
-      const index = next++
-      await worker(list[index], index)
-    }
-  })
-  await Promise.all(lanes)
-}
 
 function statusLabel(item) {
   if (item.status === 'uploading') return 'Uploading'
@@ -50,176 +17,29 @@ function statusLabel(item) {
   return ''
 }
 
+// The review screen. Uploads run in the bulk upload store, so this page can be left
+// and reopened at any point without losing progress.
 export default function BulkUploadPage() {
   const unit = useWeightUnit()
-  const pendingUploads = useStore((s) => s.pendingUploads)
-  const setPendingUploads = useStore((s) => s.setPendingUploads)
-
-  const [items, setItems] = useState([])
-  const [loaded, setLoaded] = useState(false)
-  const [notice, setNotice] = useState('')
+  const items = useBulkUpload((s) => s.items)
+  const loaded = useBulkUpload((s) => s.loaded)
+  const notice = useBulkUpload((s) => s.notice)
+  const refresh = useBulkUpload((s) => s.refresh)
+  const startUploads = useBulkUpload((s) => s.startUploads)
+  const retryUpload = useBulkUpload((s) => s.retryUpload)
+  const removeItem = useBulkUpload((s) => s.removeItem)
+  const saveFields = useBulkUpload((s) => s.saveFields)
   const [editingKey, setEditingKey] = useState(null)
   const fileInputRef = useRef(null)
-  const batchRef = useRef(null)
-  const itemsRef = useRef(items)
-  itemsRef.current = items
 
-  const updateItem = useCallback((key, patch) => {
-    setItems((prev) => prev.map((i) => (i.key === key ? { ...i, ...patch } : i)))
-  }, [])
-
-  // Server drafts update the cards we have. New ones are added too, except drafts from
-  // the batch uploading right now: those arrive through their own upload, and adding
-  // them from a poll as well could show a photo twice.
-  const mergeDrafts = useCallback((drafts) => {
-    setItems((prev) => {
-      const byId = new Map(drafts.map((d) => [d.id, d]))
-      const known = new Set(prev.map((i) => i.draftId).filter(Boolean))
-      const next = prev.map((i) => (i.draftId && byId.has(i.draftId) ? { ...i, ...fromDraft(byId.get(i.draftId)) } : i))
-      for (const d of drafts) {
-        if (known.has(d.id) || d.batch_id === batchRef.current || d.status === 'saved') continue
-        next.push({ key: d.id, ...fromDraft(d) })
-      }
-      return next
-    })
-  }, [])
-
-  const fetchDrafts = useCallback(async () => {
-    const { data } = await api.get('/api/v1/drafts/')
-    return data.data
-  }, [])
-
-  async function uploadOne(item, file) {
-    try {
-      const fd = new FormData()
-      fd.append('batch_id', item.batchId)
-      fd.append('image', await resizeImage(file))
-      const { data } = await api.post('/api/v1/drafts/', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
-      updateItem(item.key, { ...fromDraft(data.data), file: null })
-    } catch (err) {
-      updateItem(item.key, {
-        status: 'upload_failed',
-        error: err.response?.data?.detail || "That photo didn't upload. Check your connection and retry.",
-      })
-      if (err.response?.status === 429) setNotice(err.response.data.detail)
-    }
-  }
-
-  async function startUploads(fileList) {
-    const files = [...fileList].filter((f) => f.type.startsWith('image/'))
-    if (files.length === 0) return
-    setNotice('')
-
-    let allowed = files.length
-    try {
-      const { data } = await api.get('/api/v1/wardrobe/usage')
-      const usage = data.data
-      // Photos already waiting here will need saving slots too
-      const waiting = itemsRef.current.filter((i) => i.status !== 'upload_failed').length
-      const itemsLeft = Math.max(0, usage.items.left - waiting)
-      allowed = Math.min(files.length, usage.batch_max, itemsLeft)
-      if (allowed === 0) {
-        setNotice(
-          usage.items.left === 0
-            ? `You've added ${usage.items.limit} new items this month. You can add more on ${usage.resets_label}.`
-            : usage.photo_reads.left === 0
-              ? `Autofill has read ${usage.photo_reads.limit} photos this month. It comes back on ${usage.resets_label}.`
-              : 'Save or remove the photos waiting here before adding more.'
-        )
-        return
-      }
-      if (allowed < files.length) {
-        setNotice(
-          allowed === usage.batch_max && usage.batch_max < itemsLeft
-            ? `One upload can hold up to ${usage.batch_max} photos, so we kept the first ${allowed}.`
-            : `You can add ${plural(allowed, 'more item')} this month, so we kept the first ${allowed} photos.`
-        )
-      }
-    } catch {
-      // Usage couldn't load: let the server enforce the limits photo by photo
-    }
-
-    const batchId = crypto.randomUUID()
-    batchRef.current = batchId
-    const kept = files.slice(0, allowed)
-    const placeholders = kept.map((file, i) => ({
-      key: `local-${batchId}-${i}`,
-      batchId,
-      status: 'uploading',
-      fields: EMPTY_FIELDS,
-      error: '',
-      previewUrl: URL.createObjectURL(file),
-      file,
-    }))
-    setItems((prev) => [...prev, ...placeholders])
-    await inPool(placeholders, UPLOAD_CONCURRENCY, (item) => uploadOne(item, item.file))
-  }
-
-  // First load: drafts left from earlier, then any photos handed over by the add-item form
+  // Pick up drafts from earlier visits (and anything finished while the user was away)
   useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      try {
-        const drafts = await fetchDrafts()
-        if (!cancelled) mergeDrafts(drafts)
-      } catch {
-        if (!cancelled) setNotice("We couldn't load your uploads. Refresh to try again.")
-      }
-      if (cancelled) return
-      setLoaded(true)
-      if (pendingUploads.length) {
-        const files = pendingUploads
-        setPendingUploads([])
-        startUploads(files)
-      }
-    })()
-    return () => { cancelled = true }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    refresh()
+  }, [refresh])
 
-  // Poll while Claude is still reading
-  const anyReading = items.some((i) => i.status === 'queued' || i.status === 'reading')
-  useEffect(() => {
-    if (!anyReading) return
-    const timer = setInterval(async () => {
-      try {
-        mergeDrafts(await fetchDrafts())
-      } catch {
-        // A missed poll is fine; the next one catches up
-      }
-    }, POLL_MS)
-    return () => clearInterval(timer)
-  }, [anyReading, fetchDrafts, mergeDrafts])
-
-  // Leaving mid-upload would drop the photos still on their way
-  const anyUploading = items.some((i) => i.status === 'uploading')
-  useEffect(() => {
-    if (!anyUploading) return
-    const warn = (e) => { e.preventDefault(); e.returnValue = '' }
-    window.addEventListener('beforeunload', warn)
-    return () => window.removeEventListener('beforeunload', warn)
-  }, [anyUploading])
-
-  // Free the local previews when the page closes
-  useEffect(() => () => itemsRef.current.forEach((i) => i.previewUrl && URL.revokeObjectURL(i.previewUrl)), [])
-
-  async function removeItem(item) {
-    if (item.draftId) {
-      try {
-        await api.delete(`/api/v1/drafts/${item.draftId}`)
-      } catch (err) {
-        setNotice(err.response?.data?.detail || "That photo wasn't removed. Try again.")
-        return
-      }
-    }
-    if (item.previewUrl) URL.revokeObjectURL(item.previewUrl)
-    setItems((prev) => prev.filter((i) => i.key !== item.key))
+  async function handleRemove(item) {
     if (editingKey === item.key) setEditingKey(null)
-  }
-
-  function retryUpload(item) {
-    if (!item.file) return
-    updateItem(item.key, { status: 'uploading', error: '' })
-    uploadOne(item, item.file)
+    await removeItem(item.key)
   }
 
   const editable = items.filter((i) => EDITABLE.includes(i.status))
@@ -227,21 +47,11 @@ export default function BulkUploadPage() {
   const editing = editingIndex >= 0 ? editable[editingIndex] : null
 
   async function saveEdits(fields, goNext) {
-    const { data } = await api.patch(`/api/v1/drafts/${editing.draftId}`, fields)
-    updateItem(editing.key, { fields: data.data.fields })
+    await saveFields(editing.key, fields)
     setEditingKey(goNext && editable[editingIndex + 1] ? editable[editingIndex + 1].key : null)
   }
 
-  const counts = useMemo(() => {
-    const read = items.filter((i) => EDITABLE.includes(i.status))
-    return {
-      total: items.length,
-      inProgress: items.filter((i) => IN_PROGRESS.includes(i.status)).length,
-      read: read.length,
-      complete: read.filter((i) => !missingField(i.fields)).length,
-      failedUploads: items.filter((i) => i.status === 'upload_failed').length,
-    }
-  }, [items])
+  const counts = useMemo(() => summarise(items), [items])
   const needsDetails = counts.read - counts.complete
 
   if (!loaded) {
@@ -324,7 +134,7 @@ export default function BulkUploadPage() {
                     <button
                       type="button"
                       className={styles.remove}
-                      onClick={(e) => { e.stopPropagation(); removeItem(item) }}
+                      onClick={(e) => { e.stopPropagation(); handleRemove(item) }}
                       aria-label={`Remove ${item.fields.name || 'this photo'}`}
                     >
                       <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
@@ -342,7 +152,7 @@ export default function BulkUploadPage() {
                     )}
                   </div>
                   {item.status === 'upload_failed' && (
-                    <button type="button" className={styles.retry} onClick={() => retryUpload(item)} disabled={!item.file}>
+                    <button type="button" className={styles.retry} onClick={() => retryUpload(item.key)} disabled={!item.file}>
                       Retry upload
                     </button>
                   )}
@@ -377,7 +187,7 @@ export default function BulkUploadPage() {
           total={editable.length}
           hasNext={editingIndex < editable.length - 1}
           onSave={saveEdits}
-          onRemove={() => removeItem(editing)}
+          onRemove={() => handleRemove(editing)}
           onClose={() => setEditingKey(null)}
         />
       )}

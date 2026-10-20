@@ -53,7 +53,8 @@ export default function App() {
         />
         <Route path="/dashboard" element={<WithLayout><DashboardPage /></WithLayout>} />
         <Route path="/wardrobe" element={<WithLayout><WardrobePage /></WithLayout>} />
-        <Route path="/wardrobe/upload" element={<WithLayout><BulkUploadPage /></WithLayout>} />
+        <Route path="/wardrobe/review" element={<WithLayout><BulkUploadPage /></WithLayout>} />
+        <Route path="/wardrobe/upload" element={<Navigate to="/wardrobe/review" replace />} />
         <Route path="/wardrobe/:item_id" element={<WithLayout><WardrobeItemDetailPage /></WithLayout>} />
         <Route path="/trips" element={<WithLayout><TripsPage /></WithLayout>} />
         <Route path="/trips/new" element={<WithLayout><NewTripPage /></WithLayout>} />
