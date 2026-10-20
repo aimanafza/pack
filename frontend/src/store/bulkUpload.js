@@ -159,25 +159,18 @@ const useBulkUpload = create((set, get) => ({
     try {
       const { data } = await api.get('/api/v1/wardrobe/usage')
       const usage = data.data
-      // Photos already waiting here will need saving slots too
-      const waiting = get().items.filter((i) => i.status !== 'upload_failed').length
-      const itemsLeft = Math.max(0, usage.items.left - waiting)
-      allowed = Math.min(files.length, usage.batch_max, itemsLeft)
+      // Review has no item limit (that applies when pieces are added); only the batch
+      // size and this month's autofill reads cap how many photos go in
+      allowed = Math.min(files.length, usage.batch_max)
       if (allowed === 0) {
-        set({
-          notice: usage.items.left === 0
-            ? `You've added ${usage.items.limit} new items this month. You can add more on ${usage.resets_label}.`
-            : usage.photo_reads.left === 0
-              ? `Autofill has read ${usage.photo_reads.limit} photos this month. It comes back on ${usage.resets_label}.`
-              : 'Save or remove the photos waiting here before adding more.',
-        })
+        set({ notice: `Autofill has read ${usage.photo_reads.limit} photos this month. It comes back on ${usage.resets_label}.` })
         return
       }
       if (allowed < files.length) {
         set({
-          notice: allowed === usage.batch_max && usage.batch_max < itemsLeft
-            ? `One upload can hold up to ${usage.batch_max} photos, so we kept the first ${allowed}.`
-            : `You can add ${plural(allowed, 'more item')} this month, so we kept the first ${allowed} photos.`,
+          notice: usage.photo_reads.left < usage.photos_per_batch
+            ? `Autofill can read ${plural(allowed, 'more photo')} this month, so we kept the first ${allowed}.`
+            : `One upload can hold up to ${usage.photos_per_batch} photos, so we kept the first ${allowed}.`,
         })
       }
     } catch {

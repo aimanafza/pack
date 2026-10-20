@@ -919,6 +919,19 @@ Reference photos attached — study them and incorporate what you see."""
     return response.content[0].text.strip()
 
 
+# Bulk-upload photos waiting for review live in pack/drafts/. Only saved wardrobe items
+# may ever be sent to the image model, so drafts are filtered out here as a last guard
+# (nothing upstream reads drafts, but this makes it impossible, not just unlikely).
+_DRAFT_PHOTO_PATH = "/pack/drafts/"
+
+
+def _wardrobe_photos_only(urls: list) -> list:
+    kept = [u for u in (urls or []) if _DRAFT_PHOTO_PATH not in str(u)]
+    if len(kept) != len(urls or []):
+        logger.error("Blocked %d review-stage photo(s) from image generation", len(urls) - len(kept))
+    return kept
+
+
 # Every full-length look image is generated at this shape so the frames that show
 # them (lookbook, approved looks) can match it exactly with no empty bands.
 # fal's nano-banana-pro/edit reads aspect_ratio; it ignores image_size.
@@ -936,7 +949,7 @@ async def run_fal_generation(prompt: str, photo_urls: list[str]) -> list[str]:
         "fal-ai/nano-banana-pro/edit",
         arguments={
             "prompt": prompt,
-            "image_urls": photo_urls,
+            "image_urls": _wardrobe_photos_only(photo_urls),
             "num_images": 3,
             "aspect_ratio": LOOK_ASPECT_RATIO,
         },
@@ -1138,7 +1151,7 @@ White background only. No location context."""
         "fal-ai/nano-banana-pro/edit",
         arguments={
             "prompt": prompt,
-            "image_urls": reference_urls,
+            "image_urls": _wardrobe_photos_only(reference_urls),
             "num_images": 1,
             "aspect_ratio": LOOK_ASPECT_RATIO,
         },
@@ -1176,7 +1189,7 @@ async def generate_single_outfit_image(outfit, user_avatar, trip, style_aestheti
         "fal-ai/nano-banana-pro/edit",
         arguments={
             "prompt": prompt,
-            "image_urls": reference_urls,
+            "image_urls": _wardrobe_photos_only(reference_urls),
             "num_images": 1,
             "aspect_ratio": LOOK_ASPECT_RATIO,
         },
@@ -1457,7 +1470,7 @@ async def build_carpet_image(user) -> Optional[str]:
             "fal-ai/nano-banana-pro/edit",
             arguments={
                 "prompt": assembled_prompt,
-                "image_urls": image_urls,
+                "image_urls": _wardrobe_photos_only(image_urls),
                 "num_images": 1,
                 "aspect_ratio": "16:9",
             },
@@ -1612,7 +1625,7 @@ async def generate_look_avatar_image(
             "fal-ai/nano-banana-pro/edit",
             arguments={
                 "prompt": fal_prompt,
-                "image_urls": [base_url],
+                "image_urls": _wardrobe_photos_only([base_url]),
                 "num_images": 1,
                 "aspect_ratio": LOOK_ASPECT_RATIO,
             },

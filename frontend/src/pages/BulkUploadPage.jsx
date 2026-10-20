@@ -4,6 +4,7 @@ import useBulkUpload, { EDITABLE, IN_PROGRESS, summarise } from '../store/bulkUp
 import { missingLabel, capitalise } from '../utils/itemFields.js'
 import { formatWeight, useWeightUnit } from '../utils/weight.js'
 import BulkItemEditor from '../components/wardrobe/BulkItemEditor.jsx'
+import ConfirmModal from '../components/ui/ConfirmModal.jsx'
 import styles from '../components/wardrobe/BulkUpload.module.css'
 import BackLink from '../components/ui/BackLink.jsx'
 
@@ -34,6 +35,8 @@ export default function BulkUploadPage() {
   const addToWardrobe = useBulkUpload((s) => s.addToWardrobe)
   const adding = useBulkUpload((s) => s.adding)
   const [editingKey, setEditingKey] = useState(null)
+  // The photo waiting on "Remove this photo?"
+  const [confirmRemove, setConfirmRemove] = useState(null)
   const fileInputRef = useRef(null)
 
   // Pick up drafts from earlier visits (and anything finished while the user was away)
@@ -144,7 +147,7 @@ export default function BulkUploadPage() {
                     <button
                       type="button"
                       className={styles.remove}
-                      onClick={(e) => { e.stopPropagation(); handleRemove(item) }}
+                      onClick={(e) => { e.stopPropagation(); setConfirmRemove(item) }}
                       aria-label={`Remove ${item.fields.name || 'this photo'}`}
                     >
                       <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
@@ -196,6 +199,15 @@ export default function BulkUploadPage() {
         </div>
       )}
 
+      {confirmRemove && (
+        <ConfirmModal
+          message="Remove this photo? It won't be added to your wardrobe."
+          confirmLabel="Yes, remove it"
+          onConfirm={() => { const item = confirmRemove; setConfirmRemove(null); handleRemove(item) }}
+          onCancel={() => setConfirmRemove(null)}
+        />
+      )}
+
       {editing && (
         <BulkItemEditor
           key={editing.key}
@@ -204,7 +216,7 @@ export default function BulkUploadPage() {
           total={editable.length}
           hasNext={editingIndex < editable.length - 1}
           onSave={saveEdits}
-          onRemove={() => handleRemove(editing)}
+          onRemove={() => setConfirmRemove(editing)}
           onClose={() => setEditingKey(null)}
         />
       )}

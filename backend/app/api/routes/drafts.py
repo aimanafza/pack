@@ -58,16 +58,14 @@ async def add_draft_photo(
     if len(data) > MAX_PHOTO_BYTES:
         raise HTTPException(status_code=413, detail="That photo is over 10 MB. Choose a smaller one.")
 
-    # A batch holds at most what the plan allows, and never more than can be saved this month
+    # A batch holds at most what the plan allows. The monthly item limit isn't checked here:
+    # review costs no background removal, so it only applies when items are added (confirm).
     in_batch = await WardrobeDraft.find(
         WardrobeDraft.user_id == current_user.id, WardrobeDraft.batch_id == batch_id
     ).count()
     per_batch = limits_for(current_user)["photos_per_batch"]
     if in_batch >= per_batch:
         raise HTTPException(status_code=400, detail=f"One upload can hold up to {per_batch} photos.")
-    usage = await usage_service.summary(current_user)
-    if in_batch >= usage["items"]["left"]:
-        raise HTTPException(status_code=429, detail=usage_service.items_limit_message(current_user))
     if not await usage_service.reserve(current_user, "photos_read"):
         raise HTTPException(status_code=429, detail=usage_service.reads_limit_message(current_user))
 

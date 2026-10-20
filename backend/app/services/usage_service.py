@@ -72,8 +72,10 @@ async def summary(user) -> dict:
     return {
         "items": {"used": items_used, "limit": limits["items_per_month"], "left": items_left},
         "photo_reads": {"used": reads_used, "limit": limits["photo_reads_per_month"], "left": reads_left},
-        # Bulk upload can't take more photos than either allowance has left
-        "batch_max": min(limits["photos_per_batch"], items_left, reads_left),
+        # Photos one bulk upload can take: the batch size, or the autofill reads left if fewer.
+        # The item limit applies later, when reviewed pieces are added to the wardrobe.
+        "batch_max": min(limits["photos_per_batch"], reads_left),
+        "photos_per_batch": limits["photos_per_batch"],
         "resets_on": next_reset().date().isoformat(),
         "resets_label": reset_label(),
     }
