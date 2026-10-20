@@ -48,44 +48,82 @@
   font-family: var(--font-body);
 }
 
-/* Hover overlay */
-.overlay {
+/* Hover controls: shown on hover or keyboard focus with a mouse, hidden on touch
+   screens, where a tap opens the quick view and delete lives inside it */
+.deleteBtn,
+.quickViewBtn {
   position: absolute;
-  inset: 0;
-  background: var(--color-bg-overlay);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-4);
   opacity: 0;
-  transition: opacity 0.2s;
+  transition: opacity 0.18s, transform 0.18s, border-color 0.15s, color 0.15s;
+  cursor: pointer;
 }
 
-.card:hover .overlay {
-  opacity: 1;
-}
-
-.overlayBtn {
-  width: 36px;
-  height: 36px;
+.deleteBtn {
+  top: var(--space-2);
+  right: var(--space-2);
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background: var(--color-bg-primary);
   border: var(--border-default);
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
-  color: var(--color-text-primary);
-  transition: border-color 0.15s;
+  padding: 0;
+  color: var(--color-text-secondary);
 }
 
-.overlayBtn:hover {
+.deleteBtn:hover {
+  color: var(--color-text-primary);
   border-color: var(--color-border-dark);
 }
 
 .overlayIcon {
   width: 14px;
   height: 14px;
+}
+
+.quickViewBtn {
+  left: 50%;
+  bottom: var(--space-3);
+  transform: translate(-50%, 6px);
+  min-height: 32px;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-pill);
+  background: var(--color-bg-primary);
+  border: var(--border-default);
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+
+.quickViewBtn:hover {
+  border-color: var(--color-border-dark);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .imageWrap:hover .deleteBtn,
+  .imageWrap:hover .quickViewBtn,
+  .imageWrap:focus-within .deleteBtn,
+  .imageWrap:focus-within .quickViewBtn {
+    opacity: 1;
+  }
+
+  .imageWrap:hover .quickViewBtn,
+  .imageWrap:focus-within .quickViewBtn {
+    transform: translate(-50%, 0);
+  }
+}
+
+@media not all and (hover: hover) and (pointer: fine) {
+  .deleteBtn,
+  .quickViewBtn {
+    display: none;
+  }
 }
 
 /* Meta */

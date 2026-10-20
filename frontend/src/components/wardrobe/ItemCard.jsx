@@ -1,17 +1,10 @@
 import { useState } from 'react'
-import { motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import styles from './ItemCard.module.css'
 import ConfirmModal from '../ui/ConfirmModal.jsx'
+import QuickView from './QuickView.jsx'
 import { formatWeight, useWeightUnit } from '../../utils/weight.js'
-
-function IconEdit() {
-  return (
-    <svg className={styles.overlayIcon} viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M9.5 2.5l2 2L4 12H2v-2L9.5 2.5Z" />
-    </svg>
-  )
-}
 
 function IconTrash() {
   return (
@@ -26,17 +19,29 @@ export const cardVariants = {
   show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: 'easeOut' } },
 }
 
-export default function ItemCard({ item, onDelete, onEdit }) {
+// Mouse users can hover, so a click opens the full page and the quick view has its own
+// button. Touch screens can't hover, so a tap opens the quick view instead.
+function canHover() {
+  return window.matchMedia('(hover: hover) and (pointer: fine)').matches
+}
+
+export default function ItemCard({ item, onDelete }) {
   const navigate = useNavigate()
   const unit = useWeightUnit()
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [quickView, setQuickView] = useState(false)
   const itemId = item.id || item._id
+
+  function openItem() {
+    if (canHover()) navigate(`/wardrobe/${itemId}`)
+    else setQuickView(true)
+  }
 
   return (
     <motion.div className={styles.card} variants={cardVariants}>
       <div
         className={styles.imageWrap}
-        onClick={() => navigate(`/wardrobe/${itemId}`)}
+        onClick={openItem}
         role="button"
         tabIndex={0}
         onKeyDown={(e) => e.key === 'Enter' && navigate(`/wardrobe/${itemId}`)}
@@ -53,26 +58,22 @@ export default function ItemCard({ item, onDelete, onEdit }) {
           <div className={styles.placeholder}>+</div>
         )}
 
-        <div className={styles.overlay}>
-          {onEdit && (
-            <button
-              className={styles.overlayBtn}
-              onClick={(e) => { e.stopPropagation(); onEdit(item) }}
-              type="button"
-              aria-label="Edit item"
-            >
-              <IconEdit />
-            </button>
-          )}
-          <button
-            className={styles.overlayBtn}
-            onClick={(e) => { e.stopPropagation(); setConfirmDelete(true) }}
-            type="button"
-            aria-label="Delete item"
-          >
-            <IconTrash />
-          </button>
-        </div>
+        <button
+          className={styles.deleteBtn}
+          onClick={(e) => { e.stopPropagation(); setConfirmDelete(true) }}
+          type="button"
+          aria-label={`Delete ${item.name}`}
+        >
+          <IconTrash />
+        </button>
+
+        <button
+          className={styles.quickViewBtn}
+          onClick={(e) => { e.stopPropagation(); setQuickView(true) }}
+          type="button"
+        >
+          Quick view
+        </button>
       </div>
 
       <div className={styles.meta}>
@@ -84,6 +85,12 @@ export default function ItemCard({ item, onDelete, onEdit }) {
           )}
         </div>
       </div>
+
+      <AnimatePresence>
+        {quickView && (
+          <QuickView item={item} onClose={() => setQuickView(false)} onDelete={onDelete} />
+        )}
+      </AnimatePresence>
 
       {confirmDelete && (
         <ConfirmModal
