@@ -77,6 +77,12 @@ export default function WardrobePage() {
   const allSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.has(id))
   const count = selectedIds.size
 
+  // When everything selected is already in one category, that pill shows as current
+  const currentCategory = useMemo(() => {
+    const cats = new Set(wardrobe.filter((i) => selectedIds.has(i.id)).map((i) => i.category))
+    return cats.size === 1 ? [...cats][0] : null
+  }, [wardrobe, selectedIds])
+
   function startSelecting() {
     setSelecting(true)
     setNotice('')
@@ -219,47 +225,52 @@ export default function WardrobePage() {
       )}
 
       {/* Keeps the last row clear of the action bar */}
-      {selecting && <div className={styles.barSpacer} aria-hidden="true" />}
+      {selecting && <div className={`${styles.barSpacer} ${moveOpen ? styles.barSpacerTall : ''}`} aria-hidden="true" />}
 
       {selecting && (
-        <div className={styles.actionBar} role="toolbar" aria-label="Selected items">
-          <span className={styles.barCount}>{count > 0 ? `${count} selected` : 'None selected'}</span>
-          <div className={styles.barActions}>
-            <div className={styles.moveWrap} ref={moveRef}>
+        <div className={styles.actionBar} role="toolbar" aria-label="Selected items" ref={moveRef}>
+          {/* Move to: the bar opens upward into a row of the same pills as the category filter */}
+          {moveOpen && count > 0 && (
+            <div className={styles.movePanel}>
+              <p className={styles.moveLabel}>Move {plural(count)} to</p>
+              <div className={styles.movePills} role="group" aria-label="Choose a category">
+                {CATEGORIES.map(({ label, value }) => (
+                  <button
+                    key={value}
+                    className={`${styles.filterPill} ${styles.movePill} ${currentCategory === value ? styles.filterPillActive : ''}`}
+                    type="button"
+                    onClick={() => handleMove(value)}
+                    disabled={currentCategory === value}
+                    aria-label={currentCategory === value ? `${label}, current category` : `Move to ${label}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className={styles.barRow}>
+            <span className={styles.barCount}>{count > 0 ? `${count} selected` : 'None selected'}</span>
+            <div className={styles.barActions}>
               <button
-                className={styles.btnOutline}
+                className={`${styles.btnOutline} ${moveOpen ? styles.btnOutlineActive : ''}`}
                 onClick={() => setMoveOpen((o) => !o)}
                 type="button"
                 disabled={count === 0}
-                aria-haspopup="menu"
                 aria-expanded={moveOpen}
               >
                 Move to
               </button>
-              {moveOpen && count > 0 && (
-                <div className={styles.moveMenu} role="menu" aria-label="Move to category">
-                  {CATEGORIES.map(({ label, value }) => (
-                    <button
-                      key={value}
-                      className={styles.moveOption}
-                      role="menuitem"
-                      type="button"
-                      onClick={() => handleMove(value)}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              )}
+              <button
+                className={styles.btnAdd}
+                onClick={() => { setMoveOpen(false); setConfirmBulkDelete(true) }}
+                type="button"
+                disabled={count === 0}
+              >
+                Delete
+              </button>
             </div>
-            <button
-              className={styles.btnAdd}
-              onClick={() => { setMoveOpen(false); setConfirmBulkDelete(true) }}
-              type="button"
-              disabled={count === 0}
-            >
-              Delete
-            </button>
           </div>
         </div>
       )}
