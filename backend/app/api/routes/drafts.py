@@ -11,7 +11,9 @@ from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPExcepti
 from app.api.deps import get_current_user
 from app.core.plans import limits_for
 from app.models.user import User
-from app.models.wardrobe_draft import WardrobeDraft
+from app.models.wardrobe_draft import DraftFields, WardrobeDraft
+from datetime import datetime
+
 from app.services import draft_service, usage_service
 from app.services.cloudinary_service import upload_draft_photo
 
@@ -105,6 +107,16 @@ async def list_drafts(
         query.append({"status": {"$ne": "saved"}})
     drafts = await WardrobeDraft.find(*query).sort("created_at").to_list()
     return {"success": True, "data": [_draft_out(d) for d in drafts], "message": ""}
+
+
+@router.patch("/{draft_id}")
+async def update_draft(draft_id: str, fields: DraftFields, current_user: User = Depends(get_current_user)):
+    """Save the user's edits so they survive leaving the page."""
+    draft = await _own_draft(draft_id, current_user)
+    if draft.status not in ("ready", "failed"):
+        raise HTTPException(status_code=409, detail="Wait until this photo has been read, then edit it.")
+    await draft.set({"fields": fields.model_dump(), "updated_at": datetime.utcnow()})
+    return {"success": True, "data": _draft_out(draft), "message": "Saved"}
 
 
 @router.delete("/{draft_id}")

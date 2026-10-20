@@ -53,6 +53,9 @@ const useStore = create((set, get) => ({
   },
 
   // Wardrobe slice
+  // Photos picked in the add-item form, handed to the bulk upload screen
+  pendingUploads: [],
+  setPendingUploads: (files) => set({ pendingUploads: files }),
   wardrobe: [],
   wardrobeLoading: false,
   setWardrobe: (wardrobe) => set({ wardrobe }),

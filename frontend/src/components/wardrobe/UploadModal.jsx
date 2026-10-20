@@ -1,29 +1,19 @@
 import { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
+import useStore from '../../store/index.js'
 import { useWardrobe } from '../../hooks/useWardrobe.js'
 import api from '../../utils/api.js'
 import { toGrams, toUnit, useWeightUnit } from '../../utils/weight.js'
 import styles from './UploadModal.module.css'
-
-const CATEGORIES = ['top', 'bottom', 'dress', 'outerwear', 'shoes', 'bag', 'accessory']
-const FABRICS = ['linen', 'cotton', 'silk', 'wool', 'synthetic', 'denim', 'leather', 'other']
-const FORMALITIES = ['casual', 'smart-casual', 'elevated casual', 'business casual', 'business', 'formal']
-const OCCASIONS = ['work', 'casual', 'formal', 'travel', 'dinner', 'beach', 'hiking', 'nightlife']
-const SEASONS = ['spring', 'summer', 'fall', 'winter', 'all']
-
-// Normalize Claude's value strings to match our existing option lists
-function normalise(val) {
-  return val?.toLowerCase().replace(/-/g, ' ').trim()
-}
-
-function filterToList(arr, list) {
-  if (!Array.isArray(arr)) return []
-  return arr.map(normalise).filter((v) => list.includes(v))
-}
+import { CATEGORIES, FABRICS, FORMALITIES, OCCASIONS, SEASONS, filterToList, matchOption } from '../../utils/itemFields.js'
 
 export default function UploadModal({ onClose }) {
   const { uploadItem } = useWardrobe()
   const fileInputRef = useRef(null)
+  const navigate = useNavigate()
+  const setPendingUploads = useStore((s) => s.setPendingUploads)
+  const [dragging, setDragging] = useState(false)
 
   const [imageFile, setImageFile] = useState(null)
   const [imagePreview, setImagePreview] = useState(null)
@@ -62,9 +52,26 @@ export default function UploadModal({ onClose }) {
     })
   }
 
-  async function handleImageChange(e) {
-    const file = e.target.files[0]
-    if (!file) return
+  // One photo keeps this form. Several go to the bulk review screen, which reads them all at once.
+  function handleFiles(fileList) {
+    const files = [...(fileList || [])].filter((f) => f.type.startsWith('image/'))
+    if (files.length === 0) return
+    if (files.length > 1) {
+      setPendingUploads(files)
+      onClose()
+      navigate('/wardrobe/upload')
+      return
+    }
+    handleSingleImage(files[0])
+  }
+
+  function handleDrop(e) {
+    e.preventDefault()
+    setDragging(false)
+    handleFiles(e.dataTransfer.files)
+  }
+
+  async function handleSingleImage(file) {
     setImageFile(file)
     const reader = new FileReader()
     reader.onload = (ev) => setImagePreview(ev.target.result)
@@ -105,8 +112,8 @@ export default function UploadModal({ onClose }) {
 
     if (result.name) { setName(result.name); filled.add('name') }
 
-    const cat = normalise(result.category)
-    if (cat && CATEGORIES.includes(cat)) { setCategory(cat); filled.add('category') }
+    const cat = matchOption(result.category, CATEGORIES)
+    if (cat) { setCategory(cat); filled.add('category') }
 
     if (result.subcategory) { setSubcategory(result.subcategory); filled.add('subcategory') }
 
@@ -115,8 +122,8 @@ export default function UploadModal({ onClose }) {
       filled.add('colors')
     }
 
-    const fab = normalise(result.fabric)
-    if (fab && FABRICS.includes(fab)) { setFabric(fab); filled.add('fabric') }
+    const fab = matchOption(result.fabric, FABRICS)
+    if (fab) { setFabric(fab); filled.add('fabric') }
 
     const formalityFilled = filterToList(result.formality, FORMALITIES)
     if (formalityFilled.length > 0) { setFormality(formalityFilled); filled.add('formality') }
@@ -266,14 +273,18 @@ export default function UploadModal({ onClose }) {
 
           <form onSubmit={handleSubmit} noValidate>
             <div
-              className={styles.imageUpload}
+              className={`${styles.imageUpload} ${dragging ? styles.imageUploadDragging : ''}`}
               onClick={() => fileInputRef.current?.click()}
+              onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={handleDrop}
             >
               {imagePreview ? (
                 <img src={imagePreview} alt="Preview" className={styles.imagePreview} />
               ) : (
                 <span className={styles.imageUploadLabel}>
-                  Drop an image or click to upload
+                  Drop photos or click to choose
+                  <span className={styles.imageUploadHint}>Choose several to add them all at once</span>
                 </span>
               )}
             </div>
@@ -284,8 +295,9 @@ export default function UploadModal({ onClose }) {
               ref={fileInputRef}
               type="file"
               accept="image/*"
+              multiple
               className={styles.fileInput}
-              onChange={handleImageChange}
+              onChange={(e) => handleFiles(e.target.files)}
             />
 
             <div className={`${styles.fields} ${analysing ? styles.fieldsAnalysing : ''}`}>

@@ -22,6 +22,7 @@ import DailyStylingPage from './pages/DailyStylingPage.jsx'
 import ExtensionLoginPage from './pages/ExtensionLoginPage.jsx'
 import ShoppingHistoryPage from './pages/ShoppingHistoryPage.jsx'
 import ShoppingAnalysisPage from './pages/ShoppingAnalysisPage.jsx'
+import BulkUploadPage from './pages/BulkUploadPage.jsx'
 
 function PrivateRoute({ children }) {
   const token = useStore((s) => s.token)
@@ -52,6 +53,7 @@ export default function App() {
         />
         <Route path="/dashboard" element={<WithLayout><DashboardPage /></WithLayout>} />
         <Route path="/wardrobe" element={<WithLayout><WardrobePage /></WithLayout>} />
+        <Route path="/wardrobe/upload" element={<WithLayout><BulkUploadPage /></WithLayout>} />
         <Route path="/wardrobe/:item_id" element={<WithLayout><WardrobeItemDetailPage /></WithLayout>} />
         <Route path="/trips" element={<WithLayout><TripsPage /></WithLayout>} />
         <Route path="/trips/new" element={<WithLayout><NewTripPage /></WithLayout>} />

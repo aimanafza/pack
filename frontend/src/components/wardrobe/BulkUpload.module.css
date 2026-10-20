@@ -1,0 +1,498 @@
+/* Bulk upload review page and its editor. Buttons, pills and cards follow the wardrobe page. */
+
+.page {
+  position: relative;
+}
+
+.loading {
+  min-height: 50vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.loadingText {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 300;
+  color: var(--color-text-tertiary);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* Header */
+.header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+.pageLabel {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+  color: var(--color-text-tertiary);
+  margin: 0 0 var(--space-2);
+}
+
+.headline {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-weight: 400;
+  color: var(--color-text-primary);
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--leading-tight);
+  margin: 0;
+}
+
+.fileInput {
+  display: none;
+}
+
+/* Buttons: the wardrobe page's square, uppercase style */
+.btnPrimary,
+.btnOutline {
+  border-radius: 0;
+  padding: var(--space-3) var(--space-6);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.btnPrimary {
+  background: var(--color-text-primary);
+  color: var(--color-text-inverse);
+  border: 1px solid var(--color-text-primary);
+}
+
+.btnPrimary:hover:not(:disabled) {
+  background: var(--color-accent-hover);
+}
+
+.btnOutline {
+  background: transparent;
+  color: var(--color-text-primary);
+  border: var(--border-medium);
+}
+
+.btnOutline:hover:not(:disabled) {
+  background: var(--color-text-primary);
+  border-color: var(--color-text-primary);
+  color: var(--color-text-inverse);
+}
+
+.btnPrimary:disabled,
+.btnOutline:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.btnText {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  color: var(--color-text-tertiary);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.btnText:hover {
+  color: var(--color-text-primary);
+}
+
+.btnPrimary:focus-visible,
+.btnOutline:focus-visible,
+.btnText:focus-visible,
+.remove:focus-visible,
+.retry:focus-visible,
+.photoEditable:focus-visible {
+  outline: 1px solid var(--color-text-primary);
+  outline-offset: 2px;
+}
+
+/* Progress */
+.progress {
+  margin-bottom: var(--space-6);
+}
+
+.progressText {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  margin: 0 0 var(--space-2);
+}
+
+.progressTrack {
+  height: 2px;
+  background: var(--color-bg-tertiary);
+  overflow: hidden;
+}
+
+.progressFill {
+  display: block;
+  height: 100%;
+  background: var(--color-text-primary);
+  transition: width 0.4s ease;
+}
+
+.notice {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+  background: var(--color-bg-primary);
+  border: var(--border-thin);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  margin: 0 0 var(--space-6);
+}
+
+/* Empty state */
+.empty {
+  padding: var(--space-20) 0;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.emptyText {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  color: var(--color-text-primary);
+  margin: 0 0 var(--space-2);
+}
+
+.emptySub {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 300;
+  color: var(--color-text-secondary);
+  margin: 0 0 var(--space-6);
+}
+
+.emptyActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+}
+
+/* Grid: same sizing rules as the wardrobe */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(max(180px, calc((100% - 3 * var(--space-6)) / 4)), 1fr)
+  );
+  gap: var(--space-6);
+  align-items: start;
+}
+
+.card {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.photo {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  border-radius: var(--radius-md);
+  border: var(--border-thin);
+  background: var(--color-bg-tertiary);
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+
+.photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.photoBusy img {
+  opacity: 0.55;
+}
+
+.photoEditable {
+  cursor: pointer;
+}
+
+.photoEditable:hover {
+  border-color: var(--color-border-dark);
+}
+
+.status {
+  position: absolute;
+  left: var(--space-2);
+  bottom: var(--space-2);
+  padding: 3px var(--space-3);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  background: var(--color-bg-primary);
+  border: var(--border-default);
+  color: var(--color-text-secondary);
+}
+
+.statusBusy {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.statusAttention {
+  color: var(--color-text-primary);
+  border-color: var(--color-text-primary);
+}
+
+.remove {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: var(--border-default);
+  background: var(--color-bg-primary);
+  color: var(--color-text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+/* Bigger invisible hit area for touch */
+.remove::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
+}
+
+.remove:hover {
+  color: var(--color-text-primary);
+  border-color: var(--color-border-dark);
+}
+
+.meta {
+  padding: 0 var(--space-1);
+  min-height: 40px;
+}
+
+.name {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--color-text-primary);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.metaRow {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+
+.category {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  color: var(--color-text-tertiary);
+}
+
+.weight {
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+}
+
+.retry {
+  margin-top: var(--space-1);
+  min-height: 32px;
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  color: var(--color-text-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+/* Bottom bar, like the wardrobe's select bar */
+.barSpacer {
+  height: 96px;
+}
+
+.bar {
+  position: fixed;
+  left: 240px;
+  right: 0;
+  bottom: 0;
+  z-index: 150;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-8);
+  background: var(--color-bg-primary);
+  border-top: var(--border-thin);
+}
+
+.barText {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+/* Editor (inside the add-item form's modal) */
+/* The card takes focus on open so Escape and Tab start inside it; that's not a keyboard focus to show */
+.editorCard:focus {
+  outline: none;
+}
+
+.editorCount {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+  color: var(--color-text-tertiary);
+  margin: 0 0 var(--space-2);
+}
+
+.editorPhoto {
+  aspect-ratio: 1 / 1;
+  border-radius: var(--radius-md);
+  background: var(--color-bg-secondary);
+  margin: var(--space-4) 0 var(--space-6);
+  overflow: hidden;
+}
+
+.editorPhoto img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.editorNote,
+.editorMissing {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  margin: 0 0 var(--space-4);
+}
+
+.editorNote {
+  color: var(--color-text-primary);
+}
+
+.editorMissing {
+  color: var(--color-text-secondary);
+  margin-top: var(--space-4);
+}
+
+.editorActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-top: var(--space-6);
+}
+
+.editorButtons {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.btnRemove {
+  min-height: 44px;
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.btnRemove:hover:not(:disabled) {
+  color: var(--color-text-primary);
+}
+
+@media (max-width: 767px) {
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .headline {
+    font-size: 32px;
+  }
+
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-4);
+  }
+
+  .bar {
+    left: 0;
+    bottom: 64px;
+    padding: var(--space-3) 16px;
+  }
+
+  .btnPrimary,
+  .btnOutline {
+    padding-left: var(--space-4);
+    padding-right: var(--space-4);
+  }
+
+  .barSpacer {
+    height: 72px;
+  }
+
+  .editorActions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .editorButtons > * {
+    flex: 1;
+  }
+}
