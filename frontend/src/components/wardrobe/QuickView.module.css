@@ -23,8 +23,11 @@
   pointer-events: auto;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  /* A fixed height (not just a max) so the details column scrolls instead of
+     growing past the card and getting clipped */
+  grid-template-rows: minmax(0, 1fr);
   width: min(840px, 100%);
-  max-height: min(620px, calc(100vh - 2 * var(--space-6)));
+  height: min(620px, calc(100vh - 2 * var(--space-6)));
   background: var(--color-bg-primary);
   border-radius: var(--radius-lg);
   overflow: hidden;
@@ -92,7 +95,9 @@
 
 .infoSide {
   padding: var(--space-10) var(--space-8) var(--space-8);
+  min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
 }
@@ -116,6 +121,8 @@
   line-height: var(--leading-tight);
   color: var(--color-text-primary);
   margin: 0;
+  /* Leaves room for the close button so long names wrap before it */
+  padding-right: var(--space-8);
 }
 
 .weight {
@@ -249,7 +256,9 @@
 
   .panel {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
     width: 100%;
+    height: auto;
     max-height: 88vh;
     border-radius: var(--radius-xl) var(--radius-xl) 0 0;
     overflow-y: auto;
