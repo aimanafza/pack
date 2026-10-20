@@ -3,7 +3,7 @@ import api from '../utils/api.js'
 import useStore from '../store/index.js'
 
 export function useWardrobe() {
-  const { wardrobe, setWardrobe, addItem, removeItem } = useStore()
+  const { wardrobe, setWardrobe, addItem, removeItem, removeItems, updateItems } = useStore()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -32,6 +32,30 @@ export function useWardrobe() {
     }
   }
 
+  // Bulk actions update the screen first and reload the wardrobe if the server says no.
+  // They return true on success so the page can confirm what happened.
+  async function deleteItems(ids) {
+    removeItems(ids)
+    try {
+      await api.post('/api/v1/wardrobe/bulk-delete', { item_ids: ids })
+      return true
+    } catch {
+      await fetchWardrobe()
+      return false
+    }
+  }
+
+  async function moveItems(ids, category) {
+    updateItems(ids, { category })
+    try {
+      await api.patch('/api/v1/wardrobe/bulk-category', { item_ids: ids, category })
+      return true
+    } catch {
+      await fetchWardrobe()
+      return false
+    }
+  }
+
   async function uploadItem(formData) {
     const { data } = await api.post('/api/v1/wardrobe/', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
@@ -40,5 +64,5 @@ export function useWardrobe() {
     return data.data
   }
 
-  return { wardrobe, fetchWardrobe, deleteItem, uploadItem, loading, error }
+  return { wardrobe, fetchWardrobe, deleteItem, deleteItems, moveItems, uploadItem, loading, error }
 }

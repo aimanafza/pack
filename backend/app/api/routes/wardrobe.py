@@ -1,6 +1,8 @@
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile, File, Form, Body
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Literal, Optional
+from beanie import PydanticObjectId
+from beanie.operators import In
 from app.models.user import User
 from app.models.item import WardrobeItem
 from app.api.deps import get_current_user
@@ -100,6 +102,60 @@ async def add_item(
     await item.insert()
     # background_tasks.add_task(regenerate_style_dna_for_user, str(current_user.id))
     return {"success": True, "data": item.model_dump(), "message": "Item added"}
+
+
+class BulkItemsBody(BaseModel):
+    item_ids: List[str]
+
+
+class BulkCategoryBody(BaseModel):
+    item_ids: List[str]
+    category: Literal["top", "bottom", "dress", "outerwear", "shoes", "bag", "accessory"]
+
+
+def _object_ids(item_ids: List[str]) -> List[PydanticObjectId]:
+    try:
+        return [PydanticObjectId(i) for i in item_ids]
+    except Exception:
+        raise HTTPException(status_code=400, detail="Some of those items couldn't be found. Refresh and try again.")
+
+
+async def _delete_images(public_ids: List[str]) -> None:
+    for public_id in public_ids:
+        try:
+            await delete_wardrobe_item(public_id)
+        except Exception:
+            logger.exception("Couldn't delete wardrobe image %s", public_id)
+
+
+# Bulk routes sit above /{item_id} so their paths are never read as an item id
+@router.post("/bulk-delete")
+async def bulk_delete_items(
+    body: BulkItemsBody,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
+):
+    ids = _object_ids(body.item_ids)
+    if not ids:
+        return {"success": True, "data": {"deleted": 0}, "message": "Nothing to delete"}
+    owned = WardrobeItem.find(In(WardrobeItem.id, ids), WardrobeItem.user_id == current_user.id)
+    items = await owned.to_list()
+    await owned.delete()
+    # Images go after the response; the items are already gone from the wardrobe
+    background_tasks.add_task(_delete_images, [i.cloudinary_public_id for i in items if i.cloudinary_public_id])
+    return {"success": True, "data": {"deleted": len(items)}, "message": f"Deleted {len(items)} items"}
+
+
+@router.patch("/bulk-category")
+async def bulk_move_items(body: BulkCategoryBody, current_user: User = Depends(get_current_user)):
+    ids = _object_ids(body.item_ids)
+    if not ids:
+        return {"success": True, "data": {"updated": 0}, "message": "Nothing to move"}
+    result = await WardrobeItem.find(
+        In(WardrobeItem.id, ids), WardrobeItem.user_id == current_user.id
+    ).update({"$set": {"category": body.category}})
+    updated = getattr(result, "modified_count", 0)
+    return {"success": True, "data": {"updated": updated}, "message": f"Moved {updated} items"}
 
 
 @router.get("/{item_id}")

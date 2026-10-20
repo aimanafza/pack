@@ -58,6 +58,10 @@ const useStore = create((set, get) => ({
   setWardrobe: (wardrobe) => set({ wardrobe }),
   addItem: (item) => set((s) => ({ wardrobe: [item, ...s.wardrobe] })),
   removeItem: (id) => set((s) => ({ wardrobe: s.wardrobe.filter(i => i.id !== id) })),
+  removeItems: (ids) => set((s) => ({ wardrobe: s.wardrobe.filter(i => !ids.includes(i.id)) })),
+  updateItems: (ids, changes) => set((s) => ({
+    wardrobe: s.wardrobe.map(i => (ids.includes(i.id) ? { ...i, ...changes } : i)),
+  })),
 
   // Trips slice
   trips: [],

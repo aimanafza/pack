@@ -25,7 +25,7 @@ function canHover() {
   return window.matchMedia('(hover: hover) and (pointer: fine)').matches
 }
 
-export default function ItemCard({ item, onDelete }) {
+export default function ItemCard({ item, onDelete, selecting = false, selected = false, onToggleSelect }) {
   const navigate = useNavigate()
   const unit = useWeightUnit()
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -33,19 +33,30 @@ export default function ItemCard({ item, onDelete }) {
   const itemId = item.id || item._id
 
   function openItem() {
-    if (canHover()) navigate(`/wardrobe/${itemId}`)
+    if (selecting) onToggleSelect(itemId)
+    else if (canHover()) navigate(`/wardrobe/${itemId}`)
     else setQuickView(true)
+  }
+
+  function handleKeyDown(e) {
+    if (selecting && (e.key === 'Enter' || e.key === ' ')) {
+      e.preventDefault()
+      onToggleSelect(itemId)
+    } else if (!selecting && e.key === 'Enter') {
+      navigate(`/wardrobe/${itemId}`)
+    }
   }
 
   return (
     <motion.div className={styles.card} variants={cardVariants}>
       <div
-        className={styles.imageWrap}
+        className={`${styles.imageWrap} ${selecting ? styles.selecting : ''} ${selected ? styles.selected : ''}`}
         onClick={openItem}
-        role="button"
+        role={selecting ? 'checkbox' : 'button'}
+        aria-checked={selecting ? selected : undefined}
         tabIndex={0}
-        onKeyDown={(e) => e.key === 'Enter' && navigate(`/wardrobe/${itemId}`)}
-        aria-label={`View ${item.name} details`}
+        onKeyDown={handleKeyDown}
+        aria-label={selecting ? `Select ${item.name}` : `View ${item.name} details`}
       >
         {item.image_url ? (
           <img
@@ -58,22 +69,34 @@ export default function ItemCard({ item, onDelete }) {
           <div className={styles.placeholder}>+</div>
         )}
 
-        <button
-          className={styles.deleteBtn}
-          onClick={(e) => { e.stopPropagation(); setConfirmDelete(true) }}
-          type="button"
-          aria-label={`Delete ${item.name}`}
-        >
-          <IconTrash />
-        </button>
+        {selecting && (
+          <span className={styles.check} aria-hidden="true">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path d="M2.5 6.2l2.3 2.3 4.7-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </span>
+        )}
 
-        <button
-          className={styles.quickViewBtn}
-          onClick={(e) => { e.stopPropagation(); setQuickView(true) }}
-          type="button"
-        >
-          Quick view
-        </button>
+        {!selecting && (
+          <button
+            className={styles.deleteBtn}
+            onClick={(e) => { e.stopPropagation(); setConfirmDelete(true) }}
+            type="button"
+            aria-label={`Delete ${item.name}`}
+          >
+            <IconTrash />
+          </button>
+        )}
+
+        {!selecting && (
+          <button
+            className={styles.quickViewBtn}
+            onClick={(e) => { e.stopPropagation(); setQuickView(true) }}
+            type="button"
+          >
+            Quick view
+          </button>
+        )}
       </div>
 
       <div className={styles.meta}>
