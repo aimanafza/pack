@@ -10,6 +10,7 @@ const plural = (n, word) => `${n} ${n === 1 ? word : `${word}s`}`
 export default function BulkUploadBanner() {
   const items = useBulkUpload((s) => s.items)
   const refresh = useBulkUpload((s) => s.refresh)
+  const adding = useBulkUpload((s) => s.adding)
 
   useEffect(() => {
     refresh()
@@ -18,7 +19,9 @@ export default function BulkUploadBanner() {
   const c = summarise(items)
   if (c.total === 0) return null
 
-  const message = c.uploading > 0
+  const message = adding
+    ? `Adding to your wardrobe. ${adding.added} of ${adding.total} added.`
+    : c.uploading > 0
     ? `Uploading your photos. ${c.read} of ${c.total} ready to review.`
     : c.inProgress > 0
       ? `Reading your photos. ${c.read} of ${c.total} ready.`
@@ -33,7 +36,10 @@ export default function BulkUploadBanner() {
           {c.failedUploads > 0 && ` ${plural(c.failedUploads, 'photo')} didn't upload.`}
         </p>
         <div className={styles.progressTrack} aria-hidden="true">
-          <span className={styles.progressFill} style={{ width: `${(c.read / c.total) * 100}%` }} />
+          <span
+            className={styles.progressFill}
+            style={{ width: `${adding ? (adding.added / adding.total) * 100 : (c.read / c.total) * 100}%` }}
+          />
         </div>
       </div>
       <Link to="/wardrobe/review" className={styles.btnOutline}>Review</Link>

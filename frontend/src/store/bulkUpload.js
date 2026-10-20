@@ -9,8 +9,8 @@ import { missingField } from '../utils/itemFields.js'
 
 const POLL_MS = 2500
 const UPLOAD_CONCURRENCY = 3
-export const IN_PROGRESS = ['uploading', 'queued', 'reading']
-export const EDITABLE = ['ready', 'failed']
+export const IN_PROGRESS = ['uploading', 'queued', 'reading', 'saving']
+export const EDITABLE = ['ready', 'failed', 'save_failed']
 
 export const EMPTY_FIELDS = {
   name: '', category: '', subcategory: '', color: [], fabric: '',
@@ -35,6 +35,7 @@ export function summarise(items) {
     total: items.length,
     inProgress: items.filter((i) => IN_PROGRESS.includes(i.status)).length,
     uploading: items.filter((i) => i.status === 'uploading').length,
+    saving: items.filter((i) => i.status === 'saving').length,
     read: read.length,
     complete: read.filter((i) => !missingField(i.fields)).length,
     failedUploads: items.filter((i) => i.status === 'upload_failed').length,
@@ -53,6 +54,24 @@ async function inPool(list, limit, worker) {
   await Promise.all(lanes)
 }
 
+// How far the current "add to wardrobe" has got. Saved drafts drop out of the server's
+// list, so a draft we're adding that's no longer listed has landed in the wardrobe.
+function trackAdding(adding, byId) {
+  if (!adding) return {}
+  let added = 0
+  let failed = 0
+  for (const id of adding.ids) {
+    const d = byId.get(id)
+    if (!d || d.status === 'saved') added++
+    else if (d.status === 'save_failed') failed++
+  }
+  if (added + failed < adding.total) return { adding: { ...adding, added, failed } }
+  const notice = failed === 0
+    ? `Added ${plural(added, 'piece')} to your wardrobe.`
+    : `Added ${plural(added, 'piece')} to your wardrobe. ${plural(failed, 'piece')} didn't make it; tap Add to try again.`
+  return { adding: null, notice, addedAt: Date.now() }
+}
+
 // Batches with photos still uploading. Their drafts arrive through each upload's own
 // response, so a poll that sees them first mustn't add them too (that would show a photo twice).
 const uploadingBatches = new Map()
@@ -67,6 +86,10 @@ const useBulkUpload = create((set, get) => ({
   items: [],
   loaded: false,
   notice: '',
+  // The batch being added to the wardrobe right now: which drafts, and how many have landed
+  adding: null,
+  // Bumped when items land in the wardrobe, so the wardrobe page knows to reload
+  addedAt: 0,
 
   setNotice: (notice) => set({ notice }),
 
@@ -75,6 +98,7 @@ const useBulkUpload = create((set, get) => ({
   // Server drafts update the cards we have and add any we don't (from an earlier visit)
   mergeDrafts: (drafts) => set((s) => {
     const byId = new Map(drafts.map((d) => [d.id, d]))
+    const progress = trackAdding(s.adding, byId)
     const known = new Set(s.items.map((i) => i.draftId).filter(Boolean))
     const items = s.items
       // Drafts gone from the server (saved, expired or removed elsewhere) leave too. Not while
@@ -85,7 +109,7 @@ const useBulkUpload = create((set, get) => ({
       if (known.has(d.id) || uploadingBatches.has(d.batch_id) || d.status === 'saved') continue
       items.push({ key: d.id, ...fromDraft(d) })
     }
-    return { items, loaded: true }
+    return { items, loaded: true, ...progress }
   }),
 
   refresh: async () => {
@@ -98,9 +122,9 @@ const useBulkUpload = create((set, get) => ({
     get().syncPolling()
   },
 
-  // Poll only while Claude is still reading something
+  // Poll only while Claude is still reading or items are still being added
   syncPolling: () => {
-    const reading = get().items.some((i) => i.status === 'queued' || i.status === 'reading')
+    const reading = get().items.some((i) => ['queued', 'reading', 'saving'].includes(i.status))
     if (reading && !pollTimer) {
       pollTimer = setInterval(() => get().refresh(), POLL_MS)
     } else if (!reading && pollTimer) {
@@ -204,6 +228,26 @@ const useBulkUpload = create((set, get) => ({
     set((s) => ({ items: s.items.filter((i) => i.key !== key) }))
   },
 
+  // Add every complete, read piece to the wardrobe. The server saves them a few at a
+  // time with the background removed; polling shows each one landing.
+  addToWardrobe: async () => {
+    const ready = get().items.filter((i) => EDITABLE.includes(i.status) && !missingField(i.fields))
+    if (ready.length === 0) return
+    set({ notice: '' })
+    try {
+      await api.post('/api/v1/drafts/confirm', { draft_ids: ready.map((i) => i.draftId) })
+    } catch (err) {
+      set({ notice: err.response?.data?.detail || "Those pieces weren't added. Check your connection and try again." })
+      return
+    }
+    const ids = new Set(ready.map((i) => i.draftId))
+    set((s) => ({
+      items: s.items.map((i) => (ids.has(i.draftId) ? { ...i, status: 'saving', error: '' } : i)),
+      adding: { ids, total: ids.size, added: 0, failed: 0 },
+    }))
+    get().syncPolling()
+  },
+
   saveFields: async (key, fields) => {
     const item = get().items.find((i) => i.key === key)
     const { data } = await api.patch(`/api/v1/drafts/${item.draftId}`, fields)
@@ -217,7 +261,7 @@ const useBulkUpload = create((set, get) => ({
     uploadingBatches.clear()
     window.removeEventListener('beforeunload', warnBeforeLeaving)
     get().items.forEach((i) => i.previewUrl && URL.revokeObjectURL(i.previewUrl))
-    set({ items: [], loaded: false, notice: '' })
+    set({ items: [], loaded: false, notice: '', adding: null })
   },
 }))
 

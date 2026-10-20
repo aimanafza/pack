@@ -5,6 +5,7 @@ import WardrobeGrid from '../components/wardrobe/WardrobeGrid.jsx'
 import UploadModal from '../components/wardrobe/UploadModal.jsx'
 import ConfirmModal from '../components/ui/ConfirmModal.jsx'
 import BulkUploadBanner from '../components/wardrobe/BulkUploadBanner.jsx'
+import useBulkUpload from '../store/bulkUpload.js'
 import styles from './WardrobePage.module.css'
 
 const FILTERS = [
@@ -37,9 +38,11 @@ export default function WardrobePage() {
   const [notice, setNotice] = useState('')
   const movePanelRef = useRef(null)
 
+  // Reload when bulk-uploaded pieces land, so they show up without a refresh
+  const bulkAddedAt = useBulkUpload((s) => s.addedAt)
   useEffect(() => {
     fetchWardrobe()
-  }, [])
+  }, [bulkAddedAt])
 
   const filtered = wardrobe
     .filter((item) => activeFilter === 'all' || item.category === activeFilter)

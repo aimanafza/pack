@@ -13,6 +13,8 @@ function statusLabel(item) {
   if (item.status === 'queued' || item.status === 'reading') return 'Reading'
   if (item.status === 'upload_failed') return 'Upload failed'
   if (item.status === 'failed') return 'Fill in details'
+  if (item.status === 'saving') return 'Adding'
+  if (item.status === 'save_failed') return 'Not added'
   return missingLabel(item.fields)
 }
 
@@ -28,6 +30,8 @@ export default function BulkUploadPage() {
   const retryUpload = useBulkUpload((s) => s.retryUpload)
   const removeItem = useBulkUpload((s) => s.removeItem)
   const saveFields = useBulkUpload((s) => s.saveFields)
+  const addToWardrobe = useBulkUpload((s) => s.addToWardrobe)
+  const adding = useBulkUpload((s) => s.adding)
   const [editingKey, setEditingKey] = useState(null)
   const fileInputRef = useRef(null)
 
@@ -90,12 +94,17 @@ export default function BulkUploadPage() {
       {counts.total > 0 && (
         <div className={styles.progress} aria-live="polite">
           <p className={styles.progressText}>
-            {counts.inProgress > 0
-              ? `Reading your photos. ${counts.read} of ${counts.total} ready.`
-              : `All ${plural(counts.read, 'piece')} read. Tap one to check its details.`}
+            {adding
+              ? `Adding to your wardrobe. ${adding.added} of ${adding.total} added.`
+              : counts.inProgress > 0
+                ? `Reading your photos. ${counts.read} of ${counts.total} ready.`
+                : `All ${plural(counts.read, 'piece')} read. Tap one to check its details.`}
           </p>
           <div className={styles.progressTrack} aria-hidden="true">
-            <span className={styles.progressFill} style={{ width: `${(counts.read / counts.total) * 100}%` }} />
+            <span
+              className={styles.progressFill}
+              style={{ width: `${adding ? (adding.added / adding.total) * 100 : (counts.read / counts.total) * 100}%` }}
+            />
           </div>
         </div>
       )}
@@ -172,14 +181,21 @@ export default function BulkUploadPage() {
       {counts.total > 0 && (
         <div className={styles.bar}>
           <p className={styles.barText}>
-            {counts.inProgress > 0
+            {adding
+              ? `${adding.added} of ${adding.total} added`
+              : counts.inProgress > 0
               ? `${counts.read} of ${counts.total} ready`
               : needsDetails > 0
                 ? `${plural(counts.complete, 'piece')} ready, ${needsDetails} need${needsDetails === 1 ? 's' : ''} details`
                 : `${plural(counts.complete, 'piece')} ready`}
           </p>
-          <button className={styles.btnPrimary} type="button" disabled>
-            Add {plural(counts.complete, 'item')}
+          <button
+            className={styles.btnPrimary}
+            type="button"
+            onClick={addToWardrobe}
+            disabled={!!adding || counts.inProgress > 0 || counts.complete === 0}
+          >
+            {adding ? 'Adding...' : `Add ${plural(counts.complete, 'item')}`}
           </button>
         </div>
       )}

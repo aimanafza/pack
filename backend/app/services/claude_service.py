@@ -1696,6 +1696,58 @@ async def analyse_wardrobe_item_image(image_url: str) -> dict:
         details=result.get("weight_details") or [],
         fallback_grams=result.get("weight_grams"),
     )
+    return _canonical_options(result)
+
+
+# The add-item form's options. Claude is told to use exactly these, but sometimes answers
+# with a near word ("evening", "office"); those are translated here instead of being dropped.
+_ITEM_OPTIONS = {
+    "formality": ["casual", "smart-casual", "elevated casual", "business casual", "business", "formal"],
+    "occasions": ["work", "casual", "formal", "travel", "dinner", "beach", "hiking", "nightlife"],
+    "season": ["spring", "summer", "fall", "winter", "all"],
+}
+_OPTION_SYNONYMS = {
+    "occasions": {
+        "evening": "nightlife", "night out": "nightlife", "party": "nightlife", "club": "nightlife",
+        "everyday": "casual", "daily": "casual", "weekend": "casual", "brunch": "casual", "errands": "casual",
+        "office": "work", "business": "work",
+        "vacation": "travel", "holiday": "travel", "resort": "beach", "pool": "beach", "swim": "beach",
+        "date": "dinner", "date night": "dinner", "restaurant": "dinner",
+        "wedding": "formal", "event": "formal", "gala": "formal", "cocktail": "formal",
+        "sport": "hiking", "gym": "hiking", "outdoor": "hiking", "outdoors": "hiking", "athletic": "hiking",
+    },
+    "formality": {
+        "nightlife": "elevated casual", "evening": "elevated casual", "dressy": "elevated casual",
+        "smart": "smart-casual", "relaxed": "casual", "black tie": "formal", "cocktail": "formal",
+        "office": "business casual", "work": "business casual",
+    },
+    "season": {"autumn": "fall", "year round": "all", "all year": "all", "all season": "all", "all seasons": "all"},
+}
+
+
+def _option_key(value) -> str:
+    return str(value or "").lower().replace("-", " ").strip()
+
+
+def _canonical_options(result: dict) -> dict:
+    for field, options in _ITEM_OPTIONS.items():
+        values = result.get(field)
+        if not isinstance(values, list):
+            continue
+        by_key = {_option_key(o): o for o in options}
+        synonyms = _OPTION_SYNONYMS.get(field, {})
+        matched, unknown = [], []
+        for v in values:
+            key = _option_key(v)
+            option = by_key.get(key) or synonyms.get(key)
+            if option:
+                if option not in matched:
+                    matched.append(option)
+            else:
+                unknown.append(v)
+        if unknown:
+            logger.info("Claude gave %s outside the form's options: %s", field, unknown)
+        result[field] = matched
     return result
 
 

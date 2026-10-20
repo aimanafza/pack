@@ -12,15 +12,19 @@ from app.models.user import User
 from app.models.wardrobe_draft import DraftFields, WardrobeDraft
 from app.services import usage_service
 from app.services.claude_service import analyse_wardrobe_item_image
-from app.services.cloudinary_service import delete_wardrobe_item
+from app.models.item import WardrobeItem
+from app.services.cloudinary_service import delete_wardrobe_item, upload_wardrobe_item
+from pymongo.errors import DuplicateKeyError
 
 logger = logging.getLogger(__name__)
 
 READ_CONCURRENCY = 6
+SAVE_CONCURRENCY = 4                 # background removals at once
 STALE_AFTER = timedelta(minutes=3)   # a read that's been "in progress" this long died with the server
 DRAFT_TTL = timedelta(days=7)        # unconfirmed drafts are cleared after a week
 
 _read_slots = asyncio.Semaphore(READ_CONCURRENCY)
+_save_slots = asyncio.Semaphore(SAVE_CONCURRENCY)
 
 # The add-item form's options; Claude's answers are matched to these
 CATEGORIES = ["top", "bottom", "dress", "outerwear", "shoes", "bag", "accessory"]
@@ -30,6 +34,26 @@ OCCASIONS = ["work", "casual", "formal", "travel", "dinner", "beach", "hiking", 
 SEASONS = ["spring", "summer", "fall", "winter", "all"]
 
 READ_FAILED_MESSAGE = "We couldn't read this photo. Fill in the details yourself."
+SAVE_FAILED_MESSAGE = "This one didn't make it into your wardrobe. Add it again to retry."
+
+
+def missing_field(fields: DraftFields) -> str:
+    """Same rules as the add-item form: what's still needed before saving, or ''."""
+    if not fields.name.strip():
+        return "name"
+    if not fields.category:
+        return "category"
+    if not fields.color:
+        return "color"
+    if not fields.fabric:
+        return "fabric"
+    if not fields.formality:
+        return "dress code"
+    if not fields.occasions:
+        return "occasion"
+    if not fields.season:
+        return "season"
+    return ""
 
 
 def _norm(value) -> str:
@@ -103,6 +127,71 @@ async def requeue_stale(user_id) -> list:
     for draft in stuck:
         await draft.set({"status": "queued", "updated_at": datetime.utcnow()})
     return [d.id for d in stuck]
+
+
+async def stale_saves(user_id) -> list:
+    """Drafts stuck mid-save (the server restarted). Saving again is safe; see save_draft."""
+    cutoff = datetime.utcnow() - STALE_AFTER
+    stuck = await WardrobeDraft.find(
+        WardrobeDraft.user_id == user_id,
+        WardrobeDraft.status == "saving",
+        WardrobeDraft.updated_at < cutoff,
+    ).to_list()
+    for draft in stuck:
+        await draft.set({"updated_at": datetime.utcnow()})
+    return [d.id for d in stuck]
+
+
+async def save_draft(draft_id) -> None:
+    """Turn a confirmed draft into a wardrobe item, background removed.
+
+    The item reuses the draft's id, so running this twice for one draft (after a
+    restart) finds the item already there instead of creating a duplicate. Its monthly
+    slot was reserved at confirm; a failed save gives it back."""
+    async with _save_slots:
+        draft = await WardrobeDraft.get(draft_id)
+        if not draft or draft.status != "saving":
+            return
+
+        if not await WardrobeItem.get(draft.id):
+            try:
+                stored = await upload_wardrobe_item(draft.image_url, str(draft.user_id))
+            except Exception:
+                logger.exception("Saving draft %s failed", draft_id)
+                await draft.set({"status": "save_failed", "error": SAVE_FAILED_MESSAGE, "updated_at": datetime.utcnow()})
+                user = await User.get(draft.user_id)
+                if user:
+                    await usage_service.release(user, "items_added")
+                return
+
+            f = draft.fields
+            item = WardrobeItem(
+                id=draft.id,
+                user_id=draft.user_id,
+                name=f.name.strip(),
+                category=f.category,
+                subcategory=f.subcategory,
+                color=f.color,
+                fabric=f.fabric,
+                formality=f.formality,
+                occasions=f.occasions,
+                season=f.season,
+                notes=f.notes,
+                weight_grams=f.weight_grams or 300,
+                image_url=stored["url"],
+                cloudinary_public_id=stored["public_id"],
+            )
+            try:
+                await item.insert()
+            except DuplicateKeyError:
+                # Another run saved it first; drop the extra photo this run uploaded
+                await delete_wardrobe_item(stored["public_id"])
+
+        try:
+            await delete_wardrobe_item(draft.image_public_id)
+        except Exception:
+            logger.exception("Couldn't delete draft photo %s", draft.image_public_id)
+        await draft.set({"status": "saved", "item_id": draft.id, "error": "", "updated_at": datetime.utcnow()})
 
 
 async def sweep_expired(user_id) -> None:

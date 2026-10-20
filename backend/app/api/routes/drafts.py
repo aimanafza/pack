@@ -3,10 +3,11 @@ background, and the review screen polls the drafts until they're ready."""
 
 import logging
 import re
-from typing import Optional
+from typing import List, Optional
 
 from beanie import PydanticObjectId
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
+from pydantic import BaseModel
 
 from app.api.deps import get_current_user
 from app.core.plans import limits_for
@@ -99,6 +100,8 @@ async def list_drafts(
     await draft_service.sweep_expired(current_user.id)
     for draft_id in await draft_service.requeue_stale(current_user.id):
         background_tasks.add_task(draft_service.read_draft, draft_id)
+    for draft_id in await draft_service.stale_saves(current_user.id):
+        background_tasks.add_task(draft_service.save_draft, draft_id)
 
     query = [WardrobeDraft.user_id == current_user.id]
     if batch_id:
@@ -109,11 +112,63 @@ async def list_drafts(
     return {"success": True, "data": [_draft_out(d) for d in drafts], "message": ""}
 
 
+class ConfirmBody(BaseModel):
+    draft_ids: List[str]
+
+
+@router.post("/confirm")
+async def confirm_drafts(
+    body: ConfirmBody,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
+):
+    """Add reviewed drafts to the wardrobe. Answers right away; the items are saved
+    (background removed) a few at a time and the review screen polls for progress."""
+    try:
+        ids = [PydanticObjectId(i) for i in body.draft_ids]
+    except Exception:
+        raise HTTPException(status_code=400, detail="Some of those photos couldn't be found. Refresh and try again.")
+    drafts = await WardrobeDraft.find(
+        {"_id": {"$in": ids}},
+        WardrobeDraft.user_id == current_user.id,
+        {"status": {"$in": ["ready", "failed", "save_failed"]}},
+    ).to_list()
+    if not drafts:
+        raise HTTPException(status_code=400, detail="Nothing here is ready to add yet.")
+    incomplete = [d for d in drafts if draft_service.missing_field(d.fields)]
+    if incomplete:
+        count = len(incomplete)
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "1 piece needs details first. Fill it in or remove it, then try again."
+                if count == 1
+                else f"{count} pieces need details first. Fill them in or remove them, then try again."
+            ),
+        )
+
+    if not await usage_service.reserve(current_user, "items_added", len(drafts)):
+        usage = await usage_service.summary(current_user)
+        left = usage["items"]["left"]
+        detail = (
+            usage_service.items_limit_message(current_user)
+            if left == 0
+            else f"You can add {left} more {'item' if left == 1 else 'items'} this month. Remove a few photos, then try again."
+        )
+        raise HTTPException(status_code=429, detail=detail)
+
+    now = datetime.utcnow()
+    for draft in drafts:
+        await draft.set({"status": "saving", "error": "", "updated_at": now})
+        background_tasks.add_task(draft_service.save_draft, draft.id)
+    return {"success": True, "data": {"count": len(drafts)}, "message": ""}
+
+
 @router.patch("/{draft_id}")
 async def update_draft(draft_id: str, fields: DraftFields, current_user: User = Depends(get_current_user)):
     """Save the user's edits so they survive leaving the page."""
     draft = await _own_draft(draft_id, current_user)
-    if draft.status not in ("ready", "failed"):
+    if draft.status not in ("ready", "failed", "save_failed"):
         raise HTTPException(status_code=409, detail="Wait until this photo has been read, then edit it.")
     await draft.set({"fields": fields.model_dump(), "updated_at": datetime.utcnow()})
     return {"success": True, "data": _draft_out(draft), "message": "Saved"}
