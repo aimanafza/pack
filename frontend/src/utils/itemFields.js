@@ -25,6 +25,18 @@ export function filterToList(arr, list) {
 
 export const capitalise = (s) => s.charAt(0).toUpperCase() + s.slice(1)
 
+// Short version for a card tag: what's missing, in two or three words
+export function missingLabel(fields) {
+  if (!fields.name?.trim()) return 'Needs a name'
+  if (!fields.category) return 'Needs a category'
+  if (!fields.color?.length) return 'Needs a color'
+  if (!fields.fabric) return 'Needs a fabric'
+  if (!fields.formality?.length) return 'Needs a dress code'
+  if (!fields.occasions?.length) return 'Needs an occasion'
+  if (!fields.season?.length) return 'Needs a season'
+  return ''
+}
+
 // The first thing missing before an item can be saved, or '' when it's complete
 export function missingField(fields) {
   if (!fields.name?.trim()) return 'Give this item a name.'

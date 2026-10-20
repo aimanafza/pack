@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import useBulkUpload, { EDITABLE, IN_PROGRESS, summarise } from '../store/bulkUpload.js'
-import { missingField, capitalise } from '../utils/itemFields.js'
+import { missingLabel, capitalise } from '../utils/itemFields.js'
 import { formatWeight, useWeightUnit } from '../utils/weight.js'
 import BulkItemEditor from '../components/wardrobe/BulkItemEditor.jsx'
 import styles from '../components/wardrobe/BulkUpload.module.css'
@@ -13,8 +13,7 @@ function statusLabel(item) {
   if (item.status === 'queued' || item.status === 'reading') return 'Reading'
   if (item.status === 'upload_failed') return 'Upload failed'
   if (item.status === 'failed') return 'Fill in details'
-  if (missingField(item.fields)) return 'Needs details'
-  return ''
+  return missingLabel(item.fields)
 }
 
 // The review screen. Uploads run in the bulk upload store, so this page can be left

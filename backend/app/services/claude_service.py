@@ -1640,15 +1640,16 @@ Return ONLY valid JSON, no markdown, no preamble, no explanation:
   "weight_details": ["only details that clearly add weight, chosen from: sequins, beading, embroidery, lace overlay, fringe, metal hardware, padding, heavy lining, feathers; empty list if none"],
   "color": ["primary color", "secondary color if present"],
   "fabric": "one of: linen, cotton, silk, wool, synthetic, denim, leather, other",
-  "formality": ["one or more of: casual, smart-casual, business, formal, elevated-casual, nightlife"],
-  "occasions": ["one or more of: casual, travel, dinner, work, nightlife, beach, sport, formal"],
-  "season": ["one or more of: spring, summer, fall, winter"],
+  "formality": ["one or more of exactly these: casual, smart-casual, elevated casual, business casual, business, formal"],
+  "occasions": ["one or more of exactly these: work, casual, formal, travel, dinner, beach, hiking, nightlife"],
+  "season": ["one or more of exactly these: spring, summer, fall, winter, all"],
   "weight_grams": 0,
   "notes": "any notable details worth capturing: print description, hardware details, special construction, brand if visible, condition, etc."
 }
 
 weight_grams is your own integer estimate of what this exact item weighs. Judge it from the garment type, the fabric and how much of it there is: heavy denim, wool knits and leather weigh far more than silk, linen or jersey, and a maxi dress weighs more than a cami. Embellishment adds real weight: an all-over sequin or beaded piece can weigh twice its plain version. It is a fallback; PACK checks it against researched averages.
 weight_details lists only details that cover enough of the item to change its weight: a sequin top counts, a single beaded button does not. Use the exact words from the list.
+Use only the exact words listed for category, fabric, formality, occasions and season; anything else is discarded, so always pick the closest listed option and never leave formality, occasions or season empty.
 Be precise with colors (say 'burgundy' not just 'red', 'ivory' not just 'white'). If the image is unclear or shows multiple items, do your best with what's visible. Never return null for required fields — use your best judgment.
 """
 

@@ -100,7 +100,7 @@ export default function BulkItemEditor({ item, position, total, onSave, onRemove
               onClick={() => save(false)}
               disabled={saving}
             >
-              {saving && !hasNext ? 'Saving...' : 'Save'}
+              {saving && !hasNext ? 'Saving...' : 'Save changes'}
             </button>
             {hasNext && (
               <button type="button" className={formStyles.btnPrimary} onClick={() => save(true)} disabled={saving}>
