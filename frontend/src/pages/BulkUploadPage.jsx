@@ -64,6 +64,12 @@ export default function BulkUploadPage() {
 
   return (
     <div className={styles.page}>
+      <Link to="/wardrobe" className={styles.backLink}>
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+          <path d="M8.5 3L4.5 7l4 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        Wardrobe
+      </Link>
       <header className={styles.header}>
         <div>
           <p className={styles.pageLabel}>New pieces</p>
