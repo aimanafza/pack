@@ -63,6 +63,7 @@ async def add_item(
     weight_grams: int = Form(300),
     image: Optional[UploadFile] = File(None),
     image_url: Optional[str] = Form(None),
+    temp_public_id: Optional[str] = Form(None),
     current_user: User = Depends(get_current_user),
 ):
     # If image was pre-uploaded (AI autofill flow), re-run it through the
@@ -83,6 +84,11 @@ async def add_item(
 
     url = upload_result["url"]
     public_id = upload_result["public_id"]
+
+    # The pre-upload Claude read from is a temporary copy: delete it now the real one exists.
+    # Only this user's own uploads folder, so the id can't point anywhere else.
+    if temp_public_id and temp_public_id.startswith(f"pack/inspiration/{current_user.id}/"):
+        background_tasks.add_task(_delete_images, [temp_public_id])
 
     item = WardrobeItem(
         user_id=current_user.id,

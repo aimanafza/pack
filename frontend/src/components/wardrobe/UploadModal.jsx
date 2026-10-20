@@ -28,6 +28,8 @@ export default function UploadModal({ onClose }) {
   const [imageFile, setImageFile] = useState(null)
   const [imagePreview, setImagePreview] = useState(null)
   const [preUploadedUrl, setPreUploadedUrl] = useState(null)
+  // The temporary copy Claude reads; the server deletes it once the item is saved
+  const [preUploadedId, setPreUploadedId] = useState(null)
 
   const [name, setName] = useState('')
   const [category, setCategory] = useState('')
@@ -77,6 +79,7 @@ export default function UploadModal({ onClose }) {
       })
       const url = data.data.url
       setPreUploadedUrl(url)
+      setPreUploadedId(data.data.public_id)
 
       // Only analyse once per image selection
       if (!hasAnalysed) {
@@ -217,6 +220,7 @@ export default function UploadModal({ onClose }) {
       // and proper folder/naming are always applied.
       if (preUploadedUrl) {
         fd.append('image_url', preUploadedUrl)
+        if (preUploadedId) fd.append('temp_public_id', preUploadedId)
       } else {
         fd.append('image', imageFile)
       }

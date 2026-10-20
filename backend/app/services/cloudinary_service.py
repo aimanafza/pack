@@ -13,14 +13,16 @@ cloudinary.config(
 
 
 async def upload_wardrobe_item(file, user_id: str) -> dict:
-    """Upload a wardrobe item to Cloudinary, attempting background removal via e_bgremoval.
+    """Upload a wardrobe item to Cloudinary with its background removed.
 
     `file` can be raw bytes or a URL string. When a URL is given the image is
-    downloaded first so we always upload bytes — avoids Cloudinary refusing to
-    fetch its own hosted URLs during re-uploads from the AI-autofill flow.
+    downloaded first so we always upload bytes; Cloudinary won't re-fetch its own
+    hosted URLs during re-uploads from the AI-autofill flow.
 
-    Background removal is attempted but non-fatal: if the add-on is unavailable
-    or quota is exhausted, the original image is saved and the upload still succeeds.
+    Removal runs as the image is stored (Cloudinary's `background_removal` effect),
+    saved as PNG so the transparency survives. If removal fails (add-on disabled or
+    out of quota) the original is saved so the upload still succeeds, and the
+    failure is logged as an error so it can't go unnoticed again.
     """
     import httpx
 
@@ -30,34 +32,20 @@ async def upload_wardrobe_item(file, user_id: str) -> dict:
             r.raise_for_status()
             file = r.content
 
-    # Attempt upload with background removal
+    folder = f"pack/wardrobe/{user_id}"
     try:
         result = cloudinary.uploader.upload(
             file,
-            folder=f"pack/wardrobe/{user_id}",
+            folder=folder,
             resource_type="image",
-            eager=[{"effect": "e_bgremoval", "quality": "auto", "format": "png"}],
-            eager_async=False,
+            transformation=[{"effect": "background_removal"}],
+            format="png",
         )
-        if result.get("eager") and len(result["eager"]) > 0:
-            url = result["eager"][0]["secure_url"]
-            logger.info(f"e_bgremoval succeeded: {url}")
-        else:
-            url = result["secure_url"]
-            logger.warning("e_bgremoval eager result missing — using original URL")
+        return {"url": result["secure_url"], "public_id": result["public_id"], "background_removed": True}
     except Exception as e:
-        logger.warning(f"Background removal failed ({e}), falling back to plain upload")
-        result = cloudinary.uploader.upload(
-            file,
-            folder=f"pack/wardrobe/{user_id}",
-            resource_type="image",
-        )
-        url = result["secure_url"]
-
-    return {
-        "url": url,
-        "public_id": result["public_id"],
-    }
+        logger.error(f"Background removal failed for user {user_id}, saving the original photo: {e}")
+        result = cloudinary.uploader.upload(file, folder=folder, resource_type="image")
+        return {"url": result["secure_url"], "public_id": result["public_id"], "background_removed": False}
 
 
 async def delete_wardrobe_item(public_id: str) -> None:
