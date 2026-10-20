@@ -129,9 +129,6 @@
   height: 96px;
 }
 
-.barSpacerTall {
-  height: 200px;
-}
 
 .actionBar {
   position: fixed;
@@ -172,9 +169,19 @@
 }
 
 .movePanel {
-  padding-bottom: var(--space-4);
-  margin-bottom: var(--space-4);
-  border-bottom: var(--border-thin);
+  margin-bottom: var(--space-8);
+  padding: var(--space-4) var(--space-5) var(--space-5);
+  background: var(--color-bg-primary);
+  border: var(--border-thin);
+  border-radius: var(--radius-md);
+}
+
+.moveHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
 }
 
 .moveLabel {
@@ -184,7 +191,7 @@
   text-transform: uppercase;
   letter-spacing: var(--tracking-wider);
   color: var(--color-text-tertiary);
-  margin: 0 0 var(--space-3);
+  margin: 0;
 }
 
 .movePills {
@@ -390,29 +397,14 @@
     padding: var(--space-3) 16px;
   }
 
-  /* One swipeable row of pills, like the filter at the top */
-  .movePills {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    scrollbar-width: none;
-    margin: 0 -16px;
-    padding: 0 16px;
-  }
-
-  .movePills::-webkit-scrollbar {
-    display: none;
-  }
-
-  .movePill {
-    flex-shrink: 0;
-  }
 
   .barSpacer {
     height: 72px;
   }
 
-  .barSpacerTall {
-    height: 160px;
+  .movePanel {
+    padding: var(--space-3) var(--space-4) var(--space-4);
+    margin-bottom: var(--space-5);
   }
 
   .notice {

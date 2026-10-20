@@ -34,7 +34,7 @@ export default function WardrobePage() {
   const [moveOpen, setMoveOpen] = useState(false)
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
   const [notice, setNotice] = useState('')
-  const moveRef = useRef(null)
+  const movePanelRef = useRef(null)
 
   useEffect(() => {
     fetchWardrobe()
@@ -50,21 +50,15 @@ export default function WardrobePage() {
     setMoveOpen(false)
   }, [activeFilter, search])
 
-  // The Move menu closes on a tap outside it or on Escape
+  // Escape closes the Move row. Opening it scrolls it into view, since you may be far down the grid.
   useEffect(() => {
     if (!moveOpen) return
-    function handlePointer(e) {
-      if (!moveRef.current?.contains(e.target)) setMoveOpen(false)
-    }
+    movePanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
     function handleKey(e) {
       if (e.key === 'Escape') setMoveOpen(false)
     }
-    document.addEventListener('pointerdown', handlePointer)
     document.addEventListener('keydown', handleKey)
-    return () => {
-      document.removeEventListener('pointerdown', handlePointer)
-      document.removeEventListener('keydown', handleKey)
-    }
+    return () => document.removeEventListener('keydown', handleKey)
   }, [moveOpen])
 
   useEffect(() => {
@@ -76,6 +70,10 @@ export default function WardrobePage() {
   const visibleIds = useMemo(() => filtered.map((i) => i.id), [filtered])
   const allSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.has(id))
   const count = selectedIds.size
+
+  useEffect(() => {
+    if (count === 0) setMoveOpen(false)
+  }, [count])
 
   // When everything selected is already in one category, that pill shows as current
   const currentCategory = useMemo(() => {
@@ -195,6 +193,32 @@ export default function WardrobePage() {
         ))}
       </div>
 
+      {/* Move to: opens under the category filter, in the same pill style */}
+      {selecting && moveOpen && count > 0 && (
+        <div className={styles.movePanel} ref={movePanelRef}>
+          <div className={styles.moveHead}>
+            <p className={styles.moveLabel}>Move {plural(count)} to</p>
+            <button className={styles.btnText} type="button" onClick={() => setMoveOpen(false)}>
+              Close
+            </button>
+          </div>
+          <div className={styles.movePills} role="group" aria-label="Choose a category">
+            {CATEGORIES.map(({ label, value }) => (
+              <button
+                key={value}
+                className={`${styles.filterPill} ${styles.movePill} ${currentCategory === value ? styles.filterPillActive : ''}`}
+                type="button"
+                onClick={() => handleMove(value)}
+                disabled={currentCategory === value}
+                aria-label={currentCategory === value ? `${label}, current category` : `Move to ${label}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {loading ? (
         <div className={styles.loading}>
           <p className={styles.loadingText}>Loading your wardrobe...</p>
@@ -225,31 +249,10 @@ export default function WardrobePage() {
       )}
 
       {/* Keeps the last row clear of the action bar */}
-      {selecting && <div className={`${styles.barSpacer} ${moveOpen ? styles.barSpacerTall : ''}`} aria-hidden="true" />}
+      {selecting && <div className={styles.barSpacer} aria-hidden="true" />}
 
       {selecting && (
-        <div className={styles.actionBar} role="toolbar" aria-label="Selected items" ref={moveRef}>
-          {/* Move to: the bar opens upward into a row of the same pills as the category filter */}
-          {moveOpen && count > 0 && (
-            <div className={styles.movePanel}>
-              <p className={styles.moveLabel}>Move {plural(count)} to</p>
-              <div className={styles.movePills} role="group" aria-label="Choose a category">
-                {CATEGORIES.map(({ label, value }) => (
-                  <button
-                    key={value}
-                    className={`${styles.filterPill} ${styles.movePill} ${currentCategory === value ? styles.filterPillActive : ''}`}
-                    type="button"
-                    onClick={() => handleMove(value)}
-                    disabled={currentCategory === value}
-                    aria-label={currentCategory === value ? `${label}, current category` : `Move to ${label}`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
+        <div className={styles.actionBar} role="toolbar" aria-label="Selected items">
           <div className={styles.barRow}>
             <span className={styles.barCount}>{count > 0 ? `${count} selected` : 'None selected'}</span>
             <div className={styles.barActions}>
