@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import useStore from '../store/index.js'
 import { useWardrobe } from '../hooks/useWardrobe.js'
 import WardrobeGrid from '../components/wardrobe/WardrobeGrid.jsx'
@@ -40,6 +41,8 @@ export default function WardrobePage() {
 
   // Reload when bulk-uploaded pieces land, so they show up without a refresh
   const bulkAddedAt = useBulkUpload((s) => s.addedAt)
+  // Photos sitting in review, for the count next to the review link
+  const reviewCount = useBulkUpload((s) => s.items.length)
   useEffect(() => {
     fetchWardrobe()
   }, [bulkAddedAt])
@@ -148,9 +151,14 @@ export default function WardrobePage() {
           </div>
         ) : (
           <div className={styles.headerRight}>
-            {wardrobe.length > 0 && (
-              <span className={styles.itemCount}>{plural(wardrobe.length)}</span>
-            )}
+            <div className={styles.countBlock}>
+              {wardrobe.length > 0 && (
+                <span className={styles.itemCount}>{plural(wardrobe.length)}</span>
+              )}
+              <Link to="/wardrobe/review" className={styles.reviewLink}>
+                Review uploads{reviewCount > 0 ? ` · ${reviewCount}` : ''}
+              </Link>
+            </div>
             <div className={styles.headerActions}>
               {wardrobe.length > 0 && (
                 <button className={styles.btnOutline} onClick={startSelecting} type="button">

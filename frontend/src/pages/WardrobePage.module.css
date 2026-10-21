@@ -39,6 +39,48 @@
   color: var(--color-text-tertiary);
 }
 
+/* Item count with the review link tucked under it, so the header row stays the same width */
+.countBlock {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.reviewLink {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 0.15s;
+}
+
+.reviewLink {
+  position: relative;
+}
+
+/* Bigger invisible tap area, without moving anything */
+.reviewLink::after {
+  content: '';
+  position: absolute;
+  inset: -12px -6px;
+}
+
+.reviewLink:hover {
+  color: var(--color-text-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.reviewLink:focus-visible {
+  outline: 1px solid var(--color-text-primary);
+  outline-offset: 2px;
+}
+
 .btnAdd {
   background: var(--color-text-primary);
   color: var(--color-text-inverse);
@@ -373,6 +415,10 @@
 }
 
 @media (max-width: 767px) {
+  .countBlock {
+    align-items: flex-start;
+  }
+
   .header {
     flex-direction: column;
     align-items: flex-start;
