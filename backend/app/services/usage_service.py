@@ -89,6 +89,6 @@ def items_limit_message(user) -> str:
 def reads_limit_message(user) -> str:
     limit = limits_for(user)["photo_reads_per_month"]
     return (
-        f"Autofill has read {limit} photos for you this month. You can still fill in the details "
-        f"yourself, and autofill comes back on {reset_label()}."
+        f"PACK has filled in {limit} photos for you this month. You can still fill in the details "
+        f"yourself, and PACK can fill them in again from {reset_label()}."
     )

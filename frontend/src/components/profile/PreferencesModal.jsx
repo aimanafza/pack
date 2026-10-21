@@ -208,7 +208,7 @@ export default function PreferencesModal({ onClose }) {
               className={styles.textarea}
               value={stylistNotes}
               onChange={(e) => setStylistNotes(e.target.value)}
-              placeholder="Things Claude should always know about how you dress..."
+              placeholder="Things PACK should always know about how you dress..."
             />
           </section>
         </div>

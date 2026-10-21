@@ -28,6 +28,9 @@ const fromDraft = (d) => ({
 
 const plural = (n, word) => `${n} ${n === 1 ? word : `${word}s`}`
 
+// When a draft was created, for newest-first ordering (the server sends naive UTC)
+const draftTime = (d) => Date.parse(`${String(d.created_at).slice(0, 23)}Z`) || 0
+
 // Counts the review page and the wardrobe banner both show
 export function summarise(items) {
   const read = items.filter((i) => EDITABLE.includes(i.status))
@@ -107,7 +110,7 @@ const useBulkUpload = create((set, get) => ({
       .map((i) => (i.draftId ? { ...i, ...fromDraft(byId.get(i.draftId)) } : i))
     for (const d of drafts) {
       if (known.has(d.id) || uploadingBatches.has(d.batch_id) || d.status === 'saved') continue
-      items.push({ key: d.id, ...fromDraft(d) })
+      items.push({ key: d.id, sortTime: draftTime(d), ...fromDraft(d) })
     }
     return { items, loaded: true, ...progress }
   }),
@@ -163,13 +166,13 @@ const useBulkUpload = create((set, get) => ({
       // size and this month's autofill reads cap how many photos go in
       allowed = Math.min(files.length, usage.batch_max)
       if (allowed === 0) {
-        set({ notice: `Autofill has read ${usage.photo_reads.limit} photos this month. It comes back on ${usage.resets_label}.` })
+        set({ notice: `PACK has filled in ${usage.photo_reads.limit} photos for you this month. It can fill in more from ${usage.resets_label}.` })
         return
       }
       if (allowed < files.length) {
         set({
           notice: usage.photo_reads.left < usage.photos_per_batch
-            ? `Autofill can read ${plural(allowed, 'more photo')} this month, so we kept the first ${allowed}.`
+            ? `PACK can fill in ${plural(allowed, 'more photo')} this month, so we kept the first ${allowed}.`
             : `One upload can hold up to ${usage.photos_per_batch} photos, so we kept the first ${allowed}.`,
         })
       }
@@ -178,8 +181,11 @@ const useBulkUpload = create((set, get) => ({
     }
 
     const batchId = crypto.randomUUID()
+    const startedAt = Date.now()
     const placeholders = files.slice(0, allowed).map((file, i) => ({
       key: `local-${batchId}-${i}`,
+      // Newest batch on top; within it, the order the photos were picked
+      sortTime: startedAt - i,
       batchId,
       status: 'uploading',
       fields: EMPTY_FIELDS,

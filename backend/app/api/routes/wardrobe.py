@@ -32,7 +32,8 @@ class ItemUpdateBody(BaseModel):
 
 @router.get("/")
 async def get_wardrobe(current_user: User = Depends(get_current_user)):
-    items = await WardrobeItem.find(WardrobeItem.user_id == current_user.id).to_list()
+    # Newest first, so freshly added pieces are at the top of the wardrobe
+    items = await WardrobeItem.find(WardrobeItem.user_id == current_user.id).sort(-WardrobeItem.created_at).to_list()
     return {"success": True, "data": [item.model_dump() for item in items], "message": ""}
 
 

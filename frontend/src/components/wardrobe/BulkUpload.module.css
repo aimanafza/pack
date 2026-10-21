@@ -62,9 +62,13 @@
   display: none;
 }
 
-/* Buttons: the wardrobe page's square, uppercase style */
+/* Buttons: the wardrobe page's square, uppercase style (also used on links) */
 .btnPrimary,
 .btnOutline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
   border-radius: 0;
   padding: var(--space-3) var(--space-6);
   font-family: var(--font-body);

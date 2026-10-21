@@ -286,7 +286,7 @@ function PackingColumn({ trip, onGeneratePacking, onUnapproveOutfits, packingLoa
           onClick={() => setRegenOpen(true)}
           type="button"
         >
-          Regenerate with AI
+          Restyle outfits
         </button>
       )}
 

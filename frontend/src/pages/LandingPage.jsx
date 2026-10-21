@@ -18,7 +18,7 @@ const STEPS = [
   {
     num: '03',
     head: 'Pack Smarter',
-    body: 'Swipe through AI-generated outfits. Approve what you love.',
+    body: 'Swipe through outfits styled for your trip. Approve what you love.',
   },
 ]
 
@@ -44,7 +44,7 @@ export default function LandingPage() {
           <p className={styles.heroLabel}>INTRODUCING PACK</p>
           <h1 className={styles.heroHeadline}>Pack like you mean it.</h1>
           <p className={styles.heroSubhead}>
-            Your AI personal stylist. Every trip, perfectly packed.
+            Your personal stylist. Every trip, perfectly packed.
           </p>
           <WaitlistForm />
           <p className={styles.ctaNote}>Free to use. No credit card required.</p>

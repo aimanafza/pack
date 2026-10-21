@@ -252,7 +252,7 @@ export default function UploadModal({ onClose }) {
       <label className={styles.label}>
         {children}
         {aiFilledFields.has(fieldName) && (
-          <span className={styles.aiDot} title="Filled by AI — edit to confirm">✦</span>
+          <span className={styles.aiDot} title="Filled in by PACK. Edit to change it.">✦</span>
         )}
       </label>
     )
@@ -484,7 +484,7 @@ export default function UploadModal({ onClose }) {
             {aiFilledFields.size > 0 && !analysing && (
               <p className={styles.aiBanner}>
                 <span className={styles.aiBannerIcon}>✦</span>
-                Fields filled by AI — review before saving
+                PACK filled these in. Check them before saving.
               </p>
             )}
 

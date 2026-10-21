@@ -49,7 +49,9 @@ export default function BulkUploadPage() {
     await removeItem(item.key)
   }
 
-  const editable = items.filter((i) => EDITABLE.includes(i.status))
+  // Most recent uploads first
+  const ordered = useMemo(() => [...items].sort((a, b) => (b.sortTime || 0) - (a.sortTime || 0)), [items])
+  const editable = ordered.filter((i) => EDITABLE.includes(i.status))
   const editingIndex = editable.findIndex((i) => i.key === editingKey)
   const editing = editingIndex >= 0 ? editable[editingIndex] : null
 
@@ -113,17 +115,17 @@ export default function BulkUploadPage() {
       {counts.total === 0 ? (
         <div className={styles.empty}>
           <p className={styles.emptyText}>Nothing waiting for review.</p>
-          <p className={styles.emptySub}>Choose a few photos and Claude will fill in each piece for you.</p>
+          <p className={styles.emptySub}>Choose a few photos and PACK will fill in the details for each piece.</p>
           <div className={styles.emptyActions}>
             <button className={styles.btnPrimary} type="button" onClick={() => fileInputRef.current?.click()}>
               Choose photos
             </button>
-            <Link to="/wardrobe" className={styles.btnText}>Back to wardrobe</Link>
+            <Link to="/wardrobe" className={styles.btnOutline}>Back to wardrobe</Link>
           </div>
         </div>
       ) : (
         <div className={styles.grid}>
-          {items.map((item) => {
+          {ordered.map((item) => {
             const label = statusLabel(item)
             const canEdit = EDITABLE.includes(item.status)
             const busy = IN_PROGRESS.includes(item.status)
