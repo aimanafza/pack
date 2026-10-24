@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import useStore from '../store/index.js'
 import WaitlistForm from '../components/landing/WaitlistForm.jsx'
+import MonthInReview from '../components/landing/MonthInReview.jsx'
 import styles from './LandingPage.module.css'
 
 const STEPS = [
@@ -38,20 +39,9 @@ export default function LandingPage() {
         <Link to="/auth" className={styles.navSignIn}>Sign in</Link>
       </nav>
 
-      {/* Section 1 — Hero */}
+      {/* Section 1, Hero: the month in review sheet */}
       <section className={styles.hero}>
-        <div className={styles.heroLeft}>
-          <p className={styles.heroLabel}>INTRODUCING PACK</p>
-          <h1 className={styles.heroHeadline}>Pack like you mean it.</h1>
-          <p className={styles.heroSubhead}>
-            Your personal stylist. Every trip, perfectly packed.
-          </p>
-          <WaitlistForm />
-          <p className={styles.ctaNote}>Free to use. No credit card required.</p>
-        </div>
-        <div className={styles.heroRight} aria-hidden="true">
-          <div className={styles.heroPhotoPlaceholder} />
-        </div>
+        <MonthInReview />
       </section>
 
       {/* Section 2 — How It Works */}
