@@ -13,6 +13,7 @@ from app.api.routes.weather import router as weather_router
 from app.api.routes.looks import router as looks_router
 from app.api.routes.uploads import router as uploads_router
 from app.api.routes.purchase_analysis import router as purchase_analysis_router
+from app.api.routes.drafts import router as drafts_router
 
 
 @asynccontextmanager
@@ -51,6 +52,7 @@ app.add_middleware(
 app.include_router(waitlist.router, prefix="/waitlist", tags=["waitlist"])
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
 app.include_router(wardrobe.router, prefix="/api/v1/wardrobe", tags=["wardrobe"])
+app.include_router(drafts_router, prefix="/api/v1/drafts", tags=["drafts"])
 app.include_router(trips.router, prefix="/api/v1/trips", tags=["trips"])
 app.include_router(pack.router, prefix="/api/v1/pack", tags=["pack"])
 app.include_router(inspiration.router, prefix="/api/v1/trips", tags=["inspiration"])

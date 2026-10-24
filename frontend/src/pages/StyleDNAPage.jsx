@@ -1,24 +1,16 @@
 import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import useStore from '../store/index.js'
 import { useWardrobe } from '../hooks/useWardrobe.js'
 import api from '../utils/api.js'
 import styles from './StyleDNAPage.module.css'
-
-function IconBack() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M10 3L5 8l5 5" />
-    </svg>
-  )
-}
+import BackLink from '../components/ui/BackLink.jsx'
 
 export default function StyleDNAPage() {
   const user = useStore((s) => s.user)
   const updateUser = useStore((s) => s.updateUser)
   const { wardrobe, fetchWardrobe } = useWardrobe()
-  const navigate = useNavigate()
 
   const [styleDNA, setStyleDNA] = useState(user?.style_dna || null)
   const [loading, setLoading] = useState(!styleDNA)
@@ -79,7 +71,7 @@ export default function StyleDNAPage() {
       <div className={styles.page}>
         <div className={styles.emptyState}>
           <p className={styles.emptyText}>No style analysis yet.</p>
-          <Link to="/profile" className={styles.backLink}>← Back to profile</Link>
+          <BackLink to="/profile" className={styles.backLink}>Profile</BackLink>
         </div>
       </div>
     )
@@ -89,13 +81,7 @@ export default function StyleDNAPage() {
     <div className={styles.page}>
       {/* Back nav */}
       <div className={styles.nav}>
-        <button
-          type="button"
-          className={styles.backBtn}
-          onClick={() => navigate('/profile')}
-        >
-          <IconBack /> Profile
-        </button>
+        <BackLink to="/profile">Profile</BackLink>
       </div>
 
       {/* Page headline */}

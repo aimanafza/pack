@@ -43,6 +43,7 @@ class PurchaseAnalysis(Document):
     bought: Optional[bool] = None           # None = unanswered
     passed_note: str = ""                   # user note if they didn't buy
     wardrobe_item_id: Optional[PydanticObjectId] = None
+    wardrobe_add_error: Optional[str] = None  # why it wasn't added, e.g. the monthly limit
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
     class Settings:

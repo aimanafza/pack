@@ -1,38 +1,73 @@
+/* Picture card, matching the dashboard's trip cards */
 .card {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  padding: var(--space-6) 0;
-  border-bottom: var(--border-thin);
-  cursor: pointer;
-  gap: var(--space-6);
-}
-
-.card:first-child {
-  border-top: var(--border-thin);
-}
-
-.left {
-  flex: 1;
+  flex-direction: column;
   min-width: 0;
+  border: var(--border-thin);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--color-bg-primary);
+  cursor: pointer;
 }
 
-.destination {
+.image {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background: var(--color-bg-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.initial {
   font-family: var(--font-display);
-  font-size: var(--text-xl);
-  font-weight: 400;
-  color: var(--color-text-primary);
-  letter-spacing: var(--tracking-tight);
-  line-height: var(--leading-tight);
+  font-size: 64px;
+  font-weight: 300;
+  color: var(--color-bg-secondary);
+  line-height: 1;
+  user-select: none;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding: var(--space-4) var(--space-4) var(--space-4);
+}
+
+.titleRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
   margin-bottom: var(--space-1);
 }
 
 .name {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 400;
+  color: var(--color-text-primary);
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--leading-tight);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.destination {
   font-family: var(--font-body);
   font-size: var(--text-sm);
   font-weight: 400;
   color: var(--color-text-secondary);
-  margin-bottom: var(--space-2);
+  margin-bottom: var(--space-1);
 }
 
 .dates {
@@ -47,6 +82,18 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-1);
+  margin-bottom: var(--space-4);
+}
+
+/* Status and actions sit at the bottom so cards in a row line up */
+.footer {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: var(--border-thin);
 }
 
 .tag {
@@ -62,27 +109,13 @@
   padding: 2px var(--space-2);
 }
 
-.right {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: var(--space-4);
-  flex-shrink: 0;
-}
-
-.meta {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: var(--space-1);
-}
-
 .duration {
   font-family: var(--font-display);
-  font-size: var(--text-2xl);
+  font-size: 20px;
   font-weight: 300;
   color: var(--color-text-tertiary);
   line-height: 1;
+  flex-shrink: 0;
 }
 
 .status {
@@ -92,16 +125,15 @@
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: var(--color-text-tertiary);
+  background: var(--color-bg-tertiary);
+  border: var(--border-thin);
+  border-radius: var(--radius-pill);
+  padding: 2px var(--space-2);
 }
 
 .statusPacked {
   color: var(--color-text-primary);
-}
-
-.actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
+  border-color: var(--color-text-primary);
 }
 
 .btnPack {
@@ -125,24 +157,42 @@
   color: var(--color-text-inverse);
 }
 
+/* Small round button over the photo's top-right corner */
 .btnDelete {
-  background: none;
-  border: none;
-  padding: var(--space-1);
-  font-size: 18px;
-  line-height: 1;
-  color: var(--color-text-tertiary);
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--color-bg-primary);
+  border: var(--border-thin);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  color: var(--color-text-secondary);
   cursor: pointer;
-  transition: color 0.15s;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+/* A larger invisible hit area so it stays easy to tap */
+.btnDelete::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
 }
 
 .btnDelete:hover {
   color: var(--color-text-primary);
+  border-color: var(--color-border-dark);
 }
 
 /* Inline delete confirm */
 .confirmRow {
-  margin-top: var(--space-4);
+  margin-top: auto;
+  padding-top: var(--space-3);
+  border-top: var(--border-thin);
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
@@ -203,4 +253,47 @@
 
 .btnCancelDelete:hover:not(:disabled) {
   color: var(--color-text-primary);
+}
+
+/* Half-width cards on phones: tighter padding and smaller type. */
+@media (max-width: 767px) {
+  .body {
+    padding: var(--space-3);
+  }
+
+  .name,
+  .duration {
+    font-size: 17px;
+  }
+
+  .destination {
+    font-size: var(--text-xs);
+  }
+
+  .initial {
+    font-size: 44px;
+  }
+
+  .footer {
+    gap: var(--space-2);
+  }
+
+  .btnDelete {
+    top: var(--space-2);
+    right: var(--space-2);
+  }
+
+  .btnPack {
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .tag {
+    font-size: 9px;
+    letter-spacing: 0.06em;
+    padding: 1px 6px;
+  }
+
+  .occasions {
+    margin-bottom: var(--space-3);
+  }
 }

@@ -10,7 +10,16 @@ from app.models.user import User
 from app.models.item import WardrobeItem
 from app.models.trip import Trip, ReservedItem, BagEntry, PackingItem, DesignRationale, Outfit, AnchorItem
 from app.api.deps import get_current_user
-from app.services.claude_service import generate_restyle_outfit, generate_single_outfit_image, generate_lookbook_image, build_carpet_image
+from app.services.claude_service import (
+    generate_restyle_outfit,
+    generate_single_outfit_image,
+    generate_lookbook_image,
+    maybe_start_carpet,
+    build_packing_plan,
+    packing_load,
+    packing_plan_signature,
+    trip_bags,
+)
 
 router = APIRouter()
 
@@ -164,13 +173,7 @@ async def approve_outfit(
     trip.status = "packed" if (total and reviewed >= total) else "reviewing"
     await trip.save()
 
-    # Trigger carpet generation after the 5th distinct approved outfit across all trips,
-    # but only if the carpet hasn't been generated yet for this user.
-    if not getattr(current_user, "dashboard_carpet_url", None):
-        all_trips = await Trip.find(Trip.user_id == current_user.id).to_list()
-        total_approved = sum(len(t.approved_outfits) for t in all_trips)
-        if total_approved >= 5:
-            background_tasks.add_task(build_carpet_image, current_user)
+    await maybe_start_carpet(current_user, background_tasks)
 
     return {"success": True, "data": trip.model_dump(), "message": "Outfit approved"}
 
@@ -402,4 +405,38 @@ async def check_item(trip_id: str, body: CheckItemBody, current_user: User = Dep
                 if item.wardrobe_item_id == body.item_id or item.name == body.item_id:
                     item.checked = body.checked
         await trip.save()
+    return {"success": True, "data": trip.model_dump(), "message": ""}
+
+
+class PackingPlanBody(BaseModel):
+    refresh: bool = False
+
+
+@router.post("/{trip_id}/packing-plan")
+async def create_packing_plan(
+    trip_id: str,
+    body: PackingPlanBody = PackingPlanBody(),
+    current_user: User = Depends(get_current_user),
+):
+    trip = await Trip.get(trip_id)
+    if not trip or trip.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Trip not found")
+
+    load = packing_load(trip)
+    if not any(not i["key"].startswith("reserved:") for i in load):
+        raise HTTPException(status_code=400, detail="Approve a few outfits first, then we can plan your bags.")
+
+    # Same items and bags as last time: the saved plan still holds, no new AI call
+    signature = packing_plan_signature(load, trip_bags(trip))
+    if trip.packing_plan and trip.packing_plan.signature == signature and not body.refresh:
+        return {"success": True, "data": trip.model_dump(), "message": ""}
+
+    try:
+        plan = await build_packing_plan(trip)
+    except Exception:
+        logger.exception("Packing plan failed for trip %s", trip_id)
+        raise HTTPException(status_code=502, detail="We couldn't plan your bags just now. Try again in a moment.")
+
+    trip.packing_plan = plan
+    await trip.save()
     return {"success": True, "data": trip.model_dump(), "message": ""}

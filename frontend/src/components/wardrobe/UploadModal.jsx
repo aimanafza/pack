@@ -1,32 +1,25 @@
 import { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
+import useBulkUpload from '../../store/bulkUpload.js'
 import { useWardrobe } from '../../hooks/useWardrobe.js'
 import api from '../../utils/api.js'
+import { toGrams, toUnit, useWeightUnit } from '../../utils/weight.js'
 import styles from './UploadModal.module.css'
-
-const CATEGORIES = ['top', 'bottom', 'dress', 'outerwear', 'shoes', 'bag', 'accessory']
-const FABRICS = ['linen', 'cotton', 'silk', 'wool', 'synthetic', 'denim', 'leather', 'other']
-const FORMALITIES = ['casual', 'smart-casual', 'elevated casual', 'business casual', 'business', 'formal']
-const OCCASIONS = ['work', 'casual', 'formal', 'travel', 'dinner', 'beach', 'hiking', 'nightlife']
-const SEASONS = ['spring', 'summer', 'fall', 'winter', 'all']
-
-// Normalize Claude's value strings to match our existing option lists
-function normalise(val) {
-  return val?.toLowerCase().replace(/-/g, ' ').trim()
-}
-
-function filterToList(arr, list) {
-  if (!Array.isArray(arr)) return []
-  return arr.map(normalise).filter((v) => list.includes(v))
-}
+import { CATEGORIES, FABRICS, FORMALITIES, OCCASIONS, SEASONS, filterToList, matchOption } from '../../utils/itemFields.js'
 
 export default function UploadModal({ onClose }) {
   const { uploadItem } = useWardrobe()
   const fileInputRef = useRef(null)
+  const navigate = useNavigate()
+  const startUploads = useBulkUpload((s) => s.startUploads)
+  const [dragging, setDragging] = useState(false)
 
   const [imageFile, setImageFile] = useState(null)
   const [imagePreview, setImagePreview] = useState(null)
   const [preUploadedUrl, setPreUploadedUrl] = useState(null)
+  // The temporary copy Claude reads; the server deletes it once the item is saved
+  const [preUploadedId, setPreUploadedId] = useState(null)
 
   const [name, setName] = useState('')
   const [category, setCategory] = useState('')
@@ -38,7 +31,9 @@ export default function UploadModal({ onClose }) {
   const [occasions, setOccasions] = useState([])
   const [season, setSeason] = useState([])
   const [notes, setNotes] = useState('')
-  const [weightGrams, setWeightGrams] = useState(300)
+  const unit = useWeightUnit()
+  // Typed in the user's unit, saved in grams
+  const [weightInput, setWeightInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [customOccasion, setCustomOccasion] = useState('')
@@ -57,9 +52,26 @@ export default function UploadModal({ onClose }) {
     })
   }
 
-  async function handleImageChange(e) {
-    const file = e.target.files[0]
-    if (!file) return
+  // One photo keeps this form. Several go to the bulk review screen, which reads them all at once.
+  function handleFiles(fileList) {
+    const files = [...(fileList || [])].filter((f) => f.type.startsWith('image/'))
+    if (files.length === 0) return
+    if (files.length > 1) {
+      startUploads(files)
+      onClose()
+      navigate('/wardrobe/review')
+      return
+    }
+    handleSingleImage(files[0])
+  }
+
+  function handleDrop(e) {
+    e.preventDefault()
+    setDragging(false)
+    handleFiles(e.dataTransfer.files)
+  }
+
+  async function handleSingleImage(file) {
     setImageFile(file)
     const reader = new FileReader()
     reader.onload = (ev) => setImagePreview(ev.target.result)
@@ -74,6 +86,7 @@ export default function UploadModal({ onClose }) {
       })
       const url = data.data.url
       setPreUploadedUrl(url)
+      setPreUploadedId(data.data.public_id)
 
       // Only analyse once per image selection
       if (!hasAnalysed) {
@@ -82,8 +95,9 @@ export default function UploadModal({ onClose }) {
           const res = await api.post('/api/v1/wardrobe/analyse-image', { image_url: url })
           const result = res.data.data || {}
           applyAnalysis(result)
-        } catch {
-          // Fail silently — user fills manually
+        } catch (err) {
+          // Usually silent: the user fills it in by hand. A monthly limit gets said out loud.
+          if (err.response?.status === 429) setError(err.response.data.detail)
         } finally {
           setAnalysing(false)
         }
@@ -98,8 +112,8 @@ export default function UploadModal({ onClose }) {
 
     if (result.name) { setName(result.name); filled.add('name') }
 
-    const cat = normalise(result.category)
-    if (cat && CATEGORIES.includes(cat)) { setCategory(cat); filled.add('category') }
+    const cat = matchOption(result.category, CATEGORIES)
+    if (cat) { setCategory(cat); filled.add('category') }
 
     if (result.subcategory) { setSubcategory(result.subcategory); filled.add('subcategory') }
 
@@ -108,8 +122,8 @@ export default function UploadModal({ onClose }) {
       filled.add('colors')
     }
 
-    const fab = normalise(result.fabric)
-    if (fab && FABRICS.includes(fab)) { setFabric(fab); filled.add('fabric') }
+    const fab = matchOption(result.fabric, FABRICS)
+    if (fab) { setFabric(fab); filled.add('fabric') }
 
     const formalityFilled = filterToList(result.formality, FORMALITIES)
     if (formalityFilled.length > 0) { setFormality(formalityFilled); filled.add('formality') }
@@ -121,7 +135,7 @@ export default function UploadModal({ onClose }) {
     if (seasonFilled.length > 0) { setSeason(seasonFilled); filled.add('season') }
 
     if (result.weight_grams && typeof result.weight_grams === 'number') {
-      setWeightGrams(result.weight_grams)
+      setWeightInput(String(toUnit(result.weight_grams, unit)))
       filled.add('weightGrams')
     }
 
@@ -207,21 +221,26 @@ export default function UploadModal({ onClose }) {
       fd.append('occasions', JSON.stringify(occasions))
       fd.append('season', JSON.stringify(season))
       fd.append('notes', notes.trim())
-      fd.append('weight_grams', String(weightGrams || 300))
+      fd.append('weight_grams', String(toGrams(weightInput, unit) || 300))
 
       // If image was pre-uploaded for analysis, pass the URL.
       // Backend re-runs it through upload_wardrobe_item so background removal
       // and proper folder/naming are always applied.
       if (preUploadedUrl) {
         fd.append('image_url', preUploadedUrl)
+        if (preUploadedId) fd.append('temp_public_id', preUploadedId)
       } else {
         fd.append('image', imageFile)
       }
 
       await uploadItem(fd)
       onClose()
-    } catch {
-      setError('Upload failed. Check your connection and try again.')
+    } catch (err) {
+      setError(
+        err.response?.status === 429
+          ? err.response.data.detail
+          : 'Upload failed. Check your connection and try again.'
+      )
     } finally {
       setLoading(false)
     }
@@ -233,7 +252,7 @@ export default function UploadModal({ onClose }) {
       <label className={styles.label}>
         {children}
         {aiFilledFields.has(fieldName) && (
-          <span className={styles.aiDot} title="Filled by AI — edit to confirm">✦</span>
+          <span className={styles.aiDot} title="Filled in by PACK. Edit to change it.">✦</span>
         )}
       </label>
     )
@@ -254,14 +273,18 @@ export default function UploadModal({ onClose }) {
 
           <form onSubmit={handleSubmit} noValidate>
             <div
-              className={styles.imageUpload}
+              className={`${styles.imageUpload} ${dragging ? styles.imageUploadDragging : ''}`}
               onClick={() => fileInputRef.current?.click()}
+              onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={handleDrop}
             >
               {imagePreview ? (
                 <img src={imagePreview} alt="Preview" className={styles.imagePreview} />
               ) : (
                 <span className={styles.imageUploadLabel}>
-                  Drop an image or click to upload
+                  Drop photos or click to choose
+                  <span className={styles.imageUploadHint}>Choose several to add them all at once</span>
                 </span>
               )}
             </div>
@@ -272,8 +295,9 @@ export default function UploadModal({ onClose }) {
               ref={fileInputRef}
               type="file"
               accept="image/*"
+              multiple
               className={styles.fileInput}
-              onChange={handleImageChange}
+              onChange={(e) => handleFiles(e.target.files)}
             />
 
             <div className={`${styles.fields} ${analysing ? styles.fieldsAnalysing : ''}`}>
@@ -443,16 +467,16 @@ export default function UploadModal({ onClose }) {
               </div>
 
               <div className={styles.field}>
-                <AiLabel fieldName="weightGrams">Weight (grams)</AiLabel>
+                <AiLabel fieldName="weightGrams">Weight ({unit})</AiLabel>
                 <input
                   className={styles.input}
                   type="number"
-                  min="1"
-                  max="5000"
-                  step="10"
-                  value={weightGrams}
-                  onChange={(e) => { setWeightGrams(parseInt(e.target.value) || 300); clearAiField('weightGrams') }}
-                  placeholder="300"
+                  min="0"
+                  step="0.01"
+                  inputMode="decimal"
+                  value={weightInput}
+                  onChange={(e) => { setWeightInput(e.target.value); clearAiField('weightGrams') }}
+                  placeholder={String(toUnit(300, unit))}
                 />
               </div>
             </div>
@@ -460,7 +484,7 @@ export default function UploadModal({ onClose }) {
             {aiFilledFields.size > 0 && !analysing && (
               <p className={styles.aiBanner}>
                 <span className={styles.aiBannerIcon}>✦</span>
-                Fields filled by AI — review before saving
+                PACK filled these in. Check them before saving.
               </p>
             )}
 

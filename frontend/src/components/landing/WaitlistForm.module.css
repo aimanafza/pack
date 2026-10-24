@@ -53,3 +53,37 @@
   font-style: italic;
   color: var(--color-text-primary);
 }
+
+.inline {
+  flex-direction: row;
+  flex-wrap: wrap;
+  max-width: 440px;
+  gap: 0;
+}
+
+.inline .input {
+  flex: 1 1 200px;
+  width: auto;
+  background: var(--color-bg-primary);
+  border-right: none;
+}
+
+.inline .button {
+  flex: 0 0 auto;
+}
+
+.inline .error {
+  flex-basis: 100%;
+  margin-top: var(--space-2);
+}
+
+@media (max-width: 400px) {
+  .inline .input {
+    border-right: var(--border-medium);
+  }
+
+  .inline .button {
+    flex: 1 1 100%;
+    margin-top: var(--space-2);
+  }
+}

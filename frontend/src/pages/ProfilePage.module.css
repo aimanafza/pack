@@ -639,6 +639,41 @@
   margin: 0 0 var(--space-4) 0;
 }
 
+/* ─── Weight unit ─────────────────────────────────────── */
+.unitToggle {
+  display: inline-flex;
+  padding: 3px;
+  border: var(--border-thin);
+  border-radius: var(--radius-pill);
+  background: var(--color-bg-secondary);
+}
+
+.unitBtn {
+  min-height: 40px;
+  padding: 0 var(--space-5);
+  border: none;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.unitBtnActive {
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  box-shadow: 0 0 0 0.5px var(--color-border-medium);
+}
+
+.unitError {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--color-text-primary);
+  margin: var(--space-3) 0 0;
+}
+
 /* ─── Empty + utility ─────────────────────────────────── */
 .emptyState {
   font-family: var(--font-body);
@@ -660,7 +695,11 @@
 /* ─── Lookbook grid ───────────────────────────────────────── */
 .lookbookGrid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  /* Up to 4 per row, sized to the content area so cards never overflow */
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(max(160px, calc((100% - 3 * 12px) / 4)), 1fr)
+  );
   gap: 12px;
 }
 
@@ -681,19 +720,12 @@
   transform: translateY(-2px);
 }
 
+/* Same 2:3 shape the looks are generated at, so the photo fills it exactly */
 .lookbookCardImg {
   width: 100%;
-  height: calc((100vh - 160px) / 2);
+  aspect-ratio: 2 / 3;
   overflow: hidden;
   background: #eceae4;
-}
-
-.lookbookCardPhoto {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  object-position: top center;
-  display: block;
 }
 
 .lookbookCardPlaceholder {
@@ -757,12 +789,8 @@
   }
 
   .lookbookGrid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
-  }
-
-  .lookbookCardImg {
-    height: 180px;
   }
 
   .section {

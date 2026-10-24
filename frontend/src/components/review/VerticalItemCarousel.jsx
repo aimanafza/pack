@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
+import { formatWeight, useWeightUnit } from '../../utils/weight.js'
 import styles from './VerticalItemCarousel.module.css'
 
 export default function VerticalItemCarousel({ items }) {
   const [activeIndex, setActiveIndex] = useState(0)
+  const unit = useWeightUnit()
   const swipeRef = useRef({ startX: 0, startY: 0, locked: null })
   const rowRef = useRef(null)
   const navRef = useRef({})
@@ -150,7 +152,7 @@ export default function VerticalItemCarousel({ items }) {
           <div className={styles.itemMeta}>
             <span className={styles.itemCategory}>{activeItem.category?.toUpperCase()}</span>
             {activeItem.estimated_weight_kg > 0 && (
-              <span className={styles.itemWeight}>{activeItem.estimated_weight_kg}kg</span>
+              <span className={styles.itemWeight}>{formatWeight(activeItem.estimated_weight_kg * 1000, unit)}</span>
             )}
           </div>
           {activeItem.design_rationale && (

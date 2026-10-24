@@ -919,6 +919,25 @@ Reference photos attached — study them and incorporate what you see."""
     return response.content[0].text.strip()
 
 
+# Bulk-upload photos waiting for review live in pack/drafts/. Only saved wardrobe items
+# may ever be sent to the image model, so drafts are filtered out here as a last guard
+# (nothing upstream reads drafts, but this makes it impossible, not just unlikely).
+_DRAFT_PHOTO_PATH = "/pack/drafts/"
+
+
+def _wardrobe_photos_only(urls: list) -> list:
+    kept = [u for u in (urls or []) if _DRAFT_PHOTO_PATH not in str(u)]
+    if len(kept) != len(urls or []):
+        logger.error("Blocked %d review-stage photo(s) from image generation", len(urls) - len(kept))
+    return kept
+
+
+# Every full-length look image is generated at this shape so the frames that show
+# them (lookbook, approved looks) can match it exactly with no empty bands.
+# fal's nano-banana-pro/edit reads aspect_ratio; it ignores image_size.
+LOOK_ASPECT_RATIO = "2:3"
+
+
 async def run_fal_generation(prompt: str, photo_urls: list[str]) -> list[str]:
     """Call fal.ai nano-banana-pro and return variation URLs."""
     import fal_client
@@ -930,9 +949,9 @@ async def run_fal_generation(prompt: str, photo_urls: list[str]) -> list[str]:
         "fal-ai/nano-banana-pro/edit",
         arguments={
             "prompt": prompt,
-            "image_urls": photo_urls,
+            "image_urls": _wardrobe_photos_only(photo_urls),
             "num_images": 3,
-            "image_size": "portrait_9_16",
+            "aspect_ratio": LOOK_ASPECT_RATIO,
         },
     )
     return [img["url"] for img in result["images"]]
@@ -1132,9 +1151,9 @@ White background only. No location context."""
         "fal-ai/nano-banana-pro/edit",
         arguments={
             "prompt": prompt,
-            "image_urls": reference_urls,
+            "image_urls": _wardrobe_photos_only(reference_urls),
             "num_images": 1,
-            "image_size": "portrait_9_16",
+            "aspect_ratio": LOOK_ASPECT_RATIO,
         },
     )
     images = result.get("images", [])
@@ -1170,9 +1189,9 @@ async def generate_single_outfit_image(outfit, user_avatar, trip, style_aestheti
         "fal-ai/nano-banana-pro/edit",
         arguments={
             "prompt": prompt,
-            "image_urls": reference_urls,
+            "image_urls": _wardrobe_photos_only(reference_urls),
             "num_images": 1,
-            "image_size": "portrait_9_16",
+            "aspect_ratio": LOOK_ASPECT_RATIO,
         },
     )
     images = result.get("images", [])
@@ -1182,179 +1201,278 @@ async def generate_single_outfit_image(outfit, user_avatar, trip, style_aestheti
     return images[0]["url"]
 
 
-def _select_distinct_outfits(approved_outfit_objects: list, count: int = 3) -> list:
-    """Pick up to `count` outfits that are as visually distinct as possible.
+CARPET_MIN_LOOKS = 4
+# A generation in progress (or one that failed) blocks a new paid attempt for this long.
+CARPET_RETRY_MINUTES = 15
+# Avatar + 2 garment photos per look keeps the request under fal's reference-image limit.
+CARPET_REFS_PER_LOOK = 2
+_CATEGORY_PRIORITY = ["dress", "top", "bottom", "outerwear", "shoes", "bag", "accessory"]
 
-    Distinctness is determined by occasion_tag first (different occasion types),
-    then by item category mix. Groups by occasion_tag and takes one per group,
-    filling the remainder from leftover outfits.
-    """
-    if len(approved_outfit_objects) <= count:
-        return approved_outfit_objects
 
-    # Group by occasion_tag
-    groups: dict[str, list] = {}
-    for outfit in approved_outfit_objects:
-        tag = (outfit.occasion_tag or outfit.occasion or "other").strip().upper()
-        # Normalise to broad category so similar tags don't fragment
-        if any(k in tag for k in ["EVENING", "FORMAL", "GALA", "DINNER"]):
-            key = "evening"
-        elif any(k in tag for k in ["BEACH", "RESORT", "POOL", "CASUAL"]):
-            key = "casual"
-        elif any(k in tag for k in ["TRAVEL", "TRANSIT", "ARRIVAL"]):
-            key = "travel"
-        elif any(k in tag for k in ["WORK", "BUSINESS", "MEETING"]):
-            key = "work"
-        else:
-            key = tag or "other"
-        groups.setdefault(key, []).append(outfit)
+def _wardrobe_item_view(item: WardrobeItem) -> dict:
+    return {
+        "id": str(item.id),
+        "name": item.name,
+        "category": item.category,
+        "color": item.color,
+        "fabric": item.fabric,
+        "image_url": item.image_url,
+    }
 
-    # Take one from each group (most occasion variety first)
-    selected = []
-    for group_outfits in groups.values():
-        if len(selected) >= count:
+
+async def gather_carpet_candidates(user) -> list[dict]:
+    """Every distinct look the user has: approved trip outfits plus all generated
+    daily outfits, reduced to pieces that still exist in their wardrobe."""
+    from app.models.daily import DailyLook  # local import to avoid circular
+
+    wardrobe = {
+        str(i.id): i
+        for i in await WardrobeItem.find(WardrobeItem.user_id == user.id).to_list()
+    }
+
+    raw_looks = []
+    for trip in await Trip.find(Trip.user_id == user.id).to_list():
+        if not trip.packing_list:
+            continue
+        approved = set(trip.approved_outfits or [])
+        for outfit in trip.packing_list.outfits:
+            if outfit.name in approved:
+                raw_looks.append({
+                    "source": "trip",
+                    "preferred": True,
+                    "occasion": outfit.occasion_tag or outfit.occasion or "",
+                    "item_ids": [p.wardrobe_item_id for p in outfit.items if p.wardrobe_item_id],
+                })
+
+    for look in await DailyLook.find(DailyLook.user_id == user.id).to_list():
+        for outfit in look.generated_outfits:
+            raw_looks.append({
+                "source": "daily",
+                "preferred": look.chosen_outfit_index == outfit.outfit_index,
+                "occasion": look.occasion or "",
+                "item_ids": list(outfit.item_ids),
+            })
+
+    # Preferred (approved / chosen) looks win when two looks use the same pieces.
+    raw_looks.sort(key=lambda look: not look["preferred"])
+    seen: set[frozenset] = set()
+    candidates = []
+    for look in raw_looks:
+        ids = [i for i in dict.fromkeys(look["item_ids"]) if i in wardrobe]
+        key = frozenset(ids)
+        if len(ids) < 2 or key in seen:
+            continue
+        seen.add(key)
+        candidates.append({
+            "key": len(candidates),
+            "source": look["source"],
+            "preferred": look["preferred"],
+            "occasion": look["occasion"],
+            "items": [_wardrobe_item_view(wardrobe[i]) for i in ids],
+        })
+    return candidates
+
+
+_CARPET_SELECT_SYSTEM = """You are PACK's stylist choosing looks for one editorial image that shows the same person four times.
+
+Choose exactly 4 looks that are as visually different from each other as possible: different silhouettes, colour stories and occasions. Two chosen looks must not share any item. Prefer looks marked "preferred": true when that doesn't cost distinctness. If fewer than 4 looks are genuinely different, return only the ones that are.
+
+Return ONLY valid JSON, no preamble:
+{"looks": [{"key": 0, "distinct_because": "one short sentence"}]}"""
+
+
+async def select_carpet_looks(candidates: list[dict]) -> list[dict]:
+    """Ask Claude for 4 clearly different looks, then enforce the rules in code:
+    real candidate keys, no repeats, no shared wardrobe items."""
+    brief = [
+        {
+            "key": c["key"],
+            "preferred": c["preferred"],
+            "occasion": c["occasion"],
+            "items": [
+                {"id": i["id"], "name": i["name"], "category": i["category"], "color": i["color"]}
+                for i in c["items"]
+            ],
+        }
+        for c in candidates
+    ]
+    response = await client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=1000,
+        system=_CARPET_SELECT_SYSTEM,
+        messages=[{"role": "user", "content": f"Looks:\n{json.dumps(brief)}"}],
+    )
+    text = next((b.text for b in response.content if getattr(b, "type", "") == "text"), "")
+    picks = _safe_json_loads(text).get("looks", [])
+
+    by_key = {c["key"]: c for c in candidates}
+    chosen, chosen_keys, used_items = [], set(), set()
+    for pick in picks:
+        look = by_key.get(pick.get("key"))
+        if not look or look["key"] in chosen_keys:
+            continue
+        ids = {i["id"] for i in look["items"]}
+        if ids & used_items:
+            continue
+        chosen_keys.add(look["key"])
+        used_items |= ids
+        chosen.append({**look, "distinct_because": pick.get("distinct_because", "")})
+        if len(chosen) == CARPET_MIN_LOOKS:
             break
-        selected.append(group_outfits[0])
+    return chosen
 
-    # Fill remaining slots from outfits not yet selected
-    if len(selected) < count:
-        selected_ids = {id(o) for o in selected}
-        for outfit in approved_outfit_objects:
-            if len(selected) >= count:
-                break
-            if id(outfit) not in selected_ids:
-                selected.append(outfit)
 
-    return selected[:count]
+def _describe_item(item: dict) -> str:
+    colors = " and ".join(item["color"]) if item.get("color") else ""
+    fabric = f" {item['fabric']}" if item.get("fabric") else ""
+    return f"{colors}{fabric} {item['name']} ({item['category']})".strip()
+
+
+async def maybe_start_carpet(user, background_tasks) -> dict:
+    """Start carpet generation if the user qualifies and none is already running.
+    Returns a status the dashboard uses to decide whether to wait for it."""
+    from datetime import datetime, timedelta
+    from app.models.user import User  # local import to avoid circular
+
+    if user.dashboard_carpet_url:
+        return {"status": "ready", "dashboard_carpet_url": user.dashboard_carpet_url}
+    if not (user.avatar and user.avatar.base_url):
+        return {"status": "needs_avatar"}
+
+    now = datetime.utcnow()
+    started = user.carpet_generation_started_at
+    if started and now - started < timedelta(minutes=CARPET_RETRY_MINUTES):
+        return {"status": "generating"}
+
+    candidates = await gather_carpet_candidates(user)
+    if len(candidates) < CARPET_MIN_LOOKS:
+        return {"status": "needs_more_looks", "looks": len(candidates), "needed": CARPET_MIN_LOOKS}
+
+    # Claim the slot atomically so two requests can't both start a paid generation.
+    cutoff = now - timedelta(minutes=CARPET_RETRY_MINUTES)
+    claimed = await User.get_motor_collection().update_one(
+        {
+            "_id": user.id,
+            "dashboard_carpet_url": None,
+            "$or": [
+                {"carpet_generation_started_at": None},
+                {"carpet_generation_started_at": {"$lt": cutoff}},
+            ],
+        },
+        {"$set": {"carpet_generation_started_at": now}},
+    )
+    if claimed.modified_count != 1:
+        return {"status": "generating"}
+
+    user.carpet_generation_started_at = now
+    background_tasks.add_task(build_carpet_image, user)
+    return {"status": "generating"}
+
+
+_CARPET_POSES = [
+    "Lying on stomach, propped on elbows, reading an open Vogue magazine with the cover visible.",
+    "Lying on back, one knee bent, holding a phone above face, small white earphones in, eyes closed.",
+    "Sitting cross-legged, leaning back on both hands, looking slightly off to the side, relaxed.",
+    "Kneeling, sitting back on heels, flipping through a stack of record sleeves.",
+]
+_CARPET_POSITIONS = ["far LEFT", "centre-left", "centre-right", "far RIGHT"]
 
 
 async def build_carpet_image(user) -> Optional[str]:
-    """Generate the dashboard hero carpet image for a user.
-
-    Called after the user's 5th distinct approved outfit. Generates once only:
-    if user.dashboard_carpet_url already exists it is returned immediately without
-    calling fal.ai again.
-    """
-    # --- Guard: already generated ---
+    """Generate the dashboard hero carpet image: the user's avatar four times,
+    each wearing a different look built only from their own wardrobe.
+    Generates once; the URL is stored on the user and never regenerated."""
     if getattr(user, "dashboard_carpet_url", None):
         return user.dashboard_carpet_url
 
-    # --- Guard: need an avatar to use as reference ---
     avatar = getattr(user, "avatar", None)
     if not avatar or not getattr(avatar, "base_url", None):
-        logger.warning(f"build_carpet_image: user {user.id} has no avatar base_url — skipping")
+        logger.warning(f"build_carpet_image: user {user.id} has no avatar base_url, skipping")
         return None
 
-    # --- Collect approved outfits from all trips ---
-    from app.models.trip import Trip  # local import to avoid circular
-
-    all_trips = await Trip.find(Trip.user_id == user.id).to_list()
-
-    approved_outfit_objects = []
-    seen_names: set[str] = set()
-    for trip in all_trips:
-        if not trip.packing_list:
-            continue
-        approved_names = set(trip.approved_outfits or [])
-        for outfit in trip.packing_list.outfits:
-            if outfit.name in approved_names and outfit.name not in seen_names:
-                seen_names.add(outfit.name)
-                approved_outfit_objects.append(outfit)
-
-    if len(approved_outfit_objects) < 3:
-        logger.warning(
-            f"build_carpet_image: user {user.id} has only {len(approved_outfit_objects)} "
-            "approved outfit(s) — need at least 3, skipping"
-        )
+    candidates = await gather_carpet_candidates(user)
+    if len(candidates) < CARPET_MIN_LOOKS:
+        logger.warning(f"build_carpet_image: user {user.id} has {len(candidates)} distinct looks, need {CARPET_MIN_LOOKS}")
         return None
 
-    # --- Select 3 most visually distinct looks ---
-    outfits = _select_distinct_outfits(approved_outfit_objects, count=3)
+    try:
+        looks = await select_carpet_looks(candidates)
+    except Exception as e:
+        logger.error(f"build_carpet_image: look selection failed for user {user.id}: {e}")
+        return None
+    if len(looks) < CARPET_MIN_LOOKS:
+        logger.warning(f"build_carpet_image: only {len(looks)} clearly different looks for user {user.id}, skipping")
+        return None
 
-    def _describe_pieces(outfit) -> str:
-        pieces = [item.name for item in outfit.items if item.name]
-        if not pieces:
-            return "a complete outfit"
-        return ", ".join(pieces)
+    # Reference images: avatar first, then each figure's key garments in order.
+    image_urls = [avatar.base_url]
+    figure_lines = []
+    for n, look in enumerate(looks):
+        refs = sorted(
+            look["items"],
+            key=lambda i: _CATEGORY_PRIORITY.index(i["category"]) if i["category"] in _CATEGORY_PRIORITY else len(_CATEGORY_PRIORITY),
+        )[:CARPET_REFS_PER_LOOK]
+        first_ref = len(image_urls) + 1
+        image_urls.extend(i["image_url"] for i in refs)
+        ref_span = f"images {first_ref}-{len(image_urls)}" if len(refs) > 1 else f"image {first_ref}"
+        figure_lines += [
+            f"Figure {n + 1} ({_CARPET_POSITIONS[n]} of the carpet): wearing exactly these pieces, "
+            f"{'; '.join(_describe_item(i) for i in look['items'])}. "
+            f"The garments in {ref_span} show what the main pieces look like.",
+            _CARPET_POSES[n],
+            "",
+        ]
 
-    outfit_1, outfit_2, outfit_3 = outfits[0], outfits[1], outfits[2]
-
-    # --- Assemble avatar fields ---
     features_to_preserve = ", ".join(
         getattr(avatar.preferences, "features_to_preserve", []) or []
     ) or "natural likeness, skin tone, facial features"
-
     hijab = getattr(avatar.appearance, "hijab", False)
-    hijab_line = (
-        "The person is wearing a hijab in all three figures."
-        if hijab
-        else ""
-    )
 
-    # --- Build the prompt ---
-    # Figures are arranged LEFT TO RIGHT across the wide carpet so the
-    # composition reads as horizontal and fills a landscape frame correctly.
     prompt_lines = [
-        "Use the person in the reference image provided as the subject.",
-        "Recreate their exact face, skin tone, hair, and likeness in all",
-        "three figures. Do not change their appearance.",
+        "Image 1 is the person. Use them as the subject and recreate their exact face,",
+        "skin tone, hair and likeness in all four figures. Do not change their appearance.",
         "",
-        "WIDE HORIZONTAL overhead bird's-eye editorial photograph, camera",
-        "pointing straight down at 90 degrees. Ultrawide 16:9 landscape",
-        "composition. Three versions of this same person arranged",
-        "LEFT TO RIGHT across a large ornate Persian carpet with intricate",
-        "floral and medallion patterns in deep reds, greens, and gold.",
-        "The carpet fills the entire frame edge to edge.",
-        "No background visible outside the carpet.",
-        "All three figures must be fully visible and evenly spaced",
-        "across the full width of the frame.",
+        "WIDE HORIZONTAL overhead bird's-eye editorial photograph, camera pointing straight",
+        "down at 90 degrees. Ultrawide 16:9 landscape composition. Four versions of this same",
+        "person arranged LEFT TO RIGHT, evenly spaced, across a large ornate Persian carpet",
+        "with intricate floral and medallion patterns in deep reds, greens and gold. The carpet",
+        "fills the entire frame edge to edge. No background visible outside the carpet.",
+        "All four figures must be fully visible.",
         "",
         f"Preserve exactly: {features_to_preserve}.",
     ]
-    if hijab_line:
-        prompt_lines.append(hijab_line)
+    if hijab:
+        prompt_lines.append("The person is wearing a hijab in all four figures.")
     prompt_lines += [
         "",
-        f"Figure 1 (LEFT third of carpet): wearing {_describe_pieces(outfit_1)}.",
-        f"{outfit_1.styling_notes or outfit_1.styling_note}. Lying on stomach, propped on elbows,",
-        "reading an open Vogue magazine. The magazine cover is visible.",
+        "Each figure wears a different outfit, taken only from the garments described and shown",
+        "for that figure. Match their colour, fabric and cut. Do not add, swap or invent clothing,",
+        "and do not mix garments between figures.",
         "",
-        f"Figure 2 (CENTER of carpet): wearing {_describe_pieces(outfit_2)}.",
-        f"{outfit_2.styling_notes or outfit_2.styling_note}. Lying on back, one knee bent, holding",
-        "phone above face, small white earphones in, eyes closed.",
+        *figure_lines,
+        "Scattered naturally between the figures: a vintage record player with a spinning vinyl,",
+        "two or three record sleeves face-up, a film camera, a half-drunk glass, a small stack of",
+        "fashion books.",
         "",
-        f"Figure 3 (RIGHT third of carpet): wearing {_describe_pieces(outfit_3)}.",
-        f"{outfit_3.styling_notes or outfit_3.styling_note}. Sitting cross-legged, leaning back on",
-        "both hands, looking slightly off to the side, relaxed.",
-        "",
-        "Scattered naturally between the figures on the carpet: a",
-        "vintage record player with a spinning vinyl, two or three record",
-        "sleeves face-up, a film camera, a half-drunk glass, a small stack",
-        "of fashion books.",
-        "",
-        "Soft warm diffused lighting from above. Slight film grain.",
-        "Editorial fashion photography aesthetic. Ultra-realistic.",
-        "Shot on medium format camera.",
+        "Soft warm diffused lighting from above. Slight film grain. Editorial fashion photography",
+        "aesthetic. Ultra-realistic. Shot on medium format camera.",
     ]
     assembled_prompt = "\n".join(prompt_lines)
 
-    # --- Call fal.ai ---
-    # Uses nano-banana-pro/edit (the image-to-image endpoint active in this codebase)
-    # so the avatar base_url is honoured as a visual reference for the subject's likeness.
     import fal_client
     import os
     os.environ["FAL_KEY"] = settings.FAL_API_KEY
 
-    logger.info(f"build_carpet_image: calling fal.ai for user {user.id}")
+    logger.info(f"build_carpet_image: calling fal.ai for user {user.id} with {len(image_urls)} reference images")
     try:
         result = await asyncio.to_thread(
             fal_client.run,
             "fal-ai/nano-banana-pro/edit",
             arguments={
                 "prompt": assembled_prompt,
-                "image_urls": [avatar.base_url],
+                "image_urls": _wardrobe_photos_only(image_urls),
                 "num_images": 1,
-                "image_size": "landscape_16_9",
+                "aspect_ratio": "16:9",
             },
         )
     except Exception as e:
@@ -1365,22 +1483,18 @@ async def build_carpet_image(user) -> Optional[str]:
     if not images:
         logger.warning(f"build_carpet_image: fal.ai returned no images for user {user.id}")
         return None
-
     fal_url = images[0]["url"]
 
-    # --- Upload to Cloudinary and persist ---
     from app.services.cloudinary_service import upload_carpet_image  # local import
 
     try:
-        cloudinary_result = await upload_carpet_image(fal_url, str(user.id))
-        permanent_url = cloudinary_result["url"]
+        permanent_url = (await upload_carpet_image(fal_url, str(user.id)))["url"]
     except Exception as e:
         logger.error(f"build_carpet_image: Cloudinary upload failed for user {user.id}: {e}")
-        # Fall back to the fal.ai URL so the user still gets their image
         permanent_url = fal_url
 
-    user.dashboard_carpet_url = permanent_url
-    await user.save()
+    # $set only this field so changes made to the user during generation aren't overwritten.
+    await user.set({"dashboard_carpet_url": permanent_url})
     logger.info(f"build_carpet_image: saved carpet URL for user {user.id}")
     return permanent_url
 
@@ -1511,9 +1625,9 @@ async def generate_look_avatar_image(
             "fal-ai/nano-banana-pro/edit",
             arguments={
                 "prompt": fal_prompt,
-                "image_urls": [base_url],
+                "image_urls": _wardrobe_photos_only([base_url]),
                 "num_images": 1,
-                "image_size": "portrait_9_16",
+                "aspect_ratio": LOOK_ASPECT_RATIO,
             },
         )
         images = result.get("images", [])
@@ -1535,16 +1649,20 @@ Return ONLY valid JSON, no markdown, no preamble, no explanation:
   "name": "short descriptive name, e.g. 'White linen shirt' or 'Black leather ankle boot'",
   "category": "one of: top, bottom, dress, outerwear, shoes, bag, accessory",
   "subcategory": "specific type e.g. tank top, blazer, midi skirt, loafer, tote bag",
+  "garment_type": "the plain kind of item in 1 to 3 lowercase words, singular, no colour, fit or style words, e.g. jeans, skirt, tank top, blouse, sweater, blazer, dress, ankle boot, sneaker, sandal, tote bag, crossbody bag, sunglasses, watch",
+  "weight_details": ["only details that clearly add weight, chosen from: sequins, beading, embroidery, lace overlay, fringe, metal hardware, padding, heavy lining, feathers; empty list if none"],
   "color": ["primary color", "secondary color if present"],
   "fabric": "one of: linen, cotton, silk, wool, synthetic, denim, leather, other",
-  "formality": ["one or more of: casual, smart-casual, business, formal, elevated-casual, nightlife"],
-  "occasions": ["one or more of: casual, travel, dinner, work, nightlife, beach, sport, formal"],
-  "season": ["one or more of: spring, summer, fall, winter"],
-  "weight_grams": 300,
+  "formality": ["one or more of exactly these: casual, smart-casual, elevated casual, business casual, business, formal"],
+  "occasions": ["one or more of exactly these: work, casual, formal, travel, dinner, beach, hiking, nightlife"],
+  "season": ["one or more of exactly these: spring, summer, fall, winter, all"],
+  "weight_grams": 0,
   "notes": "any notable details worth capturing: print description, hardware details, special construction, brand if visible, condition, etc."
 }
 
-weight_grams should be an integer estimate. Typical ranges: tops 150-400, bottoms 300-700, shoes 400-900, outerwear 500-1200, bags 200-800, accessories 50-200.
+weight_grams is your own integer estimate of what this exact item weighs. Judge it from the garment type, the fabric and how much of it there is: heavy denim, wool knits and leather weigh far more than silk, linen or jersey, and a maxi dress weighs more than a cami. Embellishment adds real weight: an all-over sequin or beaded piece can weigh twice its plain version. It is a fallback; PACK checks it against researched averages.
+weight_details lists only details that cover enough of the item to change its weight: a sequin top counts, a single beaded button does not. Use the exact words from the list.
+Use only the exact words listed for category, fabric, formality, occasions and season; anything else is discarded, so always pick the closest listed option and never leave formality, occasions or season empty.
 Be precise with colors (say 'burgundy' not just 'red', 'ivory' not just 'white'). If the image is unclear or shows multiple items, do your best with what's visible. Never return null for required fields — use your best judgment.
 """
 
@@ -1579,10 +1697,180 @@ async def analyse_wardrobe_item_image(image_url: str) -> dict:
                 ]
             }]
         )
-        return _safe_json_loads(response.content[0].text.strip())
+        result = _safe_json_loads(response.content[0].text.strip())
     except Exception as e:
         print(f"Wardrobe item analysis failed: {e}")
         return {}
+
+    result["weight_grams"] = await estimate_item_weight(
+        category=result.get("category", ""),
+        garment_type=result.get("garment_type") or result.get("subcategory") or "",
+        fabric=result.get("fabric", ""),
+        details=result.get("weight_details") or [],
+        fallback_grams=result.get("weight_grams"),
+    )
+    return _canonical_options(result)
+
+
+# The add-item form's options. Claude is told to use exactly these, but sometimes answers
+# with a near word ("evening", "office"); those are translated here instead of being dropped.
+_ITEM_OPTIONS = {
+    "formality": ["casual", "smart-casual", "elevated casual", "business casual", "business", "formal"],
+    "occasions": ["work", "casual", "formal", "travel", "dinner", "beach", "hiking", "nightlife"],
+    "season": ["spring", "summer", "fall", "winter", "all"],
+}
+_OPTION_SYNONYMS = {
+    "occasions": {
+        "evening": "nightlife", "night out": "nightlife", "party": "nightlife", "club": "nightlife",
+        "everyday": "casual", "daily": "casual", "weekend": "casual", "brunch": "casual", "errands": "casual",
+        "office": "work", "business": "work",
+        "vacation": "travel", "holiday": "travel", "resort": "beach", "pool": "beach", "swim": "beach",
+        "date": "dinner", "date night": "dinner", "restaurant": "dinner",
+        "wedding": "formal", "event": "formal", "gala": "formal", "cocktail": "formal",
+        "sport": "hiking", "gym": "hiking", "outdoor": "hiking", "outdoors": "hiking", "athletic": "hiking",
+    },
+    "formality": {
+        "nightlife": "elevated casual", "evening": "elevated casual", "dressy": "elevated casual",
+        "smart": "smart-casual", "relaxed": "casual", "black tie": "formal", "cocktail": "formal",
+        "office": "business casual", "work": "business casual",
+    },
+    "season": {"autumn": "fall", "year round": "all", "all year": "all", "all season": "all", "all seasons": "all"},
+}
+
+
+def _option_key(value) -> str:
+    return str(value or "").lower().replace("-", " ").strip()
+
+
+def _canonical_options(result: dict) -> dict:
+    for field, options in _ITEM_OPTIONS.items():
+        values = result.get(field)
+        if not isinstance(values, list):
+            continue
+        by_key = {_option_key(o): o for o in options}
+        synonyms = _OPTION_SYNONYMS.get(field, {})
+        matched, unknown = [], []
+        for v in values:
+            key = _option_key(v)
+            option = by_key.get(key) or synonyms.get(key)
+            if option:
+                if option not in matched:
+                    matched.append(option)
+            else:
+                unknown.append(v)
+        if unknown:
+            logger.info("Claude gave %s outside the form's options: %s", field, unknown)
+        result[field] = matched
+    return result
+
+
+# ── Item weight lookup ───────────────────────────────────────────────────────
+# Image -> garment type + fabric -> saved reference weight. Only the first time a
+# combination appears (say "jeans" in "denim") does Claude search the web for
+# typical weights; the average is saved and every later upload reuses it free.
+
+_WEIGHT_RESEARCH_SYSTEM = """You research how much clothing and accessories typically weigh, for a packing app that keeps travellers under airline weight limits.
+
+Search the web for the typical weight of the item you're given, made in the given fabric, in an adult size medium. If details are listed (sequins, beading, embroidery and so on), find the weight of an item with those details, not the plain version: embellishment can double a garment's weight. Look at several sources (retailer product specs, shipping weights, fabric weight guides) and take a sensible average. Ignore packaging weight.
+
+After searching, reply with the JSON object alone, no summary or explanation before or after it:
+{"weight_grams": 520, "low_grams": 400, "high_grams": 680}"""
+
+_WEIGHT_MIN_GRAMS = 10
+_WEIGHT_MAX_GRAMS = 5000
+
+
+# Details that change a garment's weight enough to be researched separately.
+# A fixed list keeps the saved keys consistent ("sequins", never "sequined" or "paillettes").
+WEIGHT_DETAILS = (
+    "sequins", "beading", "embroidery", "lace overlay", "fringe",
+    "metal hardware", "padding", "heavy lining", "feathers",
+)
+
+
+def _clean_details(details) -> list[str]:
+    found = {str(d).lower().strip() for d in (details or [])}
+    return [d for d in WEIGHT_DETAILS if d in found]
+
+
+def _weight_key(garment_type: str, fabric: str, details=None) -> str:
+    """"jeans|denim" for a plain item, "halter top|synthetic|sequins" with details."""
+    garment = re.sub(r"[^a-z ]", "", (garment_type or "").lower()).strip()
+    garment = re.sub(r"\s+", " ", garment)
+    key = f"{garment}|{(fabric or 'other').lower().strip()}"
+    cleaned = _clean_details(details)
+    return f"{key}|{'+'.join(cleaned)}" if cleaned else key
+
+
+def _sane_grams(value) -> int:
+    try:
+        grams = int(round(float(value)))
+    except (TypeError, ValueError):
+        return 0
+    return grams if _WEIGHT_MIN_GRAMS <= grams <= _WEIGHT_MAX_GRAMS else 0
+
+
+async def estimate_item_weight(category: str, garment_type: str, fabric: str, details=None, fallback_grams=None) -> int:
+    """Typical weight in grams for this kind of item in this fabric. Reuses a saved
+    reference when one exists; otherwise researches it once and saves it. Falls back
+    to the image-based estimate (or 300 g) if research fails."""
+    from app.models.weight_reference import WeightReference
+    from pymongo.errors import DuplicateKeyError
+
+    fallback = _sane_grams(fallback_grams) or 300
+    if not garment_type:
+        return fallback
+
+    detail_list = _clean_details(details)
+    key = _weight_key(garment_type, fabric, detail_list)
+    existing = await WeightReference.find_one(WeightReference.key == key)
+    if existing:
+        return existing.weight_grams
+
+    try:
+        garment, material = key.split("|")[:2]
+        detail_line = f"\nDetails: {', '.join(detail_list)}" if detail_list else ""
+        response = await client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=1000,
+            system=_WEIGHT_RESEARCH_SYSTEM,
+            tools=[{"type": "web_search_20250305", "name": "web_search", "max_uses": 3}],
+            messages=[{"role": "user", "content": f"Item: {garment} ({category or 'clothing'})\nFabric: {material}{detail_line}"}],
+        )
+        text = "".join(b.text for b in response.content if getattr(b, "type", "") == "text" and getattr(b, "text", None))
+        # Claude sometimes explains its sources first; the answer is the JSON object at the end
+        match = re.findall(r"\{[^{}]*\"weight_grams\"[^{}]*\}", text)
+        found = json.loads(match[-1]) if match else {}
+        grams = _sane_grams(found.get("weight_grams"))
+        if not grams:
+            return fallback
+        sources = []
+        for block in response.content:
+            if getattr(block, "type", "") == "web_search_tool_result":
+                for hit in (getattr(block, "content", None) or [])[:3]:
+                    url = hit.get("url") if isinstance(hit, dict) else getattr(hit, "url", None)
+                    if url and url not in sources:
+                        sources.append(url)
+        reference = WeightReference(
+            key=key,
+            category=category or "",
+            garment_type=garment,
+            fabric=material,
+            details=detail_list,
+            weight_grams=grams,
+            low_grams=_sane_grams(found.get("low_grams")),
+            high_grams=_sane_grams(found.get("high_grams")),
+            sources=sources[:6],
+        )
+        try:
+            await reference.insert()
+        except DuplicateKeyError:
+            pass  # another upload researched the same item at the same moment
+        logger.info("Weight reference saved: %s = %sg", key, grams)
+        return grams
+    except Exception:
+        logger.exception("Weight research failed for %s", key)
+        return fallback
 
 
 # ── Purchase Analysis ─────────────────────────────────────────────────────────
@@ -1719,3 +2007,160 @@ Analyse this purchase honestly."""
 
     result["outfit_collages"] = outfit_collages
     return result
+
+
+# ── Packing plan ("Optimise space") ──────────────────────────────────────────
+# Splits the approved packing list across the trip's bags and writes short
+# packing advice. Results are saved on the trip with a signature of the items
+# and bags, so opening the page again costs nothing until the list changes.
+
+_PACKING_PLAN_SYSTEM = """You are PACK's packing expert. You decide which bag each item goes in and how to pack each bag so everything fits and stays within airline weight limits.
+
+You receive the trip, the bags (each with the weight in grams it can still hold) and the items (each with a key and a weight in grams).
+
+Rules:
+- Put every item key in exactly one bag. Use only the keys and bag_ids you were given.
+- Keep each bag's total at or under its capacity_grams when you can. A capacity of 0 means no limit was given.
+- Carry-on and handbag: valuables, chargers, one change of clothes, anything fragile, what is needed on arrival.
+- Checked bag: shoes, denim, heavy knits, liquids over 100ml, bulky items.
+- Spread weight so no bag is close to its limit while another is nearly empty.
+- If everything cannot fit, say in the tips which of the heaviest items to wear on the travel day.
+
+Notes and tips:
+- One "note" per bag, 1 to 2 sentences, practical: what goes at the bottom, what to roll, what to fold, where shoes go.
+- 3 to 5 "tips" for the whole trip, each one sentence, specific to these items (name them), not generic advice.
+- Write weights in kilograms with at most one decimal (5.5 kg), never in grams.
+- Warm, direct, plain language. Never use em dashes.
+
+Return only JSON:
+{"bags": [{"bag_id": "...", "item_keys": ["..."], "note": "..."}], "tips": ["..."]}"""
+
+
+def _no_em_dashes(text: str) -> str:
+    return re.sub(r"\s*—\s*", ", ", text or "").strip()
+
+
+def packing_load(trip) -> list[dict]:
+    """Everything going in the bags: unique items from approved outfits, plus
+    the non-clothing items the user reserved weight for when creating the trip.
+    Weights match what the packing page shows."""
+    load, seen = [], set()
+    if trip.packing_list:
+        approved = set(trip.approved_outfits or [])
+        for outfit in trip.packing_list.outfits:
+            if outfit.name not in approved:
+                continue
+            for item in outfit.items:
+                key = item.wardrobe_item_id or item.name
+                if key in seen:
+                    continue
+                seen.add(key)
+                load.append({
+                    "key": key,
+                    "name": item.name,
+                    "category": item.category,
+                    "weight_grams": round((item.estimated_weight_kg or 0) * 1000),
+                })
+    for reserved in trip.reserved_items or []:
+        load.append({
+            "key": f"reserved:{reserved.name}",
+            "name": reserved.name,
+            "category": "other",
+            "weight_grams": reserved.weight_grams or 0,
+        })
+    return load
+
+
+def trip_bags(trip) -> list[dict]:
+    """The trip's bags, or a single unnamed bag for trips made before bags existed."""
+    if trip.bags:
+        return [
+            {"bag_id": b.bag_id, "label": b.label, "bag_type": b.bag_type, "capacity_grams": max(0, b.available_grams)}
+            for b in trip.bags
+        ]
+    return [{"bag_id": "bag_main", "label": "Your bag", "bag_type": "", "capacity_grams": 0}]
+
+
+def packing_plan_signature(load: list[dict], bags: list[dict]) -> str:
+    import hashlib
+
+    basis = {
+        "items": sorted((i["key"], i["weight_grams"]) for i in load),
+        "bags": [(b["bag_id"], b["capacity_grams"]) for b in bags],
+    }
+    return hashlib.sha1(json.dumps(basis).encode()).hexdigest()
+
+
+async def build_packing_plan(trip):
+    """Ask Claude to assign items to bags, then enforce the rules in code: every
+    item lands in exactly one real bag and the weights are our own sums."""
+    from app.models.trip import BagPlan, PackingPlan
+
+    load = packing_load(trip)
+    bags = trip_bags(trip)
+    by_key = {i["key"]: i for i in load}
+    by_bag = {b["bag_id"]: b for b in bags}
+
+    brief = {
+        "trip": {"destination": trip.destination, "days": trip.duration_days, "climate": trip.climate},
+        "bags": [
+            {"bag_id": b["bag_id"], "label": b["label"], "type": b["bag_type"], "capacity_grams": b["capacity_grams"]}
+            for b in bags
+        ],
+        "items": [
+            {"key": i["key"], "name": i["name"], "category": i["category"], "weight_grams": i["weight_grams"]}
+            for i in load
+        ],
+    }
+    response = await client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=2000,
+        system=_PACKING_PLAN_SYSTEM,
+        messages=[{"role": "user", "content": json.dumps(brief)}],
+    )
+    text = next((b.text for b in response.content if getattr(b, "type", "") == "text"), "")
+    result = _safe_json_loads(text)
+
+    assigned: dict[str, list[str]] = {b["bag_id"]: [] for b in bags}
+    notes: dict[str, str] = {}
+    placed = set()
+    for pick in result.get("bags", []):
+        bag_id = pick.get("bag_id")
+        if bag_id not in by_bag:
+            continue
+        notes[bag_id] = _no_em_dashes(pick.get("note", ""))
+        for key in pick.get("item_keys", []):
+            if key in by_key and key not in placed:
+                assigned[bag_id].append(key)
+                placed.add(key)
+
+    def contents(bag_id):
+        return sum(by_key[k]["weight_grams"] for k in assigned[bag_id])
+
+    # Anything Claude missed goes where there is the most room, heaviest first
+    leftovers = sorted((i for i in load if i["key"] not in placed), key=lambda i: -i["weight_grams"])
+    for item in leftovers:
+        target = max(bags, key=lambda b: (b["capacity_grams"] or 10**9) - contents(b["bag_id"]))
+        assigned[target["bag_id"]].append(item["key"])
+
+    total_load = sum(i["weight_grams"] for i in load)
+    total_capacity = sum(b["capacity_grams"] for b in bags)
+    over_by = max(0, total_load - total_capacity) if total_capacity else 0
+
+    return PackingPlan(
+        signature=packing_plan_signature(load, bags),
+        bags=[
+            BagPlan(
+                bag_id=b["bag_id"],
+                label=b["label"],
+                bag_type=b["bag_type"],
+                item_keys=assigned[b["bag_id"]],
+                weight_grams=contents(b["bag_id"]),
+                available_grams=b["capacity_grams"],
+                note=notes.get(b["bag_id"], ""),
+            )
+            for b in bags
+        ],
+        tips=[_no_em_dashes(t) for t in result.get("tips", []) if isinstance(t, str) and t.strip()][:5],
+        over_by_grams=over_by,
+    )

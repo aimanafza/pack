@@ -109,7 +109,7 @@ export default function TripsPage() {
           {past.length > 0 && (
             <div className={styles.section}>
               <p className={styles.sectionLabel}>Past</p>
-              <div className={`${styles.list} ${styles.pastList}`}>
+              <div className={styles.list}>
                 {past.map((trip) => (
                   <TripCard key={trip.id} trip={trip} onDelete={handleDelete} past />
                 ))}

@@ -13,6 +13,7 @@ function formatDateRange(start, end) {
 export default function TripCard({ trip, onDelete }) {
   const navigate = useNavigate()
   const hasPacking = !!trip.packing_list
+  const cover = trip.inspiration_images?.[0]?.url
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
@@ -27,13 +28,37 @@ export default function TripCard({ trip, onDelete }) {
     <motion.div
       className={styles.card}
       onClick={() => !confirmingDelete && navigate(`/trips/${trip.id}`)}
-      whileHover={{ x: confirmingDelete ? 0 : 2 }}
+      whileHover={{ y: confirmingDelete ? 0 : -2 }}
       transition={{ duration: 0.15 }}
     >
-      <div className={styles.left}>
+      <div className={styles.image}>
+        {cover ? (
+          <img src={cover} alt={trip.destination} className={styles.img} />
+        ) : (
+          <span className={styles.initial} aria-hidden="true">{trip.destination.charAt(0)}</span>
+        )}
+        {!confirmingDelete && (
+          <button
+            className={styles.btnDelete}
+            onClick={(e) => { e.stopPropagation(); setConfirmingDelete(true) }}
+            type="button"
+            aria-label="Delete trip"
+          >
+            <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+              <path d="M1 1l8 8M9 1l-8 8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+            </svg>
+          </button>
+        )}
+      </div>
+
+      <div className={styles.body}>
+        <div className={styles.titleRow}>
+          <p className={styles.name}>{trip.name}</p>
+          <span className={styles.duration}>{trip.duration_days}d</span>
+        </div>
         <p className={styles.destination}>{trip.destination}</p>
-        <p className={styles.name}>{trip.name}</p>
         <p className={styles.dates}>{formatDateRange(trip.start_date, trip.end_date)}</p>
+
         {trip.occasions.length > 0 && (
           <div className={styles.occasions}>
             {trip.occasions.map((occ) => (
@@ -42,7 +67,7 @@ export default function TripCard({ trip, onDelete }) {
           </div>
         )}
 
-        {confirmingDelete && (
+        {confirmingDelete ? (
           <div className={styles.confirmRow} onClick={(e) => e.stopPropagation()}>
             <p className={styles.confirmText}>Remove this trip? This can't be undone.</p>
             <div className={styles.confirmActions}>
@@ -64,19 +89,11 @@ export default function TripCard({ trip, onDelete }) {
               </button>
             </div>
           </div>
-        )}
-      </div>
-
-      <div className={styles.right}>
-        <div className={styles.meta}>
-          <span className={styles.duration}>{trip.duration_days}d</span>
-          <span className={`${styles.status} ${hasPacking ? styles.statusPacked : ''}`}>
-            {hasPacking ? 'packed' : trip.status}
-          </span>
-        </div>
-
-        {!confirmingDelete && (
-          <div className={styles.actions}>
+        ) : (
+          <div className={styles.footer}>
+            <span className={`${styles.status} ${hasPacking ? styles.statusPacked : ''}`}>
+              {hasPacking ? 'packed' : trip.status}
+            </span>
             {hasPacking && (
               <button
                 className={styles.btnPack}
@@ -86,14 +103,6 @@ export default function TripCard({ trip, onDelete }) {
                 View List
               </button>
             )}
-            <button
-              className={styles.btnDelete}
-              onClick={(e) => { e.stopPropagation(); setConfirmingDelete(true) }}
-              type="button"
-              aria-label="Delete trip"
-            >
-              ×
-            </button>
           </div>
         )}
       </div>

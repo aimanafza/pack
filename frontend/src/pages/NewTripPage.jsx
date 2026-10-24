@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
 import { useTrips } from '../hooks/useTrips.js'
 import api from '../utils/api.js'
+import { formatWeight, toGrams, toUnit, useWeightUnit } from '../utils/weight.js'
 import styles from './NewTripPage.module.css'
 import { CarryOnIcon, CheckedBagIcon, HandbagIcon, BackpackIcon } from '../components/ui/BagIllustration.jsx'
 import WardrobePickerModal from '../components/trips/WardrobePickerModal.jsx'
+import BackLink from '../components/ui/BackLink.jsx'
 
 const OCCASIONS = [
   'Sightseeing',
@@ -80,6 +82,7 @@ function getBagLabel(type, existingBags) {
 export default function NewTripPage() {
   const { createTrip } = useTrips()
   const navigate = useNavigate()
+  const unit = useWeightUnit()
   const fileInputRef = useRef(null)
 
   const [name, setName] = useState('')
@@ -115,8 +118,9 @@ export default function NewTripPage() {
         bag_id: generateBagId(),
         bag_type: typeObj.type,
         label,
-        weight_limit_kg: typeObj.defaultLimit,
-        empty_bag_kg: typeObj.defaultEmpty,
+        // Typed in the user's unit; converted to grams below
+        weight_limit: toUnit(typeObj.defaultLimit * 1000, unit),
+        empty_weight: toUnit(typeObj.defaultEmpty * 1000, unit),
       },
     ])
   }
@@ -132,8 +136,8 @@ export default function NewTripPage() {
   }
 
   const bagRows = bags.map((b) => {
-    const limitG = Math.round((parseFloat(b.weight_limit_kg) || 0) * 1000)
-    const emptyG = Math.round((parseFloat(b.empty_bag_kg) || 0) * 1000)
+    const limitG = toGrams(b.weight_limit, unit)
+    const emptyG = toGrams(b.empty_weight, unit)
     const availG = Math.max(0, limitG - emptyG)
     return { ...b, limitG, emptyG, availG }
   })
@@ -146,7 +150,7 @@ export default function NewTripPage() {
 
   function addReservedItem() {
     const rname = newReservedName.trim()
-    const grams = Math.round(parseFloat(newReservedWeight) * 1000)
+    const grams = toGrams(newReservedWeight, unit)
     if (!rname || !grams) return
     setReservedItems((prev) => [...prev, { name: rname, weight_grams: grams }])
     setNewReservedName('')
@@ -258,7 +262,7 @@ export default function NewTripPage() {
         notes: notes.trim(),
         bags: bagsPayload,
         reserved_items: reservedItems,
-        weight_unit: 'kg',
+        weight_unit: unit,
         anchor_items: anchorItems.map((a) => ({ item_id: a.item_id, note: a.note })),
       })
 
@@ -281,9 +285,7 @@ export default function NewTripPage() {
   return (
     <div className={styles.page}>
       <div className={styles.header}>
-        <button className={styles.back} onClick={() => navigate('/trips')} type="button">
-          ← Trips
-        </button>
+        <BackLink to="/trips" className={styles.back}>Trips</BackLink>
         <p className={styles.pageLabel}>New Trip</p>
         <h1 className={styles.headline}>Where are you going?</h1>
       </div>
@@ -468,29 +470,29 @@ export default function NewTripPage() {
                     <span className={styles.bagRowLabel}>{b.label}</span>
                     <div className={styles.bagRowInputs}>
                       <div className={styles.bagInputGroup}>
-                        <label className={styles.bagInputLabel}>Limit kg</label>
+                        <label className={styles.bagInputLabel}>Limit {unit}</label>
                         <input
                           className={styles.bagInput}
                           type="number"
                           min="0"
                           step="0.5"
-                          value={b.weight_limit_kg}
-                          onChange={(e) => updateBag(b.bag_id, 'weight_limit_kg', e.target.value)}
+                          value={b.weight_limit}
+                          onChange={(e) => updateBag(b.bag_id, 'weight_limit', e.target.value)}
                         />
                       </div>
                       <div className={styles.bagInputGroup}>
-                        <label className={styles.bagInputLabel}>Empty kg</label>
+                        <label className={styles.bagInputLabel}>Empty {unit}</label>
                         <input
                           className={styles.bagInput}
                           type="number"
                           min="0"
                           step="0.1"
-                          value={b.empty_bag_kg}
-                          onChange={(e) => updateBag(b.bag_id, 'empty_bag_kg', e.target.value)}
+                          value={b.empty_weight}
+                          onChange={(e) => updateBag(b.bag_id, 'empty_weight', e.target.value)}
                         />
                       </div>
                       <span className={`${styles.bagAvail} ${isNegative ? styles.bagAvailError : ''}`}>
-                        = {(b.availG / 1000).toFixed(1)} kg
+                        = {formatWeight(b.availG, unit)}
                       </span>
                     </div>
                     <button
@@ -520,7 +522,7 @@ export default function NewTripPage() {
                 {reservedItems.map((r, idx) => (
                   <div key={idx} className={styles.reservedItem}>
                     <span className={styles.reservedName}>{r.name}</span>
-                    <span className={styles.reservedWeight}>{(r.weight_grams / 1000).toFixed(2)} kg</span>
+                    <span className={styles.reservedWeight}>{formatWeight(r.weight_grams, unit)}</span>
                     <button
                       type="button"
                       className={styles.reservedRemove}
@@ -547,7 +549,7 @@ export default function NewTripPage() {
                 type="number"
                 min="0"
                 step="0.1"
-                placeholder="kg"
+                placeholder={unit}
                 value={newReservedWeight}
                 onChange={(e) => setNewReservedWeight(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addReservedItem())}
@@ -563,21 +565,21 @@ export default function NewTripPage() {
         {bags.length > 0 && (
           <div className={styles.weightCalc}>
             <p className={styles.weightCalcTitle}>Total Available for Clothes</p>
-            <p className={styles.weightCalcBig}>{(totalClothingGrams / 1000).toFixed(1)} kg</p>
+            <p className={styles.weightCalcBig}>{formatWeight(totalClothingGrams, unit)}</p>
             <div className={styles.weightCalcBreakdown}>
               {bagRows.map((b) => (
                 <div key={b.bag_id} className={`${styles.weightCalcLine} ${b.availG < 0 ? styles.weightCalcError : ''}`}>
-                  {b.label}: {(b.limitG / 1000).toFixed(1)} kg − {(b.emptyG / 1000).toFixed(1)} kg bag = {(b.availG / 1000).toFixed(1)} kg
+                  {b.label}: {formatWeight(b.limitG, unit)} − {formatWeight(b.emptyG, unit)} bag = {formatWeight(b.availG, unit)}
                 </div>
               ))}
               {reservedItems.length > 0 && (
                 <div className={styles.weightCalcLine}>
-                  Reserved: −{(reservedTotal / 1000).toFixed(2)} kg
+                  Reserved: −{formatWeight(reservedTotal, unit)}
                 </div>
               )}
               {bags.length > 1 && (
                 <div className={`${styles.weightCalcLine} ${styles.weightCalcLineTotal}`}>
-                  Total: {(totalClothingGrams / 1000).toFixed(1)} kg available for clothing
+                  Total: {formatWeight(totalClothingGrams, unit)} available for clothing
                 </div>
               )}
             </div>

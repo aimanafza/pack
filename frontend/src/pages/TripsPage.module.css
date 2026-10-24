@@ -131,12 +131,21 @@
   margin-bottom: var(--space-4);
 }
 
+/* Trip cards: as many as fit at 200px or wider, at most 3 per row, sized to the
+   content area (not the window) so nothing crops next to the sidebar. */
 .list {
-  max-width: 720px;
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(max(200px, calc((100% - 2 * var(--space-6)) / 3)), 1fr)
+  );
+  gap: var(--space-6);
+  align-items: stretch;
 }
 
-.pastList {
-  opacity: 0.6;
+/* A sentence, not a card, so it shouldn't take a grid cell. */
+.list > .emptyText {
+  grid-column: 1 / -1;
 }
 
 .empty {
@@ -193,4 +202,12 @@
 @keyframes pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }
+}
+
+/* Two per row on phones, matching the wardrobe, so one trip doesn't fill the screen. */
+@media (max-width: 767px) {
+  .list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-4);
+  }
 }

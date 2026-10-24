@@ -9,7 +9,7 @@ const container = {
   },
 }
 
-export default function WardrobeGrid({ items, onDelete, onEdit }) {
+export default function WardrobeGrid({ items, onDelete, selecting = false, selectedIds, onToggleSelect }) {
   return (
     <motion.div
       className={styles.grid}
@@ -22,7 +22,9 @@ export default function WardrobeGrid({ items, onDelete, onEdit }) {
           key={item.id}
           item={item}
           onDelete={onDelete}
-          onEdit={onEdit}
+          selecting={selecting}
+          selected={selecting && selectedIds.has(item.id)}
+          onToggleSelect={onToggleSelect}
         />
       ))}
     </motion.div>

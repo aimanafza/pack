@@ -19,18 +19,9 @@
 }
 
 .backLink {
-  font-family: var(--font-body);
-  font-size: var(--text-sm);
-  letter-spacing: var(--tracking-wide);
-  color: var(--color-text-tertiary);
-  text-decoration: none;
-  transition: color 0.15s;
   flex: 1;
 }
 
-.backLink:hover {
-  color: var(--color-text-primary);
-}
 
 .headerCenter {
   display: flex;

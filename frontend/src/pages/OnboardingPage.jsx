@@ -167,7 +167,7 @@ export default function OnboardingPage() {
           >
             <h2 className={styles.modalHeadline}>Welcome to PACK.</h2>
             <p className={styles.modalBody}>
-              Your AI personal stylist lives here. Let's set things up in 4 quick steps.
+              Your personal stylist lives here. Let's set things up in 4 quick steps.
             </p>
             <button
               className={styles.btnPrimary}
@@ -257,7 +257,7 @@ export default function OnboardingPage() {
           >
             <h2 className={styles.modalHeadline}>Your stylist is ready.</h2>
             <p className={styles.modalBody}>
-              Generate a packing list and swipe through your AI-curated outfits.
+              Generate a packing list and swipe through outfits styled for you.
             </p>
             <StaticOutfitCard />
             <button className={styles.btnPrimary} onClick={handleFinish} type="button">

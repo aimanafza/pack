@@ -1,0 +1,31 @@
+.frame {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.photo {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+}
+
+.photoWhole {
+  object-fit: contain;
+}
+
+/* Stretched to the frame so each side band shows that side of the photo's own
+   backdrop, blurred; it extends past the frame so the blur has no faded edge */
+.backdrop {
+  position: absolute;
+  top: -40px;
+  left: -40px;
+  width: calc(100% + 80px);
+  height: calc(100% + 80px);
+  object-fit: fill;
+  filter: blur(30px);
+}

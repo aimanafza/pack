@@ -1,16 +1,10 @@
 import { useState } from 'react'
-import { motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import styles from './ItemCard.module.css'
 import ConfirmModal from '../ui/ConfirmModal.jsx'
-
-function IconEdit() {
-  return (
-    <svg className={styles.overlayIcon} viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M9.5 2.5l2 2L4 12H2v-2L9.5 2.5Z" />
-    </svg>
-  )
-}
+import QuickView from './QuickView.jsx'
+import { formatWeight, useWeightUnit } from '../../utils/weight.js'
 
 function IconTrash() {
   return (
@@ -25,26 +19,44 @@ export const cardVariants = {
   show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: 'easeOut' } },
 }
 
-function formatWeight(grams) {
-  if (!grams) return null
-  if (grams >= 1000) return `${(grams / 1000).toFixed(1).replace(/\.0$/, '')}kg`
-  return `~${grams}g`
+// Mouse users can hover, so a click opens the full page and the quick view has its own
+// button. Touch screens can't hover, so a tap opens the quick view instead.
+function canHover() {
+  return window.matchMedia('(hover: hover) and (pointer: fine)').matches
 }
 
-export default function ItemCard({ item, onDelete, onEdit }) {
+export default function ItemCard({ item, onDelete, selecting = false, selected = false, onToggleSelect }) {
   const navigate = useNavigate()
+  const unit = useWeightUnit()
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [quickView, setQuickView] = useState(false)
   const itemId = item.id || item._id
+
+  function openItem() {
+    if (selecting) onToggleSelect(itemId)
+    else if (canHover()) navigate(`/wardrobe/${itemId}`)
+    else setQuickView(true)
+  }
+
+  function handleKeyDown(e) {
+    if (selecting && (e.key === 'Enter' || e.key === ' ')) {
+      e.preventDefault()
+      onToggleSelect(itemId)
+    } else if (!selecting && e.key === 'Enter') {
+      navigate(`/wardrobe/${itemId}`)
+    }
+  }
 
   return (
     <motion.div className={styles.card} variants={cardVariants}>
       <div
-        className={styles.imageWrap}
-        onClick={() => navigate(`/wardrobe/${itemId}`)}
-        role="button"
+        className={`${styles.imageWrap} ${selecting ? styles.selecting : ''} ${selected ? styles.selected : ''}`}
+        onClick={openItem}
+        role={selecting ? 'checkbox' : 'button'}
+        aria-checked={selecting ? selected : undefined}
         tabIndex={0}
-        onKeyDown={(e) => e.key === 'Enter' && navigate(`/wardrobe/${itemId}`)}
-        aria-label={`View ${item.name} details`}
+        onKeyDown={handleKeyDown}
+        aria-label={selecting ? `Select ${item.name}` : `View ${item.name} details`}
       >
         {item.image_url ? (
           <img
@@ -57,37 +69,51 @@ export default function ItemCard({ item, onDelete, onEdit }) {
           <div className={styles.placeholder}>+</div>
         )}
 
-        <div className={styles.overlay}>
-          {onEdit && (
-            <button
-              className={styles.overlayBtn}
-              onClick={(e) => { e.stopPropagation(); onEdit(item) }}
-              type="button"
-              aria-label="Edit item"
-            >
-              <IconEdit />
-            </button>
-          )}
+        {selecting && (
+          <span className={styles.check} aria-hidden="true">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path d="M2.5 6.2l2.3 2.3 4.7-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </span>
+        )}
+
+        {!selecting && (
           <button
-            className={styles.overlayBtn}
+            className={styles.deleteBtn}
             onClick={(e) => { e.stopPropagation(); setConfirmDelete(true) }}
             type="button"
-            aria-label="Delete item"
+            aria-label={`Delete ${item.name}`}
           >
             <IconTrash />
           </button>
-        </div>
+        )}
+
+        {!selecting && (
+          <button
+            className={styles.quickViewBtn}
+            onClick={(e) => { e.stopPropagation(); setQuickView(true) }}
+            type="button"
+          >
+            Quick view
+          </button>
+        )}
       </div>
 
       <div className={styles.meta}>
         <p className={styles.name}>{item.name}</p>
         <div className={styles.metaRow}>
           <p className={styles.category}>{item.category}</p>
-          {item.weight_grams && (
-            <p className={styles.weight}>{formatWeight(item.weight_grams)}</p>
+          {item.weight_grams > 0 && (
+            <p className={styles.weight}>{formatWeight(item.weight_grams, unit)}</p>
           )}
         </div>
       </div>
+
+      <AnimatePresence>
+        {quickView && (
+          <QuickView item={item} onClose={() => setQuickView(false)} onDelete={onDelete} />
+        )}
+      </AnimatePresence>
 
       {confirmDelete && (
         <ConfirmModal

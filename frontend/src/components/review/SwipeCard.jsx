@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import ItemScrollRow from './ItemScrollRow.jsx'
+import { formatWeight, useWeightUnit } from '../../utils/weight.js'
 import styles from './SwipeCard.module.css'
 
 export default function SwipeCard({ outfit, wardrobeById, packingList, onApprove, onReject }) {
   const [rationaleOpen, setRationaleOpen] = useState(false)
+  const unit = useWeightUnit()
 
   const label = outfit.day_label || outfit.name
   const occasionDisplay = outfit.occasion_tag || outfit.occasion
@@ -43,8 +45,8 @@ export default function SwipeCard({ outfit, wardrobeById, packingList, onApprove
             />
           </div>
           <div className={styles.weightBarMeta}>
-            <span>{packingList.packing_weight_total?.toFixed(1)}kg / {packingList.weight_budget}kg</span>
-            <span className={styles.weightRemaining}>{packingList.weight_remaining?.toFixed(1)}kg remaining</span>
+            <span>{formatWeight(packingList.packing_weight_total * 1000, unit)} / {formatWeight(packingList.weight_budget * 1000, unit)}</span>
+            <span className={styles.weightRemaining}>{formatWeight(packingList.weight_remaining * 1000, unit)} remaining</span>
           </div>
         </div>
       )}

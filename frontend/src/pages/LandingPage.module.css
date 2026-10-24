@@ -42,47 +42,10 @@
 
 /* ─── Hero ────────────────────────────────────────────── */
 .hero {
-  display: grid;
-  grid-template-columns: 55fr 45fr;
   min-height: 100vh;
-}
-
-.heroLeft {
   display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: 140px var(--space-12) var(--space-20);
-}
-
-.heroLabel {
-  font-family: var(--font-body);
-  font-size: var(--text-xs);
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-wider);
-  color: var(--color-text-tertiary);
-  margin-bottom: var(--space-6);
-}
-
-.heroHeadline {
-  font-family: var(--font-display);
-  font-size: 72px;
-  font-weight: 300;
-  font-style: italic;
-  color: var(--color-text-primary);
-  letter-spacing: var(--tracking-tight);
-  line-height: 1.05;
-  margin-bottom: var(--space-6);
-}
-
-.heroSubhead {
-  font-family: var(--font-body);
-  font-size: 18px;
-  font-weight: 300;
-  color: var(--color-text-secondary);
-  line-height: var(--leading-normal);
-  max-width: 420px;
-  margin-bottom: var(--space-6);
+  align-items: center;
+  padding: 80px 0 var(--space-16);
 }
 
 .ctaBtn {
@@ -110,14 +73,6 @@
 .ctaBtn:disabled {
   opacity: 0.5;
   cursor: default;
-}
-
-.ctaNote {
-  font-family: var(--font-body);
-  font-size: var(--text-xs);
-  font-weight: 300;
-  color: var(--color-text-tertiary);
-  margin-top: var(--space-6);
 }
 
 /* ─── Waitlist form ───────────────────────────────────── */
@@ -180,22 +135,6 @@
   margin: 0;
 }
 
-.heroRight {
-  background: var(--color-bg-tertiary);
-  overflow: hidden;
-  position: relative;
-}
-
-.heroPhotoPlaceholder {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    160deg,
-    var(--color-bg-tertiary) 0%,
-    var(--color-border-light) 100%
-  );
-}
-
 /* ─── How It Works ────────────────────────────────────── */
 .howSection {
   padding: var(--space-24) var(--space-12);
@@ -250,6 +189,44 @@
   color: var(--color-text-secondary);
   line-height: var(--leading-normal);
   max-width: 280px;
+}
+
+/* Phone: one step per row, number on the left like a ranked list */
+@media (max-width: 760px) {
+  .howSection {
+    padding: var(--space-16) var(--space-6);
+  }
+
+  .howSection .sectionLabel {
+    margin-bottom: var(--space-4);
+  }
+
+  .stepsGrid {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .step {
+    display: grid;
+    grid-template-columns: 52px 1fr;
+    column-gap: var(--space-4);
+    row-gap: var(--space-2);
+    padding: var(--space-6) 0;
+    border-bottom: var(--border-thin);
+  }
+
+  .step:last-child {
+    border-bottom: none;
+  }
+
+  .stepNum {
+    grid-row: 1 / span 2;
+    font-size: 40px;
+  }
+
+  .stepBody {
+    max-width: none;
+  }
 }
 
 /* ─── Extension ──────────────────────────────────────── */

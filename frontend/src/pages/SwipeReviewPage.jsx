@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
-import { useParams, Link, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useTrips } from '../hooks/useTrips.js'
 import api from '../utils/api.js'
+import { formatWeight, useWeightUnit } from '../utils/weight.js'
 import VerticalItemCarousel from '../components/review/VerticalItemCarousel.jsx'
 import PassSheet from '../components/review/PassSheet.jsx'
 import RestyleSelectionSheet from '../components/review/RestyleSelectionSheet.jsx'
 import styles from './SwipeReviewPage.module.css'
+import BackLink from '../components/ui/BackLink.jsx'
 
 // ── Static outfits for layout/animation testing ────────────────────────────
 const STATIC_OUTFITS = [
@@ -110,6 +112,7 @@ const slideVariants = {
 export default function SwipeReviewPage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const unit = useWeightUnit()
   const { fetchTrip, approveOutfit, rejectOutfit, restyleOutfit } = useTrips()
 
   const [trip, setTrip] = useState(null)
@@ -362,9 +365,9 @@ export default function SwipeReviewPage() {
     <div className={styles.page}>
       {/* ── Header ──────────────────────────────────────────── */}
       <header className={styles.header}>
-        <Link to={`/trips/${id}`} className={styles.backLink}>
-          ← {trip?.name ?? 'Back'}
-        </Link>
+        <div className={styles.backLink}>
+          <BackLink to={`/trips/${id}`}>{trip?.name ?? 'Back'}</BackLink>
+        </div>
         <div className={styles.headerCenter}>
           <span className={styles.dayLabel}>
             DAY {dayNumber}{dayLabel ? ` · ${dayLabel.toUpperCase()}` : ''}
@@ -485,7 +488,7 @@ export default function SwipeReviewPage() {
                         />
                       </div>
                       <p className={styles.weightText}>
-                        {packedWeight}kg of {budget}kg
+                        {formatWeight(packedWeight * 1000, unit)} of {formatWeight(budget * 1000, unit)}
                         {uniqueItemCount > 0 && (
                           <span className={styles.weightItemCount}> · {uniqueItemCount} items packed</span>
                         )}
@@ -719,6 +722,7 @@ function AvatarFallback({ items }) {
 
 // ── Completion state ─────────────────────────────────────────────────────────
 function CompletionState({ bagCount, packingList, tripId, navigate }) {
+  const unit = useWeightUnit()
   return (
     <div className={styles.completionPage}>
       <div className={styles.completion}>
@@ -731,7 +735,7 @@ function CompletionState({ bagCount, packingList, tripId, navigate }) {
         )}
         {packingList.unique_item_count > 0 && (
           <p className={styles.completionItems}>
-            {packingList.unique_item_count} items · {packingList.packing_weight_total}kg packed
+            {packingList.unique_item_count} items · {formatWeight(packingList.packing_weight_total * 1000, unit)} packed
           </p>
         )}
         <div className={styles.completionActions}>

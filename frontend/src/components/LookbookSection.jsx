@@ -1,10 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { formatWeight, useWeightUnit } from '../utils/weight.js'
+import LookPhoto from './looks/LookPhoto.jsx'
 import styles from './LookbookSection.module.css'
 
 /* ─── Item Drawer ─────────────────────────────────────────────────── */
 function ItemDrawer({ item, onClose }) {
   const navigate = useNavigate()
+  const unit = useWeightUnit()
 
   // Close on overlay click
   function handleOverlayClick(e) {
@@ -27,7 +30,7 @@ function ItemDrawer({ item, onClose }) {
 
           <div className={styles.drawerMeta}>
             <span className={styles.drawerMetaRow}>
-              {item.category}{item.estimated_weight_kg ? ` · ${item.estimated_weight_kg}kg` : ''}
+              {item.category}{item.estimated_weight_kg ? ` · ${formatWeight(item.estimated_weight_kg * 1000, unit)}` : ''}
             </span>
           </div>
 
@@ -144,10 +147,11 @@ export default function LookbookSection({ trip, outfits }) {
         {/* LEFT — figure */}
         <div className={styles.figSide}>
           {lookbookUrl ? (
-            <img
+            <LookPhoto
+              key={lookbookUrl}
               src={lookbookUrl}
               alt={outfit.name || outfit.day_label}
-              className={styles.figImg}
+              className={styles.figPhoto}
             />
           ) : (
             <div className={styles.figPlaceholder} />

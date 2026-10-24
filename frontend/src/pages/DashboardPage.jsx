@@ -12,6 +12,20 @@ import TodayCard from '../components/daily/TodayCard.jsx'
 import api from '../utils/api.js'
 import styles from './DashboardPage.module.css'
 
+const CARPET_CACHE_KEY = 'pack_carpet_url'
+const CARPET_MAX_CHECKS = 18 // every 10s, so about 3 minutes
+
+// localStorage can throw (private mode, blocked storage); the cache is only a speed-up.
+function readCachedCarpet() {
+  try { return localStorage.getItem(CARPET_CACHE_KEY) } catch { return null }
+}
+function writeCachedCarpet(url) {
+  try { localStorage.setItem(CARPET_CACHE_KEY, url) } catch { /* ignore */ }
+}
+function clearCachedCarpet() {
+  try { localStorage.removeItem(CARPET_CACHE_KEY) } catch { /* ignore */ }
+}
+
 function greeting(name) {
   const h = new Date().getHours()
   const time = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'
@@ -117,6 +131,7 @@ function NewTripCard({ onClick }) {
 export default function DashboardPage() {
   const user = useStore((s) => s.user)
   const setUser = useStore((s) => s.setUser)
+  const updateUser = useStore((s) => s.updateUser)
   const todayLook = useStore((s) => s.todayLook)
   const { trips, fetchTrips } = useTrips()
   const { wardrobe, fetchWardrobe } = useWardrobe()
@@ -147,27 +162,59 @@ export default function DashboardPage() {
   const isFreshUser = !isReturning && trips.length === 0 && wardrobe.length === 0
   const outfitsApproved = trips.reduce((n, t) => n + (t.approved_outfits?.length ?? 0), 0)
 
-  // Trigger carpet generation once trips are loaded and user qualifies
+  // Login and /auth/me both return dashboard_carpet_url. If the stored user
+  // lacks it (older partial profile), load it once instead of guessing.
+  const profileLoaded = !!user && 'dashboard_carpet_url' in user
   useEffect(() => {
-    if (trips.length === 0) return
-    if (user?.dashboard_carpet_url) return
-    if (outfitsApproved < 5) return
-    // Fire and forget — carpet is generated in the background on the server.
-    // Poll /auth/me every 10s until the URL appears, then update the store.
-    api.post('/api/v1/profile/generate-carpet').catch(() => {})
-    const interval = setInterval(() => {
-      api.get('/api/v1/auth/me').then(({ data }) => {
-        if (data.data?.dashboard_carpet_url) {
-          setUser(data.data)
-          clearInterval(interval)
-        }
-      }).catch(() => {})
-    }, 10000)
-    return () => clearInterval(interval)
-  }, [trips, outfitsApproved, user?.dashboard_carpet_url])
+    if (user && !profileLoaded) {
+      api.get('/api/v1/auth/me').then(({ data }) => setUser(data.data)).catch(() => {})
+    }
+  }, [user, profileLoaded, setUser])
 
-  // Hero background: carpet image if generated, otherwise most recent wardrobe item
-  const heroBgUrl = user?.dashboard_carpet_url || wardrobe[0]?.image_url
+  // Remember the carpet on this device so a refresh shows it instantly,
+  // before the profile request comes back.
+  useEffect(() => {
+    if (!profileLoaded) return
+    if (user.dashboard_carpet_url) writeCachedCarpet(user.dashboard_carpet_url)
+    else clearCachedCarpet()
+  }, [profileLoaded, user?.dashboard_carpet_url])
+
+  // Ask the server once per visit whether a carpet can be made. Only wait for it
+  // when generation actually started, and stop checking after about 3 minutes.
+  useEffect(() => {
+    if (!profileLoaded || user.dashboard_carpet_url) return
+    let cancelled = false
+    let timer
+    api.post('/api/v1/profile/generate-carpet').then(({ data }) => {
+      const result = data.data || {}
+      if (cancelled) return
+      if (result.status === 'ready' && result.dashboard_carpet_url) {
+        updateUser({ dashboard_carpet_url: result.dashboard_carpet_url })
+      } else if (result.status === 'generating') {
+        let checks = 0
+        timer = setInterval(() => {
+          checks += 1
+          if (checks > CARPET_MAX_CHECKS) return clearInterval(timer)
+          api.get('/api/v1/auth/me').then(({ data }) => {
+            if (!cancelled && data.data?.dashboard_carpet_url) {
+              setUser(data.data)
+              clearInterval(timer)
+            }
+          }).catch(() => {})
+        }, 10000)
+      }
+    }).catch(() => {})
+    return () => {
+      cancelled = true
+      clearInterval(timer)
+    }
+  }, [profileLoaded, user?.dashboard_carpet_url])
+
+  // Hero background: carpet image if there is one, otherwise the first wardrobe item.
+  // Until the profile is known, use the carpet cached on this device (or nothing),
+  // so a user with a carpet never sees the wardrobe photo first and then a swap.
+  const carpetUrl = profileLoaded ? user.dashboard_carpet_url : readCachedCarpet()
+  const heroBgUrl = carpetUrl || (profileLoaded ? wardrobe[0]?.image_url : null)
 
   return (
     <div className={styles.page}>
@@ -175,7 +222,7 @@ export default function DashboardPage() {
       {/* ── RETURNING USER STATE ── */}
       {!isFreshUser && (
         <div
-          className={`${styles.heroSection}${user?.dashboard_carpet_url ? ` ${styles.hasCarpet}` : ''}`}
+          className={`${styles.heroSection}${carpetUrl ? ` ${styles.hasCarpet}` : ''}`}
         >
           {heroBgUrl && (
             <img src={heroBgUrl} alt="" className={styles.heroBgImg} aria-hidden="true" />

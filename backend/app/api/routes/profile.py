@@ -5,9 +5,8 @@ from slowapi.util import get_remote_address
 
 from app.models.user import User, StyleDNA
 from app.models.item import WardrobeItem
-from app.models.trip import Trip
 from app.api.deps import get_current_user
-from app.services.claude_service import analyze_style_dna, build_carpet_image, CATEGORY_LABELS
+from app.services.claude_service import analyze_style_dna, maybe_start_carpet, CATEGORY_LABELS
 
 router = APIRouter()
 limiter = Limiter(key_func=get_remote_address)
@@ -65,30 +64,8 @@ async def generate_carpet(
     background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
 ):
-    """Trigger carpet image generation for the current user.
-
-    Returns immediately if already generated. Checks that the user has 5+
-    approved outfits before kicking off the background task.
-    """
-    if current_user.dashboard_carpet_url:
-        return {
-            "success": True,
-            "data": {"dashboard_carpet_url": current_user.dashboard_carpet_url},
-            "message": "Already generated",
-        }
-
-    all_trips = await Trip.find(Trip.user_id == current_user.id).to_list()
-    total_approved = sum(len(t.approved_outfits) for t in all_trips)
-
-    if total_approved < 5:
-        raise HTTPException(
-            status_code=422,
-            detail=f"Need at least 5 approved outfits ({total_approved} so far).",
-        )
-
-    background_tasks.add_task(build_carpet_image, current_user)
-    return {
-        "success": True,
-        "data": {"dashboard_carpet_url": None},
-        "message": "Carpet generation started",
-    }
+    """Start carpet generation if the user qualifies. The returned status tells the
+    dashboard whether to wait for an image: ready, generating, needs_avatar or
+    needs_more_looks."""
+    status = await maybe_start_carpet(current_user, background_tasks)
+    return {"success": True, "data": status, "message": ""}

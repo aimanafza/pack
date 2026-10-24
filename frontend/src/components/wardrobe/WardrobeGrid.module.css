@@ -1,19 +1,19 @@
 .grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  /* Columns follow the grid's own width, not the window's (the sidebar takes
+     240px of it): as many as fit at 200px or wider, never more than 4. A fixed
+     minimum stops wide photos from stretching their column past the page. */
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(max(200px, calc((100% - 3 * var(--space-6)) / 4)), 1fr)
+  );
   gap: var(--space-6);
   align-items: start;
 }
 
-@media (max-width: 900px) {
-  .grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
 @media (max-width: 767px) {
   .grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--space-4);
   }
 }

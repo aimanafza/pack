@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" preserveAspectRatio="none">
+  <!-- A sheet with a soft, slightly uneven edge: noise nudges the outline, blur feathers it -->
+  <filter id="edge" x="-5%" y="-5%" width="110%" height="110%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.0035 0.006" numOctaves="1" seed="7" result="noise"/>
+    <feDisplacementMap in="SourceGraphic" in2="noise" scale="34" xChannelSelector="R" yChannelSelector="G" result="shape"/>
+    <feGaussianBlur in="shape" stdDeviation="5"/>
+  </filter>
+  <rect x="22" y="22" width="1156" height="756" rx="44" fill="#EFECE7" filter="url(#edge)"/>
+</svg>

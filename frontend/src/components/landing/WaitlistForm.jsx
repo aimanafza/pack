@@ -3,7 +3,8 @@ import api from '../../utils/api.js'
 import styles from './WaitlistForm.module.css'
 
 // Self-contained so it can move anywhere in the landing redesign.
-export default function WaitlistForm() {
+// variant="inline" puts the email and button on one line, for tight spaces like the hero sheet.
+export default function WaitlistForm({ variant }) {
   const [email, setEmail] = useState('')
   const [status, setStatus] = useState('idle') // idle | loading | success | error
   const [errorMsg, setErrorMsg] = useState('')
@@ -28,7 +29,7 @@ export default function WaitlistForm() {
   }
 
   return (
-    <form className={styles.form} onSubmit={handleSubmit}>
+    <form className={variant === 'inline' ? `${styles.form} ${styles.inline}` : styles.form} onSubmit={handleSubmit}>
       <input
         type="email"
         required

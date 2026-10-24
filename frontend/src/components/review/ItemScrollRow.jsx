@@ -1,8 +1,10 @@
 import { useState } from 'react'
+import { formatWeight, useWeightUnit } from '../../utils/weight.js'
 import styles from './ItemScrollRow.module.css'
 
 export default function ItemScrollRow({ items, wardrobeById }) {
   const [activeIndex, setActiveIndex] = useState(0)
+  const unit = useWeightUnit()
   const activeItem = items[activeIndex]
   // Enrich with wardrobe data when available
   const activeWardrobe = activeItem?.wardrobe_item_id ? wardrobeById[activeItem.wardrobe_item_id] : null
@@ -43,7 +45,7 @@ export default function ItemScrollRow({ items, wardrobeById }) {
               <span className={styles.tag}>{activeWardrobe?.formality || activeItem.formality}</span>
             )}
             {activeItem.estimated_weight_kg > 0 && (
-              <span className={styles.tag}>{activeItem.estimated_weight_kg}kg</span>
+              <span className={styles.tag}>{formatWeight(activeItem.estimated_weight_kg * 1000, unit)}</span>
             )}
           </div>
           {(activeWardrobe?.notes || activeItem.notes) && (
