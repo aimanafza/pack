@@ -3,9 +3,9 @@
 // State is a plain object; renderView() is the single re-render entry point.
 
 // ── Config ──────────────────────────────────────────────────────────────────
-// Production Railway backend — same base URL the PACK frontend uses
-const PACK_API_BASE = 'https://pack-capstone.up.railway.app/api/v1'
-const PACK_WEB_URL  = 'https://pack-capstone.vercel.app'
+// Addresses live in config.js, shared with the content script
+const PACK_API_BASE = PACK_CONFIG.apiBase
+const PACK_WEB_URL  = PACK_CONFIG.webUrl
 
 // ── State ────────────────────────────────────────────────────────────────────
 let state = {
@@ -17,6 +17,7 @@ let state = {
   looks: null,
   expansionAnswer: null,
   tabId: null,
+  windowId: null,
   error: null,
 }
 
@@ -25,6 +26,7 @@ async function init() {
   // Get the active tab ID
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
   state.tabId = tab?.id ?? null
+  state.windowId = tab?.windowId ?? null
 
   // Check auth token
   const stored = await chrome.storage.local.get('pack_auth_token')
@@ -44,6 +46,38 @@ async function init() {
   renderView(state.product ? 'product' : 'no-product')
 }
 
+// ── Follow the shopper ────────────────────────────────────────────────────────
+// The panel stays open while you browse, so it follows the tab you're on and
+// picks up a product as soon as the page reports one. Mid-analysis views stay put.
+const SETTLED_VIEWS = ['no-product', 'product', 'login']
+
+async function showTab(tabId) {
+  state.tabId = tabId
+  const session = await chrome.storage.session.get(`product_${tabId}`)
+  state.product = session[`product_${tabId}`] || null
+  state.analysis = null
+  state.analysisId = null
+  state.looks = null
+  state.expansionAnswer = null
+  state.error = null
+  if (state.token) renderView(state.product ? 'product' : 'no-product')
+}
+
+chrome.tabs.onActivated.addListener(({ tabId, windowId }) => {
+  // Each Chrome window has its own panel; only follow tabs in this one, and never mid-analysis
+  if (windowId !== state.windowId || state.view === 'analysing') return
+  showTab(tabId)
+})
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== 'session' || !state.tabId) return
+  const change = changes[`product_${state.tabId}`]
+  if (change && SETTLED_VIEWS.includes(state.view)) {
+    state.product = change.newValue || null
+    if (state.token) renderView(state.product ? 'product' : 'no-product')
+  }
+})
+
 // ── Auth bridge listener ──────────────────────────────────────────────────────
 // The web page cannot postMessage directly to the sidepanel window.
 // Instead: page → content script → background (STORE_TOKEN) → chrome.storage.local
@@ -51,6 +85,7 @@ async function init() {
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'local' && changes.pack_auth_token?.newValue) {
     state.token = changes.pack_auth_token.newValue
+    state.signedOutNote = null
     // Re-render only if we were sitting on the login screen waiting for auth
     if (state.view === 'login') {
       renderView(state.product ? 'product' : 'no-product')
@@ -59,6 +94,16 @@ chrome.storage.onChanged.addListener((changes, area) => {
 })
 
 // ── API helpers ──────────────────────────────────────────────────────────────
+// Sign-ins expire after a week (and whenever PACK rotates its keys). Rather than
+// failing every request, forget the token and go back to the connect screen.
+async function signedOut() {
+  await chrome.storage.local.remove('pack_auth_token')
+  state.token = null
+  state.signedOutNote = 'Your sign-in expired. Connect again to keep going.'
+  renderView('login')
+  throw new Error('signed out')
+}
+
 async function apiPost(path, body) {
   const res = await fetch(`${PACK_API_BASE}${path}`, {
     method: 'POST',
@@ -68,6 +113,7 @@ async function apiPost(path, body) {
     },
     body: JSON.stringify(body),
   })
+  if (res.status === 401) return signedOut()
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }))
     throw new Error(err.detail || `HTTP ${res.status}`)
@@ -84,6 +130,7 @@ async function apiPatch(path, body) {
     },
     body: JSON.stringify(body),
   })
+  if (res.status === 401) return signedOut()
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.json()
 }
@@ -112,12 +159,20 @@ async function startAnalysis() {
     state.analysisId = res.data?.id || res.data?._id || null
     renderView('results')
   } catch (err) {
+    if (!state.token) return  // signed out: the connect screen is already showing
     state.error = err.message
     renderView('results')
   }
 }
 
 async function startLooks() {
+  // An analysis already holds the outfits; show those rather than running a second one
+  if (state.analysis?.outfit_collages?.length) {
+    state.looks = state.analysis
+    renderView('looks')
+    return
+  }
+
   renderView('analysing')
 
   try {
@@ -132,6 +187,7 @@ async function startLooks() {
     state.looks = res.data
     renderView('looks')
   } catch (err) {
+    if (!state.token) return
     state.error = err.message
     renderView('looks')
   }
@@ -143,6 +199,7 @@ async function sendExpansionAnswer(answer) {
     await apiPatch(`/purchase-analysis/${state.analysisId}/expansion`, { answer })
       .catch(() => {})
   }
+  if (!state.token) return
   // Re-render results with answer selected
   renderView('results')
 }
@@ -311,7 +368,7 @@ function renderLogin() {
     <div class="login-wrap">
       <p class="login-logo">pack</p>
       <p class="login-body">
-        Connect your PACK account to analyse purchases and style items with your wardrobe.
+        ${state.signedOutNote ? esc(state.signedOutNote) : 'Connect your PACK account to analyse purchases and style items with your wardrobe.'}
       </p>
       <button class="btn-primary" id="btn-connect">Connect to PACK</button>
     </div>`
@@ -396,7 +453,7 @@ function renderResults() {
   // Archetype + brand notes
   const archetypeHtml = a?.archetype_note
     ? `<div class="note-block">
-         <span class="note-label">Your archetype — ${esc(a.archetype || '')}</span>
+         <span class="note-label">Your archetype: ${esc(a.archetype || '')}</span>
          <p class="note-text">${esc(a.archetype_note)}</p>
        </div>`
     : ''
@@ -443,9 +500,9 @@ function renderLooks() {
   if (looksData.length > 0) {
     collagesHtml = looksData.slice(0, 3).map((collage, i) => {
       const combo = outfitCombinations[i] || {}
-      const urls = Array.isArray(collage) ? collage : []
-      // Prepend product image as first tile
-      const tiles = [state.product?.image, ...urls].filter(Boolean)
+      // The server puts the product first, then the wardrobe pieces
+      const urls = Array.isArray(collage) ? collage.filter(Boolean) : []
+      const tiles = urls.length ? urls : [state.product?.image].filter(Boolean)
       return outfitCollageHtml(
         tiles,
         combo.name || `Look ${i + 1}`,
@@ -467,7 +524,7 @@ function renderLooks() {
     </div>
     <div class="results-actions">
       <button class="btn-primary" id="btn-open-pack">View full analysis in PACK</button>
-      ${state.analysis ? '' : '<button class="btn-secondary" id="btn-back-results">← See analysis</button>'}
+      ${state.analysis ? '<button class="btn-secondary" id="btn-back-results">← See analysis</button>' : ''}
     </div>`
 }
 

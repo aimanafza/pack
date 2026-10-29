@@ -23,23 +23,15 @@ export default function ExtensionLoginPage() {
   }, [token])
 
   function pushTokenToExtension(authToken) {
-    // Read the token directly from localStorage as the ground truth — Zustand
-    // initialises from it, but reading it again here ensures we never send stale state.
-    const lsToken = localStorage.getItem('pack_token')
-    const finalToken = lsToken || authToken
+    // localStorage is the ground truth: the store initialises from it, so reading
+    // it here means we never send a stale token.
+    const finalToken = localStorage.getItem('pack_token') || authToken
+    if (!finalToken) return
 
-    if (!finalToken) {
-      console.warn('[PACK extension-login] No token found — user may not be logged in')
-      return
-    }
-
-    console.log('[PACK extension-login] Token found, sending to extension:', finalToken.slice(0, 20) + '…')
-
-    // postMessage is intercepted by the content script running on this tab.
-    // The content script relays it to the background via chrome.runtime.sendMessage,
-    // which writes it to chrome.storage.local, which the sidepanel listens to.
-    window.postMessage({ type: 'PACK_EXTENSION_AUTH', token: finalToken }, '*')
-    console.log('[PACK extension-login] postMessage sent')
+    // The extension's content script on this tab picks this up and hands it to
+    // the extension. Addressed to this site only, and the extension checks the
+    // origin too, so no other page can send or read it.
+    window.postMessage({ type: 'PACK_EXTENSION_AUTH', token: finalToken }, window.location.origin)
 
     // Mark extension as connected on the backend (fire-and-forget)
     api.post('/api/v1/users/me/extension-connected').catch(() => {})

@@ -4,6 +4,7 @@ import PageWrapper from './components/layout/PageWrapper.jsx'
 import ScrollToTop from './components/ScrollToTop.jsx'
 
 import LandingPage from './pages/LandingPage.jsx'
+import PrivacyPage from './pages/PrivacyPage.jsx'
 import AuthPage from './pages/AuthPage.jsx'
 import OnboardingPage from './pages/OnboardingPage.jsx'
 import DashboardPage from './pages/DashboardPage.jsx'
@@ -46,6 +47,7 @@ export default function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/auth" element={<AuthPage />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
         {/* Onboarding: full screen, no sidebar, private */}
         <Route
           path="/onboarding"

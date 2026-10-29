@@ -1,4 +1,4 @@
-// PACK Extension — Content Script
+// PACK Extension: Content Script
 // Runs on every page at document_idle. Detects fashion product pages and
 // extracts product metadata without modifying the DOM or injecting UI.
 
@@ -178,10 +178,13 @@
   // This content script (which runs on every page, including /auth/extension-login)
   // picks it up and forwards it to the background service worker, which writes
   // the token to chrome.storage.local. The sidepanel listens to storage changes.
+  // Only PACK's own site may do this: otherwise any page could sign the
+  // extension into someone else's account.
 
   window.addEventListener('message', (event) => {
     if (event.source !== window) return
-    if (event.data?.type === 'PACK_EXTENSION_AUTH' && event.data?.token) {
+    if (!PACK_CONFIG.authOrigins.includes(event.origin)) return
+    if (event.data?.type === 'PACK_EXTENSION_AUTH' && typeof event.data?.token === 'string') {
       chrome.runtime.sendMessage({
         type: 'STORE_TOKEN',
         token: event.data.token,

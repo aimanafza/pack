@@ -1907,7 +1907,7 @@ Return ONLY valid JSON — no preamble, no markdown fences:
   "outfit_combinations": [
     {
       "name": "evocative outfit name",
-      "items": ["wardrobe_item_id_or_description"],
+      "items": ["the exact ID of each wardrobe piece in the look, copied from the ID: field (not the product itself)"],
       "occasion": "casual / dinner / travel / etc",
       "styling_note": "one sentence on the look"
     }
@@ -1917,7 +1917,37 @@ Return ONLY valid JSON — no preamble, no markdown fences:
   "style_expansion_note": "one sentence on whether this is a smart expansion or random departure",
   "brand_quality_note": "what you know about this brand's quality and any known issues",
   "verdict": "honest 2-3 sentence verdict ending with a genuine question"
-}"""
+}
+
+Never use em dashes in any text you write; use commas or full stops instead."""
+
+
+def _resolve_wardrobe_ref(ref: str, wardrobe: list) -> dict | None:
+    """Match an outfit item to a wardrobe piece: by ID, or by name when the
+    model writes a description like "daily wear top (cream wool)" instead."""
+    ref = (ref or "").strip()
+    by_id = next((item for item in wardrobe if item["id"] == ref), None)
+    if by_id:
+        return by_id
+    lowered = ref.lower()
+    # Longest name first, so "silk skirt" doesn't win over "grey silk skirt"
+    for item in sorted(wardrobe, key=lambda i: len(i.get("name", "")), reverse=True):
+        name = (item.get("name") or "").strip().lower()
+        # The name itself, or the name followed by a description ("sambas, white")
+        if name and (lowered == name or lowered.startswith((name + " ", name + ",", name + " ("))):
+            return item
+    return None
+
+
+def _without_em_dashes(value):
+    """PACK copy never uses em dashes; clean them out of model-written text."""
+    if isinstance(value, str):
+        return value.replace(" — ", ", ").replace("—", ", ")
+    if isinstance(value, list):
+        return [_without_em_dashes(v) for v in value]
+    if isinstance(value, dict):
+        return {k: _without_em_dashes(v) for k, v in value.items()}
+    return value
 
 
 async def analyse_purchase(product: dict, wardrobe: list, style_context: dict) -> dict:
@@ -1990,19 +2020,21 @@ Analyse this purchase honestly."""
         messages=[{"role": "user", "content": content_blocks}],
     )
 
-    result = _safe_json_loads(response.content[0].text.strip())
+    result = _without_em_dashes(_safe_json_loads(response.content[0].text.strip()))
 
-    # Build outfit collages: product image first, then matched wardrobe item images
-    wardrobe_map = {item["id"]: item.get("image_url", "") for item in wardrobe}
+    # Build outfit collages: product image first, then up to three wardrobe pieces.
+    # Image URLs always come from the wardrobe itself, never from the model.
     outfit_collages = []
     for combo in result.get("outfit_combinations", [])[:3]:
         urls: list[str] = []
         if product.get("image_url"):
             urls.append(product["image_url"])
-        for ref in combo.get("items", [])[:3]:
-            img = wardrobe_map.get(ref, "")
-            if img:
-                urls.append(img)
+        for ref in combo.get("items", []):
+            piece = _resolve_wardrobe_ref(str(ref), wardrobe)
+            if piece and piece.get("image_url") and piece["image_url"] not in urls:
+                urls.append(piece["image_url"])
+            if len(urls) == 4:
+                break
         outfit_collages.append(urls)
 
     result["outfit_collages"] = outfit_collages
