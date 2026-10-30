@@ -145,6 +145,14 @@ export default function QuickView({ item, onClose, onDelete }) {
             )}
 
             {item.notes && <p className={styles.notes}>{item.notes}</p>}
+            {item.source_url && (
+              <p className={styles.source}>
+                Source:{' '}
+                <a href={item.source_url} target="_blank" rel="noopener noreferrer" className={styles.sourceLink}>
+                  {item.source_label || 'Original listing'}
+                </a>
+              </p>
+            )}
 
             <div className={styles.actions}>
               <Link to={`/wardrobe/${itemId}`} className={styles.detailsLink} onClick={onClose}>

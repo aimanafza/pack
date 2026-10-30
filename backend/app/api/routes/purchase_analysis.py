@@ -418,7 +418,10 @@ async def _auto_add_to_wardrobe(
             occasions=metadata.get("occasions", []),
             season=metadata.get("season", []),
             weight_grams=metadata.get("weight_grams", 300),
-            notes=f"Added from purchase analysis. Source: {product_url}",
+            source_url=product_url,
+            source_label=" ".join(
+                part for part in (analysis.brand, metadata.get("subcategory") or "") if part
+            ) or product_name,
             image_url=cloudinary_url,
             cloudinary_public_id=upload_result.get("public_id", ""),
         )

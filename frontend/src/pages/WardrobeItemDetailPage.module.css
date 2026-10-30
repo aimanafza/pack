@@ -733,3 +733,23 @@
   line-height: var(--leading-relaxed);
   margin: 0;
 }
+
+/* Where a piece bought after a purchase check came from; the name opens the shop page */
+.source {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: var(--text-md);
+  font-weight: 300;
+  color: var(--color-text-secondary);
+  margin: var(--space-4) 0 0;
+}
+
+.sourceLink {
+  color: var(--color-text-primary);
+  font-weight: 400;
+  transition: color 0.15s;
+}
+
+.sourceLink:hover {
+  color: var(--color-text-secondary);
+}
