@@ -145,13 +145,7 @@ export default function ShoppingAnalysisPage() {
       <div className={styles.layout}>
         {/* Left — product image */}
         <div className={styles.imageCol}>
-          {/* The piece itself opens the shop's page */}
-          <a
-            href={analysis.product_url || undefined}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.productLink}
-          >
+          <div className={styles.productInfo}>
             {analysis.product_image_url ? (
               <div className={styles.imageWrap}>
                 <img
@@ -165,7 +159,7 @@ export default function ShoppingAnalysisPage() {
             )}
             {analysis.brand && <p className={styles.brand}>{analysis.brand}</p>}
             <p className={styles.productName}>{analysis.product_name || 'Product'}</p>
-          </a>
+          </div>
           {analysis.price && (
             <p className={styles.price}>{analysis.currency} {analysis.price}</p>
           )}

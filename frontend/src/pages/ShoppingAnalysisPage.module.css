@@ -94,17 +94,13 @@
 
 
 
-/* The photo and name open the shop's page */
-.productLink {
+/* The photo with its brand and name; the shop button below links out */
+.productInfo {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  color: inherit;
 }
 
-.productLink:hover .imageWrap {
-  border-color: var(--color-border-dark);
-}
 
 /* Solid black, like the app's primary actions */
 .shopBtn {
@@ -138,7 +134,7 @@
     position: static;
   }
 
-  .productLink {
+  .productInfo {
     display: grid;
     grid-template-columns: 112px 1fr;
     column-gap: var(--space-4);
@@ -146,8 +142,8 @@
     align-content: end;
   }
 
-  .productLink .imageWrap,
-  .productLink .imagePlaceholder {
+  .productInfo .imageWrap,
+  .productInfo .imagePlaceholder {
     grid-row: 1 / span 3;
   }
 
