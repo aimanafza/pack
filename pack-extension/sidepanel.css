@@ -158,8 +158,7 @@ html, body {
   font-size: 11px;
   color: var(--ink-muted);
   padding: 0;
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  text-decoration: none;
 }
 
 .btn-ghost:hover {
@@ -312,6 +311,11 @@ html, body {
   max-width: 220px;
 }
 
+.no-product-wrap .btn-secondary {
+  margin-top: 24px;
+  max-width: 220px;
+}
+
 /* ── Product card ──────────────────────────────────────────────────────── */
 
 .product-card {
@@ -397,32 +401,48 @@ html, body {
   border-bottom: 0.5px solid var(--border);
 }
 
+.score-item {
+  border-bottom: 0.5px solid var(--border);
+}
+
+.score-item:last-child {
+  border-bottom: none;
+}
+
 .score-row {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-height: 36px;
   padding: 6px 0;
-  border-bottom: 0.5px solid var(--border);
+  cursor: pointer;
+  list-style: none;
 }
 
-.score-row:last-child {
-  border-bottom: none;
+.score-row::-webkit-details-marker {
+  display: none;
+}
+
+.score-row:hover .score-label {
+  color: var(--ink);
 }
 
 .score-label {
   font-size: 10px;
-  font-weight: 500;
+  font-weight: 400;
   letter-spacing: 0.07em;
   text-transform: uppercase;
   color: var(--ink-muted);
   width: 112px;
   flex-shrink: 0;
+  transition: color 0.15s;
 }
 
+/* Thin solid bars: a pale track with the score filled in ink */
 .score-bar-track {
   flex: 1;
-  height: 1.5px;
-  background: var(--border);
+  height: 9px;
+  background: var(--surface-2);
   position: relative;
 }
 
@@ -444,13 +464,48 @@ html, body {
   flex-shrink: 0;
 }
 
-.score-row.overall .score-label {
+.score-chevron {
+  flex-shrink: 0;
+  color: var(--ink-muted);
+  transition: transform 0.2s ease;
+}
+
+.score-item[open] .score-chevron {
+  transform: rotate(180deg);
+}
+
+/* The open score reads as the one you're looking at */
+.score-item[open] .score-label,
+.score-item[open] .score-chevron {
   color: var(--ink);
+}
+
+.score-item[open] .score-label {
   font-weight: 500;
 }
 
-.score-row.overall .score-bar-fill {
-  background: var(--ink);
+.score-item.overall .score-label {
+  color: var(--ink);
+}
+
+.score-detail {
+  padding: 2px 4px 12px 0;
+}
+
+.score-detail-label {
+  margin-top: 8px;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.score-detail-text {
+  margin-top: 3px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--ink-secondary);
 }
 
 /* ── Verdict ───────────────────────────────────────────────────────────── */
@@ -534,6 +589,17 @@ html, body {
   border-color: var(--ink);
 }
 
+.expansion-reply {
+  margin-top: 12px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--ink-secondary);
+}
+
+.expansion-reply:empty {
+  display: none;
+}
+
 .expansion-btn.selected {
   background: var(--ink);
   color: #fff;
@@ -550,32 +616,93 @@ html, body {
   margin-bottom: 20px;
 }
 
-.outfit-collage {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4px;
-  margin-bottom: 10px;
-}
-
-.outfit-collage-item {
-  aspect-ratio: 1;
-  background: var(--surface-white);
+/* The avatar wearing the look, at the 4:5 shape shopping looks are made in */
+.look-figure {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  background: var(--surface-2);
   border: 0.5px solid var(--border);
   overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  margin-bottom: 8px;
 }
 
-.outfit-collage-item img {
+.look-photo {
+  position: relative;
   width: 100%;
   height: 100%;
   object-fit: contain;
   display: block;
 }
 
-.outfit-collage-item.empty {
-  background: var(--surface-2);
+.look-backdrop {
+  position: absolute;
+  top: -30px;
+  left: -30px;
+  width: calc(100% + 60px);
+  height: calc(100% + 60px);
+  object-fit: fill;
+  filter: blur(24px);
+}
+
+.look-wait {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  text-align: center;
+}
+
+.look-wait p {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+
+.look-wait .btn-secondary {
+  width: auto;
+}
+
+.look-wait .look-error {
+  font-family: var(--font-ui);
+  font-style: normal;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+/* The pieces the look is made of: the new one first, then yours */
+.look-pieces {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.look-piece {
+  aspect-ratio: 1;
+  background: var(--surface-white);
+  border: 0.5px solid var(--border);
+  overflow: hidden;
+}
+
+.look-piece.is-new {
+  border-color: var(--ink);
+}
+
+.look-piece img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.looks-empty {
+  padding: 20px 0;
+  font-size: 12px;
+  color: var(--ink-muted);
 }
 
 .outfit-name {

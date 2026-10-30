@@ -379,6 +379,14 @@ export default function WardrobeItemDetailPage() {
             {item.notes && (
               <p className={styles.notes}>{item.notes}</p>
             )}
+            {item.source_url && (
+              <p className={styles.source}>
+                Source:{' '}
+                <a href={item.source_url} target="_blank" rel="noopener noreferrer" className={styles.sourceLink}>
+                  {item.source_label || 'Original listing'}
+                </a>
+              </p>
+            )}
 
             {confirmingDelete ? (
               <div className={styles.confirmBox}>

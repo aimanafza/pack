@@ -72,8 +72,7 @@
 
 .reviewLink:hover {
   color: var(--color-text-primary);
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  text-decoration: none;
 }
 
 .reviewLink:focus-visible {

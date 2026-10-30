@@ -102,8 +102,7 @@
   border: none;
   cursor: pointer;
   padding: 0;
-  text-decoration: underline;
-  text-underline-offset: 2px;
+  text-decoration: none;
 }
 
 .forgotLink:hover {
@@ -132,8 +131,7 @@
   font: inherit;
   font-weight: 500;
   color: var(--color-text-secondary);
-  text-decoration: underline;
-  text-underline-offset: 2px;
+  text-decoration: none;
   transition: color 0.15s;
 }
 

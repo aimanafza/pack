@@ -34,7 +34,7 @@ class ItemUpdateBody(BaseModel):
 async def get_wardrobe(current_user: User = Depends(get_current_user)):
     # Newest first, so freshly added pieces are at the top of the wardrobe
     items = await WardrobeItem.find(WardrobeItem.user_id == current_user.id).sort(-WardrobeItem.created_at).to_list()
-    return {"success": True, "data": [item.model_dump() for item in items], "message": ""}
+    return {"success": True, "data": [item.with_source().model_dump() for item in items], "message": ""}
 
 
 @router.get("/usage")
@@ -191,7 +191,7 @@ async def get_item(item_id: str, current_user: User = Depends(get_current_user))
     item = await WardrobeItem.get(item_id)
     if not item or item.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Item not found")
-    return {"success": True, "data": item.model_dump(), "message": ""}
+    return {"success": True, "data": item.with_source().model_dump(), "message": ""}
 
 
 @router.put("/{item_id}")
@@ -200,8 +200,10 @@ async def update_item(item_id: str, body: ItemUpdateBody, current_user: User = D
     if not item or item.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Item not found")
     updates = body.model_dump(exclude_none=True)
-    if updates:
-        await item.set(updates)
+    # An edit saves the upgraded source too, so an old shop link survives new notes
+    item.with_source()
+    updates = {"source_url": item.source_url, "source_label": item.source_label, "notes": item.notes, **updates}
+    await item.set(updates)
     return {"success": True, "data": item.model_dump(), "message": "Item updated"}
 
 

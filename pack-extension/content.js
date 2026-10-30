@@ -1,4 +1,4 @@
-// PACK Extension — Content Script
+// PACK Extension: Content Script
 // Runs on every page at document_idle. Detects fashion product pages and
 // extracts product metadata without modifying the DOM or injecting UI.
 
@@ -142,7 +142,8 @@
 
     if (matchCount < 2) {
       chrome.runtime.sendMessage({ type: 'NO_PRODUCT' })
-      return
+      document.getElementById('pack-float-btn')?.remove()
+      return false
     }
 
     // Merge data with priority: JSON-LD > OG > page fallbacks
@@ -171,6 +172,7 @@
     })
 
     injectFloatingButton()
+    return true
   }
 
   // ── Auth bridge relay ────────────────────────────────────────────────────
@@ -178,10 +180,13 @@
   // This content script (which runs on every page, including /auth/extension-login)
   // picks it up and forwards it to the background service worker, which writes
   // the token to chrome.storage.local. The sidepanel listens to storage changes.
+  // Only PACK's own site may do this: otherwise any page could sign the
+  // extension into someone else's account.
 
   window.addEventListener('message', (event) => {
     if (event.source !== window) return
-    if (event.data?.type === 'PACK_EXTENSION_AUTH' && event.data?.token) {
+    if (!PACK_CONFIG.authOrigins.includes(event.origin)) return
+    if (event.data?.type === 'PACK_EXTENSION_AUTH' && typeof event.data?.token === 'string') {
       chrome.runtime.sendMessage({
         type: 'STORE_TOKEN',
         token: event.data.token,
@@ -265,10 +270,31 @@
     document.body.appendChild(btn)
   }
 
-  // Run detection. Small delay to let JS-rendered meta tags settle.
-  if (document.readyState === 'complete') {
-    setTimeout(detect, 300)
-  } else {
-    window.addEventListener('load', () => setTimeout(detect, 300))
+  // ── When to look ─────────────────────────────────────────────────────────
+  // Many shops build the page with JavaScript, so product details can arrive
+  // after load: look a few times before settling on "no product".
+  // They also move between pages without reloading (listing, then product), so
+  // watch the address and look again whenever it changes.
+  let attempt = 0
+
+  function detectWithRetries() {
+    const found = detect()
+    const delays = [1500, 4000]
+    if (!found && attempt < delays.length) setTimeout(detectWithRetries, delays[attempt++])
   }
+
+  function start() {
+    attempt = 0
+    setTimeout(detectWithRetries, 300)
+  }
+
+  let lastUrl = location.href
+  setInterval(() => {
+    if (location.href === lastUrl) return
+    lastUrl = location.href
+    start()
+  }, 1000)
+
+  if (document.readyState === 'complete') start()
+  else window.addEventListener('load', start)
 })()

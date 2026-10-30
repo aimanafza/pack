@@ -1,53 +1,27 @@
-// PACK Extension — Service Worker
-// Manages product detection state and side panel lifecycle per tab.
+// PACK Extension: Service Worker
+// Keeps track of the product found on each tab and opens the side panel.
+// There is one panel per window; it reads the current tab's product from
+// session storage and follows you as you switch tabs.
 
-// MV3 correct pattern: automatically open the side panel when the action icon is clicked.
+// Clicking the toolbar icon opens the panel on any page, product or not.
 // Must be called at service worker startup, not inside a listener.
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {})
 
 chrome.runtime.onMessage.addListener((message, sender) => {
-  if (message.type === 'PRODUCT_DETECTED') {
-    // Enable side panel for this specific tab and store product data
-    chrome.sidePanel.setOptions({
-      tabId: sender.tab.id,
-      enabled: true,
-    })
-    chrome.storage.session.set({
-      [`product_${sender.tab.id}`]: message.data,
-    })
-  } else if (message.type === 'NO_PRODUCT') {
-    chrome.sidePanel.setOptions({
-      tabId: sender.tab.id,
-      enabled: false,
-    })
-  } else if (message.type === 'STORE_TOKEN') {
-    // Relayed from content script after the PACK web app posts PACK_EXTENSION_AUTH.
-    // Writing to storage triggers chrome.storage.onChanged in the sidepanel.
+  const tabId = sender.tab?.id
+  if (message.type === 'PRODUCT_DETECTED' && tabId != null) {
+    chrome.storage.session.set({ [`product_${tabId}`]: message.data })
+  } else if (message.type === 'NO_PRODUCT' && tabId != null) {
+    chrome.storage.session.remove(`product_${tabId}`)
+  } else if (message.type === 'STORE_TOKEN' && typeof message.token === 'string') {
+    // Relayed by the content script from textpack.co after sign-in (it checks the origin).
+    // Writing to storage triggers chrome.storage.onChanged in the side panel.
     chrome.storage.local.set({ pack_auth_token: message.token })
-  } else if (message.type === 'OPEN_PANEL') {
-    // Fired by the floating button injected into the product page
-    chrome.sidePanel.setOptions({
-      tabId: sender.tab.id,
-      path: 'sidepanel.html',
-      enabled: true,
-    }, () => {
-      chrome.sidePanel.open({ tabId: sender.tab.id }).catch(() => {})
-    })
+  } else if (message.type === 'OPEN_PANEL' && sender.tab) {
+    // Fired by the floating button on product pages. Called straight away so
+    // Chrome still counts it as part of the click.
+    chrome.sidePanel.open({ windowId: sender.tab.windowId }).catch(() => {})
   }
-})
-
-// Open side panel when extension icon is clicked.
-// setOptions must be called first to register the panel for the tab before open().
-chrome.action.onClicked.addListener((tab) => {
-  chrome.sidePanel.setOptions({
-    tabId: tab.id,
-    path: 'sidepanel.html',
-    enabled: true,
-  }, () => {
-    chrome.sidePanel.open({ tabId: tab.id }).catch(() => {
-      // Side panel may already be open — ignore
-    })
-  })
 })
 
 // Clean up stored product data when a tab is closed

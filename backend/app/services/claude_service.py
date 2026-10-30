@@ -936,6 +936,8 @@ def _wardrobe_photos_only(urls: list) -> list:
 # them (lookbook, approved looks) can match it exactly with no empty bands.
 # fal's nano-banana-pro/edit reads aspect_ratio; it ignores image_size.
 LOOK_ASPECT_RATIO = "2:3"
+# Shopping looks sit two across in a shorter frame, so they're made at its shape
+SHOP_LOOK_ASPECT_RATIO = "4:5"
 
 
 async def run_fal_generation(prompt: str, photo_urls: list[str]) -> list[str]:
@@ -1079,7 +1081,8 @@ Rules:
 
 
 async def generate_lookbook_image(
-    outfit, user_avatar, trip, style_aesthetics: list[str]
+    outfit, user_avatar, trip, style_aesthetics: list[str], max_items: int = 3,
+    aspect_ratio: str = LOOK_ASPECT_RATIO,
 ) -> Optional[str]:
     """Generate a clean studio lookbook image. Called once per outfit, result stored on outfit document."""
     import fal_client
@@ -1140,7 +1143,7 @@ White background only. No location context."""
             f"No avatar base_url for outfit '{outfit.name}' — "
             f"lookbook will generate a generic person"
         )
-    reference_urls.extend(item_image_urls[:3])
+    reference_urls.extend(item_image_urls[:max_items])
 
     if not reference_urls:
         logger.warning(f"No reference URLs at all for '{outfit.name}', skipping")
@@ -1153,7 +1156,7 @@ White background only. No location context."""
             "prompt": prompt,
             "image_urls": _wardrobe_photos_only(reference_urls),
             "num_images": 1,
-            "aspect_ratio": LOOK_ASPECT_RATIO,
+            "aspect_ratio": aspect_ratio,
         },
     )
     images = result.get("images", [])
@@ -1161,6 +1164,26 @@ White background only. No location context."""
         logger.warning(f"fal.ai returned no images for lookbook '{outfit.name}'")
         return None
     return images[0]["url"]
+
+
+async def stage_product_image(url: str) -> Optional[str]:
+    """Copy a shop's product photo to fal's storage so image generation can read it.
+    Shops often refuse requests that don't look like a browser, so fetch it ourselves."""
+    import fal_client
+    import os
+    os.environ["FAL_KEY"] = settings.FAL_API_KEY
+    headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"}
+    try:
+        async with httpx.AsyncClient(timeout=20, follow_redirects=True, headers=headers) as http:
+            r = await http.get(url)
+            r.raise_for_status()
+        content_type = r.headers.get("content-type", "image/jpeg").split(";")[0].strip()
+        if not content_type.startswith("image/"):
+            content_type = "image/jpeg"
+        return await asyncio.to_thread(fal_client.upload, r.content, content_type)
+    except Exception as e:
+        logger.error(f"stage_product_image failed for {url}: {e}")
+        return None
 
 
 async def generate_single_outfit_image(outfit, user_avatar, trip, style_aesthetics: list[str]) -> Optional[str]:
@@ -1903,11 +1926,19 @@ Return ONLY valid JSON — no preamble, no markdown fences:
     "cost_per_outfit": 0-10,
     "overall": 0-10
   },
+  "score_notes": {
+    "versatility": "one or two sentences on why this piece got this score, naming pieces from their wardrobe where it helps",
+    "style_alignment": "same, for style fit",
+    "gap_fill": "same, for gap fill",
+    "quality": "same, for brand quality",
+    "cost_per_outfit": "same, for cost per outfit",
+    "overall": "same, for the overall score"
+  },
   "outfit_count": integer,
   "outfit_combinations": [
     {
       "name": "evocative outfit name",
-      "items": ["wardrobe_item_id_or_description"],
+      "items": ["the exact ID of each wardrobe piece in the look, copied from the ID: field (not the product itself)"],
       "occasion": "casual / dinner / travel / etc",
       "styling_note": "one sentence on the look"
     }
@@ -1917,7 +1948,67 @@ Return ONLY valid JSON — no preamble, no markdown fences:
   "style_expansion_note": "one sentence on whether this is a smart expansion or random departure",
   "brand_quality_note": "what you know about this brand's quality and any known issues",
   "verdict": "honest 2-3 sentence verdict ending with a genuine question"
-}"""
+}
+
+Never use em dashes in any text you write; use commas or full stops instead."""
+
+
+SCORE_KEYS = ("versatility", "style_alignment", "gap_fill", "quality", "cost_per_outfit", "color_harmony", "overall")
+
+_SCORE_NOTES_SYSTEM = """You explain a fashion purchase analysis to the shopper, one score at a time.
+For each score given, write one or two plain sentences on why this piece got that number,
+specific to this piece and to their wardrobe: name their pieces where it helps. Speak to
+them as "you". Never use em dashes. Return ONLY JSON mapping each score key to its note."""
+
+
+async def explain_scores(analysis: dict, wardrobe_names: list[str]) -> dict:
+    """Write the per-score explanations for an analysis saved before they existed."""
+    scores = {k: v for k, v in (analysis.get("scores") or {}).items() if k in SCORE_KEYS and v is not None}
+    if not scores:
+        return {}
+    prompt = f"""Piece: {analysis.get('brand', '')} {analysis.get('product_name', '')}, {analysis.get('price', '')} {analysis.get('currency', '')}
+Scores (0 to 10): {json.dumps(scores)}
+Outfits it makes: {analysis.get('outfit_count', 0)}
+Verdict already given: {analysis.get('verdict', '')}
+Brand quality read: {analysis.get('brand_quality_note', '')}
+Style read: {analysis.get('style_expansion_note', '')}
+Their wardrobe: {', '.join(wardrobe_names[:80])}"""
+    response = await client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=900,
+        system=_SCORE_NOTES_SYSTEM,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    notes = _safe_json_loads(response.content[0].text.strip())
+    return {k: v for k, v in _without_em_dashes(notes).items() if k in scores and isinstance(v, str)}
+
+
+def _resolve_wardrobe_ref(ref: str, wardrobe: list) -> dict | None:
+    """Match an outfit item to a wardrobe piece: by ID, or by name when the
+    model writes a description like "daily wear top (cream wool)" instead."""
+    ref = (ref or "").strip()
+    by_id = next((item for item in wardrobe if item["id"] == ref), None)
+    if by_id:
+        return by_id
+    lowered = ref.lower()
+    # Longest name first, so "silk skirt" doesn't win over "grey silk skirt"
+    for item in sorted(wardrobe, key=lambda i: len(i.get("name", "")), reverse=True):
+        name = (item.get("name") or "").strip().lower()
+        # The name itself, or the name followed by a description ("sambas, white")
+        if name and (lowered == name or lowered.startswith((name + " ", name + ",", name + " ("))):
+            return item
+    return None
+
+
+def _without_em_dashes(value):
+    """PACK copy never uses em dashes; clean them out of model-written text."""
+    if isinstance(value, str):
+        return value.replace(" — ", ", ").replace("—", ", ")
+    if isinstance(value, list):
+        return [_without_em_dashes(v) for v in value]
+    if isinstance(value, dict):
+        return {k: _without_em_dashes(v) for k, v in value.items()}
+    return value
 
 
 async def analyse_purchase(product: dict, wardrobe: list, style_context: dict) -> dict:
@@ -1985,24 +2076,26 @@ Analyse this purchase honestly."""
 
     response = await client.messages.create(
         model="claude-sonnet-4-6",
-        max_tokens=2000,
+        max_tokens=2800,
         system=PURCHASE_ANALYSIS_SYSTEM_PROMPT,
         messages=[{"role": "user", "content": content_blocks}],
     )
 
-    result = _safe_json_loads(response.content[0].text.strip())
+    result = _without_em_dashes(_safe_json_loads(response.content[0].text.strip()))
 
-    # Build outfit collages: product image first, then matched wardrobe item images
-    wardrobe_map = {item["id"]: item.get("image_url", "") for item in wardrobe}
+    # Build outfit collages: product image first, then up to three wardrobe pieces.
+    # Image URLs always come from the wardrobe itself, never from the model.
     outfit_collages = []
     for combo in result.get("outfit_combinations", [])[:3]:
         urls: list[str] = []
         if product.get("image_url"):
             urls.append(product["image_url"])
-        for ref in combo.get("items", [])[:3]:
-            img = wardrobe_map.get(ref, "")
-            if img:
-                urls.append(img)
+        for ref in combo.get("items", []):
+            piece = _resolve_wardrobe_ref(str(ref), wardrobe)
+            if piece and piece.get("image_url") and piece["image_url"] not in urls:
+                urls.append(piece["image_url"])
+            if len(urls) == 4:
+                break
         outfit_collages.append(urls)
 
     result["outfit_collages"] = outfit_collages

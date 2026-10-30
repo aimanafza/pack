@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import api from '../utils/api.js'
 import styles from './ShoppingHistoryPage.module.css'
 
@@ -10,7 +10,6 @@ const TABS = [
 ]
 
 export default function ShoppingHistoryPage() {
-  const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('pending')
   const [analyses, setAnalyses] = useState([])
   const [loading, setLoading] = useState(true)
@@ -140,14 +139,16 @@ export default function ShoppingHistoryPage() {
                       </div>
                     )}
                   </div>
-                  <button
-                    className={styles.viewBtn}
-                    onClick={() => navigate(`/profile/shopping/${id}`)}
-                    type="button"
-                    aria-label="View full analysis"
+                  {/* Only this square opens the analysis */}
+                  <Link
+                    to={`/profile/shopping/${id}`}
+                    className={styles.openSquare}
+                    aria-label={`Open the analysis of ${analysis.product_name || 'this piece'}`}
                   >
-                    →
-                  </button>
+                    <svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14" fill="none">
+                      <path d="M8.5 2.5h3v3M11.5 2.5 7.5 6.5M5.5 11.5h-3v-3M2.5 11.5l4-4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </Link>
                 </div>
 
                 {/* Pending: did you buy this? */}
