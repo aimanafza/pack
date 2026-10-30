@@ -67,9 +67,17 @@ function useAnalysis(analysis) {
   state.analysis = analysis
   state.analysisId = analysis?.id || analysis?._id || null
   state.expansionAnswer = analysis?.expansion_answer || null
-  state.lookImages = { ...(analysis?.look_images || {}) }
+  applyLookState(analysis)
   state.error = null
   renderView('results')
+  if (Object.keys(state.dressing).length) watchLooks()
+}
+
+// Looks are dressed on the server: copy what it says is ready, in progress or failed
+function applyLookState(analysis) {
+  state.lookImages = { ...(analysis?.look_images || {}) }
+  state.dressing = Object.fromEntries(Object.keys(analysis?.look_pending || {}).map((k) => [k, true]))
+  state.lookErrors = { ...(analysis?.look_errors || {}) }
 }
 
 // ── Follow the shopper ────────────────────────────────────────────────────────
@@ -215,7 +223,8 @@ async function startLooks() {
   renderView('looks')
 }
 
-// Put the shopper's avatar in one outfit. Made once on the server, then kept.
+// Ask the server to put the shopper's avatar in one outfit. It keeps going if the
+// panel closes or the tab changes; the panel just checks back for the result.
 async function dressLook(index) {
   if (!state.analysisId || state.dressing[index] || state.lookImages[index]) return
   state.dressing[index] = true
@@ -223,14 +232,41 @@ async function dressLook(index) {
   updateLookFigure(index)
   try {
     const res = await apiPost(`/purchase-analysis/${state.analysisId}/looks/${index}/on-me`, {})
-    state.lookImages[index] = res.data?.image_url
+    if (res.data?.image_url) {
+      state.lookImages[index] = res.data.image_url
+      delete state.dressing[index]
+    }
   } catch (err) {
     if (!state.token) return
+    delete state.dressing[index]
     state.lookErrors[index] = err.message
-  } finally {
-    state.dressing[index] = false
-    updateLookFigure(index)
   }
+  updateLookFigure(index)
+  if (state.dressing[index]) watchLooks()
+}
+
+// Check back every few seconds while any look is still being dressed
+let lookWatch = null
+
+function watchLooks() {
+  if (lookWatch) return
+  lookWatch = setInterval(async () => {
+    const id = state.analysisId
+    if (!id || !Object.keys(state.dressing).length) {
+      clearInterval(lookWatch)
+      lookWatch = null
+      return
+    }
+    try {
+      const res = await apiGet(`/purchase-analysis/${id}`)
+      if (state.analysisId !== id) return  // moved on to another product meanwhile
+      state.analysis = res.data
+      applyLookState(res.data)
+      ;(state.analysis?.outfit_combinations || []).forEach((_, i) => updateLookFigure(i))
+    } catch {
+      // Try again on the next tick
+    }
+  }, 4000)
 }
 
 async function sendExpansionAnswer(answer) {

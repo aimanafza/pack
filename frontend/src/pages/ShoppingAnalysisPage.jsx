@@ -19,12 +19,27 @@ export default function ShoppingAnalysisPage() {
   const [analysis, setAnalysis] = useState(null)
   const [loading, setLoading] = useState(true)
   const [addingToWardrobe, setAddingToWardrobe] = useState(false)
-  const [dressing, setDressing] = useState({})      // look position -> true while the avatar is dressed
-  const [lookErrors, setLookErrors] = useState({})  // look position -> what went wrong
+  const [startErrors, setStartErrors] = useState({})  // look position -> why it couldn't start (e.g. no avatar yet)
 
   useEffect(() => {
     fetchAnalysis()
   }, [analysis_id])
+
+  // Looks are dressed on the server, so leaving this page never stops them. While
+  // any are in progress, check back every few seconds to pick up the finished image.
+  const dressingKeys = Object.keys(analysis?.look_pending || {})
+  useEffect(() => {
+    if (!dressingKeys.length) return
+    const timer = setInterval(async () => {
+      try {
+        const { data } = await api.get(`/api/v1/purchase-analysis/${analysis_id}`)
+        setAnalysis(data.data)
+      } catch {
+        // Try again on the next tick
+      }
+    }, 4000)
+    return () => clearInterval(timer)
+  }, [analysis_id, dressingKeys.join(',')])
 
   async function fetchAnalysis() {
     setLoading(true)
@@ -50,18 +65,21 @@ export default function ShoppingAnalysisPage() {
     }
   }
 
-  // Picture the avatar in one look. Made once on the server, then kept on the analysis.
+  // Ask the server to dress the avatar in one look; it carries on even if you leave
   async function dressLook(index) {
-    setDressing((d) => ({ ...d, [index]: true }))
-    setLookErrors((e) => ({ ...e, [index]: '' }))
+    setStartErrors((e) => ({ ...e, [index]: '' }))
     try {
       const { data } = await api.post(`/api/v1/purchase-analysis/${analysis_id}/looks/${index}/on-me`)
-      setAnalysis((prev) => ({ ...prev, look_images: { ...(prev.look_images || {}), [index]: data.data.image_url } }))
+      const look = data.data || {}
+      setAnalysis((prev) => ({
+        ...prev,
+        look_images: look.image_url ? { ...(prev.look_images || {}), [index]: look.image_url } : prev.look_images,
+        look_pending: look.status === 'dressing' ? { ...(prev.look_pending || {}), [index]: new Date().toISOString() } : prev.look_pending,
+        look_errors: { ...(prev.look_errors || {}), [index]: '' },
+      }))
     } catch (err) {
       const detail = err.response?.data?.detail
-      setLookErrors((e) => ({ ...e, [index]: typeof detail === 'string' ? detail : "Couldn't dress your avatar this time. Try again." }))
-    } finally {
-      setDressing((d) => ({ ...d, [index]: false }))
+      setStartErrors((e) => ({ ...e, [index]: typeof detail === 'string' ? detail : "Couldn't dress your avatar this time. Try again." }))
     }
   }
 
@@ -196,13 +214,15 @@ export default function ShoppingAnalysisPage() {
                           <img src={analysis.look_images[i]} alt={`Your avatar wearing ${combo.name || 'this look'}`} />
                         ) : (
                           <div className={styles.lookWait}>
-                            {dressing[i] ? (
+                            {analysis.look_pending?.[i] ? (
                               <p className={styles.lookWaitText}>Dressing your avatar…</p>
                             ) : (
                               <>
-                                {lookErrors[i] && <p className={styles.lookError}>{lookErrors[i]}</p>}
+                                {(startErrors[i] || analysis.look_errors?.[i]) && (
+                                  <p className={styles.lookError}>{startErrors[i] || analysis.look_errors[i]}</p>
+                                )}
                                 <button type="button" className={styles.dressBtn} onClick={() => dressLook(i)}>
-                                  {lookErrors[i] ? 'Try again' : 'See it on me'}
+                                  {startErrors[i] || analysis.look_errors?.[i] ? 'Try again' : 'See it on me'}
                                 </button>
                               </>
                             )}
