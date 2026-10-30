@@ -129,7 +129,7 @@ export default function ShoppingAnalysisPage() {
               rel="noopener noreferrer"
               className={styles.shopBtn}
             >
-              {shopHost ? `Shop on ${shopHost}` : 'Shop this piece'}
+              {analysis.brand ? `Shop at ${analysis.brand}` : shopHost ? `Shop on ${shopHost}` : 'Shop this piece'}
             </a>
           )}
         </div>

@@ -109,6 +109,7 @@
 /* Quiet outlined button, like the app's secondary actions */
 .shopBtn {
   display: inline-flex;
+  white-space: nowrap;
   align-items: center;
   align-self: flex-start;
   min-height: 44px;
@@ -126,6 +127,32 @@
 
 .shopBtn:hover {
   border-color: var(--color-text-primary);
+}
+
+/* Phone: the column scrolls with the page, and the piece becomes a compact row
+   (photo beside its name) so the analysis starts on the first screen */
+@media (max-width: 767px) {
+  .imageCol {
+    position: static;
+  }
+
+  .productLink {
+    display: grid;
+    grid-template-columns: 112px 1fr;
+    column-gap: var(--space-4);
+    row-gap: var(--space-1);
+    align-content: end;
+  }
+
+  .productLink .imageWrap,
+  .productLink .imagePlaceholder {
+    grid-row: 1 / span 3;
+  }
+
+  .shopBtn {
+    align-self: stretch;
+    justify-content: center;
+  }
 }
 
 /* ── Analysis column ─────────────────────────────────────────────────────── */
