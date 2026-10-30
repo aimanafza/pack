@@ -426,7 +426,12 @@ function refreshScoreNotes() {
 // One look: the avatar wearing it (or a way to get that), then the pieces it's made of
 function lookFigureHtml(index) {
   const image = state.lookImages[index]
-  if (image) return `<img src="${esc(image)}" alt="Your avatar wearing this look">`
+  // Shown whole over a blurred copy of itself: a 4:5 look fills the frame exactly,
+  // an older, taller one gets its own studio backdrop at the sides
+  if (image) {
+    return `<img class="look-backdrop" src="${esc(image)}" alt="" aria-hidden="true">
+      <img class="look-photo" src="${esc(image)}" alt="Your avatar wearing this look">`
+  }
   if (state.dressing[index]) {
     return `<div class="look-wait"><div class="loading-spinner"></div><p>Dressing your avatar…</p></div>`
   }

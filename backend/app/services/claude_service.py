@@ -936,6 +936,8 @@ def _wardrobe_photos_only(urls: list) -> list:
 # them (lookbook, approved looks) can match it exactly with no empty bands.
 # fal's nano-banana-pro/edit reads aspect_ratio; it ignores image_size.
 LOOK_ASPECT_RATIO = "2:3"
+# Shopping looks sit two across in a shorter frame, so they're made at its shape
+SHOP_LOOK_ASPECT_RATIO = "4:5"
 
 
 async def run_fal_generation(prompt: str, photo_urls: list[str]) -> list[str]:
@@ -1079,7 +1081,8 @@ Rules:
 
 
 async def generate_lookbook_image(
-    outfit, user_avatar, trip, style_aesthetics: list[str], max_items: int = 3
+    outfit, user_avatar, trip, style_aesthetics: list[str], max_items: int = 3,
+    aspect_ratio: str = LOOK_ASPECT_RATIO,
 ) -> Optional[str]:
     """Generate a clean studio lookbook image. Called once per outfit, result stored on outfit document."""
     import fal_client
@@ -1153,7 +1156,7 @@ White background only. No location context."""
             "prompt": prompt,
             "image_urls": _wardrobe_photos_only(reference_urls),
             "num_images": 1,
-            "aspect_ratio": LOOK_ASPECT_RATIO,
+            "aspect_ratio": aspect_ratio,
         },
     )
     images = result.get("images", [])

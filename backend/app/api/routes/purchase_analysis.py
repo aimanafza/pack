@@ -12,6 +12,7 @@ from app.models.item import WardrobeItem
 from app.services.claude_service import (
     analyse_purchase,
     generate_lookbook_image,
+    SHOP_LOOK_ASPECT_RATIO,
     stage_product_image,
     _resolve_wardrobe_ref,
     explain_scores,
@@ -416,7 +417,9 @@ async def _dress_look(analysis_id: str, index: int, user_id: str):
             + [SimpleNamespace(name=p["name"], category=p["category"], image_url=p["image_url"]) for p in pieces[:3]],
         )
         aesthetics = user.preferences.style_aesthetics if user.preferences else []
-        image_url = await generate_lookbook_image(outfit, user.avatar, None, aesthetics, max_items=4)
+        image_url = await generate_lookbook_image(
+            outfit, user.avatar, None, aesthetics, max_items=4, aspect_ratio=SHOP_LOOK_ASPECT_RATIO,
+        )
     except Exception as e:
         logging.getLogger(__name__).error(f"Dressing look {key} of analysis {analysis_id} failed: {e}")
         image_url = None

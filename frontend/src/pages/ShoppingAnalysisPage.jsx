@@ -261,7 +261,7 @@ export default function ShoppingAnalysisPage() {
                     <div key={i} className={styles.outfitBlock}>
                       <div className={styles.lookFigure}>
                         {analysis.look_images?.[i] ? (
-                          <LookPhoto whole src={analysis.look_images[i]} alt={`Your avatar wearing ${combo.name || 'this look'}`} />
+                          <LookPhoto ratio={4 / 5} src={analysis.look_images[i]} alt={`Your avatar wearing ${combo.name || 'this look'}`} />
                         ) : (
                           <div className={styles.lookWait}>
                             {analysis.look_pending?.[i] ? (

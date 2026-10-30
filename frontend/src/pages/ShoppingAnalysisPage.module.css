@@ -352,7 +352,6 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  container-type: inline-size;
 }
 
 .collageGrid {
@@ -364,19 +363,12 @@
 /* The avatar wearing the look, at PACK's 2:3 look shape */
 .lookFigure {
   width: 100%;
-  /* Full 2:3 when there's room, but never taller than most of the screen; the
-     photo then shows whole with its own blurred backdrop at the sides */
-  height: min(150cqw, 62vh);
+  /* Shopping looks are made at 4:5, a little shorter than trip looks, so two
+     fit side by side on a laptop screen */
+  aspect-ratio: 4 / 5;
   background: var(--color-bg-secondary);
   border: var(--border-thin);
   overflow: hidden;
-}
-
-@media (max-width: 900px) {
-  .lookFigure {
-    height: auto;
-    aspect-ratio: 2 / 3;
-  }
 }
 
 .lookWait {

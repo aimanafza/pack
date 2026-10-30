@@ -5,14 +5,14 @@ import styles from './LookPhoto.module.css'
 // Some older looks are taller than that: cropping them would cut off the head or
 // shoes, so they're shown whole, with a blurred copy of the same photo behind them
 // filling the sides with its own studio backdrop instead of an empty band.
-// `whole` always shows the full photo that way, for frames that aren't 2:3.
-export default function LookPhoto({ src, alt, className = '', whole = false }) {
-  const [narrow, setNarrow] = useState(false)
-  const tall = whole || narrow
+// `ratio` is the frame's width / height when it isn't 2:3 (shopping looks are 4:5);
+// photos made at the frame's shape fill it, older ones show whole the same way.
+export default function LookPhoto({ src, alt, className = '', ratio = 2 / 3 }) {
+  const [tall, setTall] = useState(false)
 
   function handleLoad(e) {
     const img = e.currentTarget
-    setNarrow(img.naturalWidth / img.naturalHeight < 0.66)
+    setTall(img.naturalWidth / img.naturalHeight < ratio * 0.99)
   }
 
   return (
