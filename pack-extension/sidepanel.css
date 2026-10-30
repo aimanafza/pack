@@ -441,7 +441,7 @@ html, body {
 /* Thin solid bars: a pale track with the score filled in ink */
 .score-bar-track {
   flex: 1;
-  height: 5px;
+  height: 9px;
   background: var(--surface-2);
   position: relative;
 }

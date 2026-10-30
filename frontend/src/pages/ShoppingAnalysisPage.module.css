@@ -241,7 +241,7 @@
 /* Thin solid bars: a pale track with the score filled in ink */
 .scoreTrack {
   flex: 1;
-  height: 6px;
+  height: 10px;
   background: var(--color-bg-tertiary);
   position: relative;
   display: block;
