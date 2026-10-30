@@ -74,7 +74,10 @@
   color: var(--color-text-primary);
 }
 
-.tabActive {
+/* The selected tab keeps white on black, hovered or not (the hover rule above
+   would otherwise turn its text black too) */
+.tabActive,
+.tabActive:hover {
   background: var(--color-text-primary);
   color: var(--color-text-inverse);
   border-color: var(--color-text-primary);
