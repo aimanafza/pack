@@ -538,6 +538,17 @@ html, body {
   border-color: var(--ink);
 }
 
+.expansion-reply {
+  margin-top: 12px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--ink-secondary);
+}
+
+.expansion-reply:empty {
+  display: none;
+}
+
 .expansion-btn.selected {
   background: var(--ink);
   color: #fff;
@@ -554,32 +565,81 @@ html, body {
   margin-bottom: 20px;
 }
 
-.outfit-collage {
+/* The avatar wearing the look, at the same 2:3 shape PACK makes every look */
+.look-figure {
+  aspect-ratio: 2 / 3;
+  background: var(--surface-2);
+  border: 0.5px solid var(--border);
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.look-figure img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.look-wait {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  text-align: center;
+}
+
+.look-wait p {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+
+.look-wait .btn-secondary {
+  width: auto;
+}
+
+.look-wait .look-error {
+  font-family: var(--font-ui);
+  font-style: normal;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+/* The pieces the look is made of: the new one first, then yours */
+.look-pieces {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(4, 1fr);
   gap: 4px;
   margin-bottom: 10px;
 }
 
-.outfit-collage-item {
+.look-piece {
   aspect-ratio: 1;
   background: var(--surface-white);
   border: 0.5px solid var(--border);
   overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
-.outfit-collage-item img {
+.look-piece.is-new {
+  border-color: var(--ink);
+}
+
+.look-piece img {
   width: 100%;
   height: 100%;
   object-fit: contain;
   display: block;
 }
 
-.outfit-collage-item.empty {
-  background: var(--surface-2);
+.looks-empty {
+  padding: 20px 0;
+  font-size: 12px;
+  color: var(--ink-muted);
 }
 
 .outfit-name {

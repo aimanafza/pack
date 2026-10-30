@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 from typing import Optional
@@ -7,10 +8,62 @@ from beanie import PydanticObjectId
 from app.models.purchase_analysis import PurchaseAnalysis, ScoreBreakdown, OutfitCombination
 from app.models.user import User
 from app.models.item import WardrobeItem
-from app.services.claude_service import analyse_purchase
+from app.services.claude_service import (
+    analyse_purchase,
+    generate_lookbook_image,
+    stage_product_image,
+    _resolve_wardrobe_ref,
+    _without_em_dashes,
+)
 from app.api.deps import get_current_user
 
 router = APIRouter()
+
+
+def _same_product(url: str) -> str:
+    """A product page's address without tracking bits, so the same shoe from an ad,
+    a search or a reload counts as one product."""
+    from urllib.parse import urlsplit
+    parts = urlsplit((url or "").strip())
+    return f"{parts.netloc.lower().removeprefix('www.')}{parts.path.rstrip('/').lower()}"
+
+
+async def _saved_analysis(user: User, product_url: str) -> Optional[PurchaseAnalysis]:
+    """The shopper's most recent analysis of this product, if they've checked it before."""
+    key = _same_product(product_url)
+    if not key:
+        return None
+    analyses = await PurchaseAnalysis.find(PurchaseAnalysis.user_id == user.id).sort(-PurchaseAnalysis.created_at).to_list()
+    return next((a for a in analyses if _same_product(a.product_url) == key), None)
+
+
+async def _with_pieces(analysis: PurchaseAnalysis, user: User) -> PurchaseAnalysis:
+    """Analyses saved before outfit pieces were matched properly only hold the
+    product's own photo. Rebuild those outfits from the wardrobe once and keep them."""
+    if not analysis.outfit_combinations or all(len(c) > 1 for c in analysis.outfit_collages):
+        return analysis
+    wardrobe = await WardrobeItem.find(WardrobeItem.user_id == user.id).to_list()
+    wardrobe_dicts = [{"id": str(w.id), "name": w.name, "image_url": w.image_url} for w in wardrobe]
+    collages = []
+    for combo in analysis.outfit_combinations[:3]:
+        urls = [analysis.product_image_url] if analysis.product_image_url else []
+        for ref in combo.items:
+            piece = _resolve_wardrobe_ref(str(ref), wardrobe_dicts)
+            if piece and piece.get("image_url") and piece["image_url"] not in urls:
+                urls.append(piece["image_url"])
+            if len(urls) == 4:
+                break
+        collages.append(urls)
+    if collages != analysis.outfit_collages:
+        analysis.outfit_collages = collages
+        await analysis.save()
+    return analysis
+
+
+def _public(analysis: PurchaseAnalysis) -> dict:
+    """An analysis as the app and extension see it. Older analyses were saved
+    with em dashes in the writing; PACK copy never shows them."""
+    return _without_em_dashes(analysis.model_dump(mode="json"))
 
 
 class AnalyseRequest(BaseModel):
@@ -28,6 +81,12 @@ async def analyse_purchase_endpoint(
     background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
 ):
+    # Checked this product before? Hand back that analysis instead of paying for a new one
+    saved = await _saved_analysis(current_user, body.product_url)
+    if saved:
+        saved = await _with_pieces(saved, current_user)
+        return {"success": True, "data": _public(saved)}
+
     wardrobe = await WardrobeItem.find(
         WardrobeItem.user_id == current_user.id
     ).to_list()
@@ -103,7 +162,7 @@ async def analyse_purchase_endpoint(
 
     background_tasks.add_task(_update_shopping_profile, str(current_user.id))
 
-    return {"success": True, "data": analysis.model_dump(mode="json")}
+    return {"success": True, "data": _public(analysis)}
 
 
 @router.post("/looks")
@@ -163,9 +222,21 @@ async def update_expansion_answer(
     analysis = await PurchaseAnalysis.get(PydanticObjectId(analysis_id))
     if not analysis or str(analysis.user_id) != str(current_user.id):
         raise HTTPException(status_code=404, detail="Analysis not found")
-    analysis.expansion_answer = body.get("answer", "")
+    answer = body.get("answer", "")
+    if answer not in ("exploring", "impulse"):
+        raise HTTPException(status_code=400, detail="Answer with exploring or impulse.")
+    analysis.expansion_answer = answer
     await analysis.save()
-    return {"success": True}
+
+    # Refresh the impulse ratio now, so the next verdict already knows about it,
+    # and tell the shopper where they stand
+    await _update_shopping_profile(str(current_user.id))
+    answered = await PurchaseAnalysis.find(
+        PurchaseAnalysis.user_id == current_user.id,
+        {"expansion_answer": {"$in": ["exploring", "impulse"]}},
+    ).to_list()
+    impulse = sum(1 for a in answered if a.expansion_answer == "impulse")
+    return {"success": True, "data": {"impulse": impulse, "answered": len(answered)}}
 
 
 @router.patch("/{analysis_id}/bought")
@@ -197,12 +268,21 @@ async def update_bought_status(
     return {"success": True}
 
 
+@router.get("/for-product")
+async def get_analysis_for_product(url: str, current_user: User = Depends(get_current_user)):
+    """The shopper's saved analysis of a product page, or null if they haven't checked it."""
+    saved = await _saved_analysis(current_user, url)
+    if saved:
+        saved = await _with_pieces(saved, current_user)
+    return {"success": True, "data": _public(saved) if saved else None}
+
+
 @router.get("/me")
 async def get_my_analyses(current_user: User = Depends(get_current_user)):
     analyses = await PurchaseAnalysis.find(
         PurchaseAnalysis.user_id == current_user.id
     ).sort(-PurchaseAnalysis.created_at).to_list()
-    return {"success": True, "data": [a.model_dump(mode="json") for a in analyses]}
+    return {"success": True, "data": [_public(a) for a in analyses]}
 
 
 @router.get("/{analysis_id}")
@@ -213,7 +293,65 @@ async def get_analysis(
     analysis = await PurchaseAnalysis.get(PydanticObjectId(analysis_id))
     if not analysis or str(analysis.user_id) != str(current_user.id):
         raise HTTPException(status_code=404, detail="Analysis not found")
-    return {"success": True, "data": analysis.model_dump(mode="json")}
+    analysis = await _with_pieces(analysis, current_user)
+    return {"success": True, "data": _public(analysis)}
+
+
+@router.post("/{analysis_id}/looks/{index}/on-me")
+async def dress_avatar_in_look(
+    analysis_id: str,
+    index: int,
+    current_user: User = Depends(get_current_user),
+):
+    """Picture the shopper's avatar in one of the analysis's outfits: the product
+    plus the wardrobe pieces it was styled with. Made once, then kept on the analysis."""
+    analysis = await PurchaseAnalysis.get(PydanticObjectId(analysis_id))
+    if not analysis or str(analysis.user_id) != str(current_user.id):
+        raise HTTPException(status_code=404, detail="Analysis not found")
+    if not 0 <= index < len(analysis.outfit_combinations):
+        raise HTTPException(status_code=404, detail="That look isn't part of this analysis.")
+
+    key = str(index)
+    if analysis.look_images.get(key):
+        return {"success": True, "data": {"image_url": analysis.look_images[key]}}
+
+    if not current_user.avatar or not current_user.avatar.base_url:
+        raise HTTPException(status_code=409, detail="Create your avatar in PACK first, then your looks will show on you.")
+
+    wardrobe = await WardrobeItem.find(WardrobeItem.user_id == current_user.id).to_list()
+    wardrobe_dicts = [
+        {"id": str(w.id), "name": w.name, "category": w.category, "image_url": w.image_url}
+        for w in wardrobe
+    ]
+    combo = analysis.outfit_combinations[index]
+    pieces = []
+    for ref in combo.items:
+        piece = _resolve_wardrobe_ref(str(ref), wardrobe_dicts)
+        if piece and piece.get("image_url") and piece not in pieces:
+            pieces.append(piece)
+
+    product_image = await stage_product_image(analysis.product_image_url) if analysis.product_image_url else None
+    if not product_image:
+        raise HTTPException(status_code=502, detail="Couldn't load the product photo from the shop. Try again in a moment.")
+
+    outfit = SimpleNamespace(
+        name=combo.name or "Look",
+        items=[SimpleNamespace(name=analysis.product_name or "the new piece", category="new piece", image_url=product_image)]
+        + [SimpleNamespace(name=p["name"], category=p["category"], image_url=p["image_url"]) for p in pieces[:3]],
+    )
+    aesthetics = current_user.preferences.style_aesthetics if current_user.preferences else []
+    try:
+        image_url = await generate_lookbook_image(outfit, current_user.avatar, None, aesthetics, max_items=4)
+    except Exception:
+        image_url = None
+    if not image_url:
+        raise HTTPException(status_code=502, detail="Couldn't dress your avatar this time. Try again.")
+
+    # Re-read before saving so two looks made at once don't overwrite each other
+    fresh = await PurchaseAnalysis.get(analysis.id)
+    fresh.look_images[key] = image_url
+    await fresh.save()
+    return {"success": True, "data": {"image_url": image_url}}
 
 
 # ── Background tasks ──────────────────────────────────────────────────────────

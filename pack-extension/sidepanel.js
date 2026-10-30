@@ -16,6 +16,10 @@ let state = {
   analysisId: null,
   looks: null,
   expansionAnswer: null,
+  expansionStats: null,   // { impulse, answered } once the shopper answers
+  lookImages: {},         // outfit position -> image of the avatar wearing it
+  dressing: {},           // outfit position -> true while that image is being made
+  lookErrors: {},         // outfit position -> what went wrong
   tabId: null,
   windowId: null,
   error: null,
@@ -43,7 +47,29 @@ async function init() {
     state.product = session[`product_${state.tabId}`] || null
   }
 
-  renderView(state.product ? 'product' : 'no-product')
+  await showProduct()
+}
+
+// Open on the saved analysis when this product has been checked before, so a
+// reload or a second visit never pays for the same analysis twice
+async function showProduct() {
+  if (!state.product) return renderView('no-product')
+  renderView('product')
+  try {
+    const res = await apiGet(`/purchase-analysis/for-product?url=${encodeURIComponent(state.product.url)}`)
+    if (res.data && state.view === 'product') useAnalysis(res.data)
+  } catch {
+    // No saved analysis to show; the product view already offers a fresh one
+  }
+}
+
+function useAnalysis(analysis) {
+  state.analysis = analysis
+  state.analysisId = analysis?.id || analysis?._id || null
+  state.expansionAnswer = analysis?.expansion_answer || null
+  state.lookImages = { ...(analysis?.look_images || {}) }
+  state.error = null
+  renderView('results')
 }
 
 // ── Follow the shopper ────────────────────────────────────────────────────────
@@ -55,12 +81,20 @@ async function showTab(tabId) {
   state.tabId = tabId
   const session = await chrome.storage.session.get(`product_${tabId}`)
   state.product = session[`product_${tabId}`] || null
+  resetProductState()
+  if (state.token) showProduct()
+}
+
+function resetProductState() {
   state.analysis = null
   state.analysisId = null
   state.looks = null
   state.expansionAnswer = null
+  state.expansionStats = null
+  state.lookImages = {}
+  state.dressing = {}
+  state.lookErrors = {}
   state.error = null
-  if (state.token) renderView(state.product ? 'product' : 'no-product')
 }
 
 chrome.tabs.onActivated.addListener(({ tabId, windowId }) => {
@@ -74,7 +108,8 @@ chrome.storage.onChanged.addListener((changes, area) => {
   const change = changes[`product_${state.tabId}`]
   if (change && SETTLED_VIEWS.includes(state.view)) {
     state.product = change.newValue || null
-    if (state.token) renderView(state.product ? 'product' : 'no-product')
+    resetProductState()
+    if (state.token) showProduct()
   }
 })
 
@@ -87,9 +122,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
     state.token = changes.pack_auth_token.newValue
     state.signedOutNote = null
     // Re-render only if we were sitting on the login screen waiting for auth
-    if (state.view === 'login') {
-      renderView(state.product ? 'product' : 'no-product')
-    }
+    if (state.view === 'login') showProduct()
   }
 })
 
@@ -102,6 +135,15 @@ async function signedOut() {
   state.signedOutNote = 'Your sign-in expired. Connect again to keep going.'
   renderView('login')
   throw new Error('signed out')
+}
+
+async function apiGet(path) {
+  const res = await fetch(`${PACK_API_BASE}${path}`, {
+    headers: { Authorization: `Bearer ${state.token}` },
+  })
+  if (res.status === 401) return signedOut()
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json()
 }
 
 async function apiPost(path, body) {
@@ -155,9 +197,7 @@ async function startAnalysis() {
       currency: state.product.currency || 'USD',
       brand: state.product.brand || '',
     })
-    state.analysis = res.data
-    state.analysisId = res.data?.id || res.data?._id || null
-    renderView('results')
+    useAnalysis(res.data)
   } catch (err) {
     if (!state.token) return  // signed out: the connect screen is already showing
     state.error = err.message
@@ -166,42 +206,56 @@ async function startAnalysis() {
 }
 
 async function startLooks() {
-  // An analysis already holds the outfits; show those rather than running a second one
-  if (state.analysis?.outfit_collages?.length) {
-    state.looks = state.analysis
-    renderView('looks')
-    return
+  // Looks come from the analysis, so run (and save) one first if there isn't one yet
+  if (!state.analysis) {
+    await startAnalysis()
+    if (!state.analysis) return
   }
+  state.looks = state.analysis
+  renderView('looks')
+}
 
-  renderView('analysing')
-
+// Put the shopper's avatar in one outfit. Made once on the server, then kept.
+async function dressLook(index) {
+  if (!state.analysisId || state.dressing[index] || state.lookImages[index]) return
+  state.dressing[index] = true
+  delete state.lookErrors[index]
+  updateLookFigure(index)
   try {
-    const res = await apiPost('/purchase-analysis/looks', {
-      product_url: state.product.url,
-      product_name: state.product.name,
-      product_image_url: state.product.image,
-      price: state.product.price ? parseFloat(state.product.price) : null,
-      currency: state.product.currency || 'USD',
-      brand: state.product.brand || '',
-    })
-    state.looks = res.data
-    renderView('looks')
+    const res = await apiPost(`/purchase-analysis/${state.analysisId}/looks/${index}/on-me`, {})
+    state.lookImages[index] = res.data?.image_url
   } catch (err) {
     if (!state.token) return
-    state.error = err.message
-    renderView('looks')
+    state.lookErrors[index] = err.message
+  } finally {
+    state.dressing[index] = false
+    updateLookFigure(index)
   }
 }
 
 async function sendExpansionAnswer(answer) {
   state.expansionAnswer = answer
-  if (state.analysisId) {
-    await apiPatch(`/purchase-analysis/${state.analysisId}/expansion`, { answer })
-      .catch(() => {})
-  }
-  if (!state.token) return
-  // Re-render results with answer selected
   renderView('results')
+  if (!state.analysisId) return
+  try {
+    const res = await apiPatch(`/purchase-analysis/${state.analysisId}/expansion`, { answer })
+    state.expansionStats = res.data || null
+  } catch {
+    state.expansionStats = null
+  }
+  if (!state.token || state.view !== 'results') return
+  const reply = document.getElementById('expansion-reply')
+  if (reply) reply.innerHTML = expansionReplyHtml()
+}
+
+function expansionReplyHtml() {
+  if (!state.expansionAnswer) return ''
+  const lead = state.expansionAnswer === 'impulse' ? 'Thanks for being honest.' : 'Noted as a considered buy.'
+  const st = state.expansionStats
+  const tally = st && st.answered
+    ? ` That's ${st.impulse} impulse moment${st.impulse === 1 ? '' : 's'} in ${st.answered} check${st.answered === 1 ? '' : 's'}.`
+    : ''
+  return `${lead}${tally} PACK keeps this in mind for your next verdicts.`
 }
 
 async function saveToHistory() {
@@ -279,27 +333,42 @@ function scoreBarsHtml(scores) {
   return `<div class="scores-section">${rows.join('')}</div>`
 }
 
-function outfitCollageHtml(collage, outfitName, occasions, stylingNote) {
-  const tiles = [...(collage || [])].slice(0, 4)
-  // Pad to 4 tiles
-  while (tiles.length < 4) tiles.push(null)
-  const tileHtml = tiles.map((url) =>
-    url
-      ? `<div class="outfit-collage-item"><img src="${esc(url)}" alt="" loading="lazy"></div>`
-      : `<div class="outfit-collage-item empty"></div>`
-  ).join('')
+// One look: the avatar wearing it (or a way to get that), then the pieces it's made of
+function lookFigureHtml(index) {
+  const image = state.lookImages[index]
+  if (image) return `<img src="${esc(image)}" alt="Your avatar wearing this look">`
+  if (state.dressing[index]) {
+    return `<div class="look-wait"><div class="loading-spinner"></div><p>Dressing your avatar…</p></div>`
+  }
+  const error = state.lookErrors[index]
+  return `
+    <div class="look-wait">
+      ${error ? `<p class="look-error">${esc(error)}</p>` : ''}
+      <button class="btn-secondary look-dress" data-look="${index}">${error ? 'Try again' : 'See it on me'}</button>
+    </div>`
+}
 
-  const tagsHtml = (occasions || []).map((t) =>
-    `<span class="occasion-tag">${esc(t)}</span>`
+function lookBlockHtml(index, pieces, outfitName, occasion, stylingNote) {
+  const piecesHtml = pieces.map((url, i) =>
+    `<div class="look-piece ${i === 0 ? 'is-new' : ''}"><img src="${esc(url)}" alt="" loading="lazy"></div>`
   ).join('')
-
   return `
     <div class="outfit-block">
-      <div class="outfit-collage">${tileHtml}</div>
+      <div class="look-figure" id="look-figure-${index}">${lookFigureHtml(index)}</div>
+      ${piecesHtml ? `<div class="look-pieces">${piecesHtml}</div>` : ''}
       ${outfitName ? `<p class="outfit-name">${esc(outfitName)}</p>` : ''}
-      ${tagsHtml ? `<div class="outfit-occasions">${tagsHtml}</div>` : ''}
+      ${occasion ? `<div class="outfit-occasions"><span class="occasion-tag">${esc(occasion)}</span></div>` : ''}
       ${stylingNote ? `<p class="outfit-note">${esc(stylingNote)}</p>` : ''}
     </div>`
+}
+
+// Swap just one look's picture, so the panel doesn't jump while others load
+function updateLookFigure(index) {
+  if (state.view !== 'looks') return
+  const el = document.getElementById(`look-figure-${index}`)
+  if (!el) return
+  el.innerHTML = lookFigureHtml(index)
+  el.querySelector('.look-dress')?.addEventListener('click', () => dressLook(index))
 }
 
 function esc(str) {
@@ -421,7 +490,7 @@ function renderProduct() {
     ${productCardHtml(state.product)}
     <div class="product-actions">
       <button class="btn-primary" id="btn-analyse">Analyse this purchase</button>
-      <button class="btn-secondary" id="btn-looks">Generate looks with my wardrobe</button>
+      <button class="btn-secondary" id="btn-looks">See looks on me</button>
     </div>`
 }
 
@@ -456,6 +525,7 @@ function renderResults() {
         <button class="expansion-btn ${state.expansionAnswer === 'impulse' ? 'selected' : ''}"
           id="btn-impulse">Honest, maybe impulse</button>
       </div>
+      <p class="expansion-reply" id="expansion-reply" aria-live="polite">${expansionReplyHtml()}</p>
     </div>`
 
   // Archetype + brand notes
@@ -484,7 +554,7 @@ function renderResults() {
     ${brandHtml}
     <div class="results-actions">
       <button class="btn-primary" id="btn-save">Save to shopping history</button>
-      <button class="btn-secondary" id="btn-to-looks">Generate looks →</button>
+      <button class="btn-secondary" id="btn-to-looks">See looks on me</button>
     </div>`
 }
 
@@ -497,52 +567,42 @@ function bindResults() {
 
 // ── Looks ─────────────────────────────────────────────────────────────────────
 function renderLooks() {
-  const errorHtml = state.error
-    ? `<div class="error-banner">${esc(state.error)}</div>`
-    : ''
+  const collages = state.looks?.outfit_collages || []
+  const combos = state.looks?.outfit_combinations || []
 
-  const looksData = state.looks?.outfit_collages || state.looks?.outfits || []
-  const outfitCombinations = state.looks?.outfit_combinations || []
-
-  let collagesHtml = ''
-  if (looksData.length > 0) {
-    collagesHtml = looksData.slice(0, 3).map((collage, i) => {
-      const combo = outfitCombinations[i] || {}
-      // The server puts the product first, then the wardrobe pieces
-      const urls = Array.isArray(collage) ? collage.filter(Boolean) : []
-      const tiles = urls.length ? urls : [state.product?.image].filter(Boolean)
-      return outfitCollageHtml(
-        tiles,
-        combo.name || `Look ${i + 1}`,
-        combo.occasion ? [combo.occasion] : [],
-        combo.styling_note || ''
-      )
-    }).join('')
-  } else if (!state.error) {
-    collagesHtml = `<p style="padding:20px 18px;font-size:12px;color:var(--ink-muted)">No looks generated yet.</p>`
-  }
+  const looksHtml = combos.length
+    ? combos.slice(0, 3).map((combo, i) => {
+        // The server puts the product first, then the wardrobe pieces
+        const pieces = (collages[i] || []).filter(Boolean)
+        return lookBlockHtml(i, pieces.length ? pieces : [state.product?.image].filter(Boolean),
+          combo.name || `Look ${i + 1}`, combo.occasion || '', combo.styling_note || '')
+      }).join('')
+    : `<p class="looks-empty">No looks for this piece yet.</p>`
 
   return `
     ${header('Looks')}
-    ${errorHtml}
     ${productCardHtml(state.product)}
     <div class="looks-section">
-      <div class="section-label">Outfits with your wardrobe</div>
-      ${collagesHtml}
+      <div class="section-label">On you, with your wardrobe</div>
+      ${looksHtml}
     </div>
     <div class="results-actions">
       <button class="btn-primary" id="btn-open-pack">View full analysis in PACK</button>
-      ${state.analysis ? '<button class="btn-secondary" id="btn-back-results">← See analysis</button>' : ''}
+      <button class="btn-secondary" id="btn-back-results">Back to analysis</button>
     </div>`
 }
 
 function bindLooks() {
   document.getElementById('btn-open-pack')?.addEventListener('click', () => {
-    chrome.tabs.create({ url: `${PACK_WEB_URL}/profile/shopping` })
+    const path = state.analysisId ? `/profile/shopping/${state.analysisId}` : '/profile/shopping'
+    chrome.tabs.create({ url: `${PACK_WEB_URL}${path}` })
   })
-  document.getElementById('btn-back-results')?.addEventListener('click', () => {
-    if (state.analysis) renderView('results')
-  })
+  document.getElementById('btn-back-results')?.addEventListener('click', () => renderView('results'))
+  document.querySelectorAll('.look-dress').forEach((btn) =>
+    btn.addEventListener('click', () => dressLook(Number(btn.dataset.look)))
+  )
+  // The first look dresses itself; the rest wait to be asked, so nobody pays for looks they skip
+  if ((state.looks?.outfit_combinations || []).length) dressLook(0)
 }
 
 // ── Kick off ──────────────────────────────────────────────────────────────────

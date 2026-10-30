@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import api from '../utils/api.js'
 import styles from './ShoppingHistoryPage.module.css'
 
@@ -10,7 +10,6 @@ const TABS = [
 ]
 
 export default function ShoppingHistoryPage() {
-  const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('pending')
   const [analyses, setAnalyses] = useState([])
   const [loading, setLoading] = useState(true)
@@ -110,7 +109,8 @@ export default function ShoppingHistoryPage() {
             const isPassing = passingId === id
             return (
               <div key={id} className={styles.card}>
-                <div className={styles.cardTop}>
+                {/* The whole top of the card opens the analysis */}
+                <Link to={`/profile/shopping/${id}`} className={styles.cardTop}>
                   {analysis.product_image_url ? (
                     <img
                       src={analysis.product_image_url}
@@ -140,15 +140,12 @@ export default function ShoppingHistoryPage() {
                       </div>
                     )}
                   </div>
-                  <button
-                    className={styles.viewBtn}
-                    onClick={() => navigate(`/profile/shopping/${id}`)}
-                    type="button"
-                    aria-label="View full analysis"
-                  >
-                    →
-                  </button>
-                </div>
+                  <span className={styles.openSquare} aria-hidden="true">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                      <path d="M8.5 2.5h3v3M11.5 2.5 7.5 6.5M5.5 11.5h-3v-3M2.5 11.5l4-4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </span>
+                </Link>
 
                 {/* Pending: did you buy this? */}
                 {activeTab === 'pending' && !isPassing && (

@@ -19,6 +19,8 @@ export default function ShoppingAnalysisPage() {
   const [analysis, setAnalysis] = useState(null)
   const [loading, setLoading] = useState(true)
   const [addingToWardrobe, setAddingToWardrobe] = useState(false)
+  const [dressing, setDressing] = useState({})      // look position -> true while the avatar is dressed
+  const [lookErrors, setLookErrors] = useState({})  // look position -> what went wrong
 
   useEffect(() => {
     fetchAnalysis()
@@ -48,6 +50,21 @@ export default function ShoppingAnalysisPage() {
     }
   }
 
+  // Picture the avatar in one look. Made once on the server, then kept on the analysis.
+  async function dressLook(index) {
+    setDressing((d) => ({ ...d, [index]: true }))
+    setLookErrors((e) => ({ ...e, [index]: '' }))
+    try {
+      const { data } = await api.post(`/api/v1/purchase-analysis/${analysis_id}/looks/${index}/on-me`)
+      setAnalysis((prev) => ({ ...prev, look_images: { ...(prev.look_images || {}), [index]: data.data.image_url } }))
+    } catch (err) {
+      const detail = err.response?.data?.detail
+      setLookErrors((e) => ({ ...e, [index]: typeof detail === 'string' ? detail : "Couldn't dress your avatar this time. Try again." }))
+    } finally {
+      setDressing((d) => ({ ...d, [index]: false }))
+    }
+  }
+
   if (loading) {
     return (
       <div className={styles.loading}>
@@ -65,6 +82,10 @@ export default function ShoppingAnalysisPage() {
   }
 
   const scores = analysis.scores || {}
+  // Where the piece is sold, for the shop button: prada.com, not the full address
+  const shopHost = (() => {
+    try { return new URL(analysis.product_url).hostname.replace(/^www\./, '') } catch { return '' }
+  })()
   const scoreEntries = Object.entries(SCORE_LABELS)
     .filter(([key]) => scores[key] != null)
 
@@ -77,19 +98,27 @@ export default function ShoppingAnalysisPage() {
       <div className={styles.layout}>
         {/* Left — product image */}
         <div className={styles.imageCol}>
-          {analysis.product_image_url ? (
-            <div className={styles.imageWrap}>
-              <img
-                src={analysis.product_image_url}
-                alt={analysis.product_name}
-                className={styles.productImg}
-              />
-            </div>
-          ) : (
-            <div className={styles.imagePlaceholder} />
-          )}
-          {analysis.brand && <p className={styles.brand}>{analysis.brand}</p>}
-          <p className={styles.productName}>{analysis.product_name || 'Product'}</p>
+          {/* The piece itself opens the shop's page */}
+          <a
+            href={analysis.product_url || undefined}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.productLink}
+          >
+            {analysis.product_image_url ? (
+              <div className={styles.imageWrap}>
+                <img
+                  src={analysis.product_image_url}
+                  alt={analysis.product_name}
+                  className={styles.productImg}
+                />
+              </div>
+            ) : (
+              <div className={styles.imagePlaceholder} />
+            )}
+            {analysis.brand && <p className={styles.brand}>{analysis.brand}</p>}
+            <p className={styles.productName}>{analysis.product_name || 'Product'}</p>
+          </a>
           {analysis.price && (
             <p className={styles.price}>{analysis.currency} {analysis.price}</p>
           )}
@@ -98,9 +127,9 @@ export default function ShoppingAnalysisPage() {
               href={analysis.product_url}
               target="_blank"
               rel="noopener noreferrer"
-              className={styles.sourceLink}
+              className={styles.shopBtn}
             >
-              View original →
+              {shopHost ? `Shop on ${shopHost}` : 'Shop this piece'}
             </a>
           )}
         </div>
@@ -137,7 +166,7 @@ export default function ShoppingAnalysisPage() {
           {analysis.archetype_note && (
             <div className={styles.block}>
               <p className={styles.sectionLabel}>
-                Your archetype{analysis.archetype ? ` — ${analysis.archetype}` : ''}
+                Your archetype{analysis.archetype ? `: ${analysis.archetype}` : ''}
               </p>
               <p className={styles.noteText}>{analysis.archetype_note}</p>
             </div>
@@ -154,14 +183,32 @@ export default function ShoppingAnalysisPage() {
           {/* Outfit collages */}
           {analysis.outfit_collages?.length > 0 && (
             <div className={styles.block}>
-              <p className={styles.sectionLabel}>Outfits with your wardrobe</p>
+              <p className={styles.sectionLabel}>On you, with your wardrobe</p>
               <div className={styles.collages}>
                 {analysis.outfit_collages.slice(0, 3).map((collage, i) => {
                   const combo = (analysis.outfit_combinations || [])[i] || {}
-                  const tiles = [...(collage || [])].slice(0, 4)
-                  while (tiles.length < 4) tiles.push(null)
+                  // Only real pieces: the new one first, then up to three of yours
+                  const tiles = (collage || []).filter(Boolean).slice(0, 4)
                   return (
                     <div key={i} className={styles.outfitBlock}>
+                      <div className={styles.lookFigure}>
+                        {analysis.look_images?.[i] ? (
+                          <img src={analysis.look_images[i]} alt={`Your avatar wearing ${combo.name || 'this look'}`} />
+                        ) : (
+                          <div className={styles.lookWait}>
+                            {dressing[i] ? (
+                              <p className={styles.lookWaitText}>Dressing your avatar…</p>
+                            ) : (
+                              <>
+                                {lookErrors[i] && <p className={styles.lookError}>{lookErrors[i]}</p>}
+                                <button type="button" className={styles.dressBtn} onClick={() => dressLook(i)}>
+                                  {lookErrors[i] ? 'Try again' : 'See it on me'}
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
                       <div className={styles.collageGrid}>
                         {tiles.map((url, j) =>
                           url ? (

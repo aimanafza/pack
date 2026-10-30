@@ -1079,7 +1079,7 @@ Rules:
 
 
 async def generate_lookbook_image(
-    outfit, user_avatar, trip, style_aesthetics: list[str]
+    outfit, user_avatar, trip, style_aesthetics: list[str], max_items: int = 3
 ) -> Optional[str]:
     """Generate a clean studio lookbook image. Called once per outfit, result stored on outfit document."""
     import fal_client
@@ -1140,7 +1140,7 @@ White background only. No location context."""
             f"No avatar base_url for outfit '{outfit.name}' — "
             f"lookbook will generate a generic person"
         )
-    reference_urls.extend(item_image_urls[:3])
+    reference_urls.extend(item_image_urls[:max_items])
 
     if not reference_urls:
         logger.warning(f"No reference URLs at all for '{outfit.name}', skipping")
@@ -1161,6 +1161,26 @@ White background only. No location context."""
         logger.warning(f"fal.ai returned no images for lookbook '{outfit.name}'")
         return None
     return images[0]["url"]
+
+
+async def stage_product_image(url: str) -> Optional[str]:
+    """Copy a shop's product photo to fal's storage so image generation can read it.
+    Shops often refuse requests that don't look like a browser, so fetch it ourselves."""
+    import fal_client
+    import os
+    os.environ["FAL_KEY"] = settings.FAL_API_KEY
+    headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"}
+    try:
+        async with httpx.AsyncClient(timeout=20, follow_redirects=True, headers=headers) as http:
+            r = await http.get(url)
+            r.raise_for_status()
+        content_type = r.headers.get("content-type", "image/jpeg").split(";")[0].strip()
+        if not content_type.startswith("image/"):
+            content_type = "image/jpeg"
+        return await asyncio.to_thread(fal_client.upload, r.content, content_type)
+    except Exception as e:
+        logger.error(f"stage_product_image failed for {url}: {e}")
+        return None
 
 
 async def generate_single_outfit_image(outfit, user_avatar, trip, style_aesthetics: list[str]) -> Optional[str]:

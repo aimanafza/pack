@@ -1,6 +1,6 @@
 from beanie import Document, PydanticObjectId
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Optional, List, Dict
 from datetime import datetime
 
 
@@ -38,6 +38,7 @@ class PurchaseAnalysis(Document):
     outfit_count: int = 0
     outfit_combinations: List[OutfitCombination] = []
     outfit_collages: List[List[str]] = []   # list of image URL lists per outfit
+    look_images: Dict[str, str] = {}        # the shopper's avatar wearing an outfit, keyed by its position
     expansion_question_asked: bool = False
     expansion_answer: str = ""              # "exploring" | "impulse" | ""
     bought: Optional[bool] = None           # None = unanswered
