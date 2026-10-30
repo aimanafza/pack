@@ -319,7 +319,7 @@ function renderView(view) {
   switch (view) {
     case 'loading':     app.innerHTML = renderLoading();    break
     case 'login':       app.innerHTML = renderLogin();      bindLogin();     break
-    case 'no-product':  app.innerHTML = renderNoProduct();  break
+    case 'no-product':  app.innerHTML = renderNoProduct();  bindNoProduct(); break
     case 'product':     app.innerHTML = renderProduct();    bindProduct();   break
     case 'analysing':   app.innerHTML = renderAnalysing();  startLoadingCycle(); break
     case 'results':     app.innerHTML = renderResults();    bindResults();   break
@@ -401,9 +401,17 @@ function renderNoProduct() {
       </div>
       <p class="no-product-title">No product detected</p>
       <p class="no-product-body">
-        Navigate to a fashion product page and PACK will automatically detect the item.
+        Open a clothing or accessory page and PACK will find the piece. Already on one? Reload it so PACK can see it.
       </p>
+      <button class="btn-secondary" id="btn-reload">Reload this page</button>
     </div>`
+}
+
+function bindNoProduct() {
+  // Pages opened before PACK was installed never got checked; a reload fixes that
+  document.getElementById('btn-reload')?.addEventListener('click', () => {
+    if (state.tabId) chrome.tabs.reload(state.tabId)
+  })
 }
 
 // ── Product ───────────────────────────────────────────────────────────────────

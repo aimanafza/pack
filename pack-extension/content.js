@@ -142,7 +142,8 @@
 
     if (matchCount < 2) {
       chrome.runtime.sendMessage({ type: 'NO_PRODUCT' })
-      return
+      document.getElementById('pack-float-btn')?.remove()
+      return false
     }
 
     // Merge data with priority: JSON-LD > OG > page fallbacks
@@ -171,6 +172,7 @@
     })
 
     injectFloatingButton()
+    return true
   }
 
   // ── Auth bridge relay ────────────────────────────────────────────────────
@@ -268,10 +270,31 @@
     document.body.appendChild(btn)
   }
 
-  // Run detection. Small delay to let JS-rendered meta tags settle.
-  if (document.readyState === 'complete') {
-    setTimeout(detect, 300)
-  } else {
-    window.addEventListener('load', () => setTimeout(detect, 300))
+  // ── When to look ─────────────────────────────────────────────────────────
+  // Many shops build the page with JavaScript, so product details can arrive
+  // after load: look a few times before settling on "no product".
+  // They also move between pages without reloading (listing, then product), so
+  // watch the address and look again whenever it changes.
+  let attempt = 0
+
+  function detectWithRetries() {
+    const found = detect()
+    const delays = [1500, 4000]
+    if (!found && attempt < delays.length) setTimeout(detectWithRetries, delays[attempt++])
   }
+
+  function start() {
+    attempt = 0
+    setTimeout(detectWithRetries, 300)
+  }
+
+  let lastUrl = location.href
+  setInterval(() => {
+    if (location.href === lastUrl) return
+    lastUrl = location.href
+    start()
+  }, 1000)
+
+  if (document.readyState === 'complete') start()
+  else window.addEventListener('load', start)
 })()
