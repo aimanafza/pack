@@ -73,7 +73,7 @@
 .lead a,
 .text a {
   color: var(--color-text-primary);
-  text-underline-offset: 3px;
+  font-weight: 400;
 }
 
 .section {

@@ -158,8 +158,7 @@ html, body {
   font-size: 11px;
   color: var(--ink-muted);
   padding: 0;
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  text-decoration: none;
 }
 
 .btn-ghost:hover {

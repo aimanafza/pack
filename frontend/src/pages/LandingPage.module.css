@@ -363,8 +363,7 @@
 
 .footerLink {
   color: inherit;
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  text-decoration: none;
 }
 
 .footerLink:hover {

@@ -96,8 +96,7 @@
   font-family: var(--font-body);
   font-size: var(--text-xs);
   color: var(--color-text-tertiary);
-  text-decoration: underline;
-  text-underline-offset: 2px;
+  text-decoration: none;
   text-decoration-color: var(--color-border-medium);
   transition: color 0.15s;
 }

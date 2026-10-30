@@ -129,8 +129,7 @@
   font-family: var(--font-body);
   font-size: var(--text-xs);
   color: var(--color-text-primary);
-  text-decoration: underline;
-  text-underline-offset: 2px;
+  text-decoration: none;
   padding: 0;
 }
 

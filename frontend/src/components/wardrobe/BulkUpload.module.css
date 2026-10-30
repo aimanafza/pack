@@ -384,8 +384,7 @@
   text-transform: uppercase;
   letter-spacing: var(--tracking-wide);
   color: var(--color-text-primary);
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  text-decoration: none;
   cursor: pointer;
 }
 
