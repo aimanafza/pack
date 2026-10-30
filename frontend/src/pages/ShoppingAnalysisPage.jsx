@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import api from '../utils/api.js'
 import styles from './ShoppingAnalysisPage.module.css'
 import BackLink from '../components/ui/BackLink.jsx'
+import LookPhoto from '../components/looks/LookPhoto.jsx'
 
 const SCORE_LABELS = {
   versatility:     'Versatility',
@@ -260,7 +261,7 @@ export default function ShoppingAnalysisPage() {
                     <div key={i} className={styles.outfitBlock}>
                       <div className={styles.lookFigure}>
                         {analysis.look_images?.[i] ? (
-                          <img src={analysis.look_images[i]} alt={`Your avatar wearing ${combo.name || 'this look'}`} />
+                          <LookPhoto whole src={analysis.look_images[i]} alt={`Your avatar wearing ${combo.name || 'this look'}`} />
                         ) : (
                           <div className={styles.lookWait}>
                             {analysis.look_pending?.[i] ? (
