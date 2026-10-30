@@ -1923,6 +1923,14 @@ Return ONLY valid JSON — no preamble, no markdown fences:
     "cost_per_outfit": 0-10,
     "overall": 0-10
   },
+  "score_notes": {
+    "versatility": "one or two sentences on why this piece got this score, naming pieces from their wardrobe where it helps",
+    "style_alignment": "same, for style fit",
+    "gap_fill": "same, for gap fill",
+    "quality": "same, for brand quality",
+    "cost_per_outfit": "same, for cost per outfit",
+    "overall": "same, for the overall score"
+  },
   "outfit_count": integer,
   "outfit_combinations": [
     {
@@ -1940,6 +1948,36 @@ Return ONLY valid JSON — no preamble, no markdown fences:
 }
 
 Never use em dashes in any text you write; use commas or full stops instead."""
+
+
+SCORE_KEYS = ("versatility", "style_alignment", "gap_fill", "quality", "cost_per_outfit", "color_harmony", "overall")
+
+_SCORE_NOTES_SYSTEM = """You explain a fashion purchase analysis to the shopper, one score at a time.
+For each score given, write one or two plain sentences on why this piece got that number,
+specific to this piece and to their wardrobe: name their pieces where it helps. Speak to
+them as "you". Never use em dashes. Return ONLY JSON mapping each score key to its note."""
+
+
+async def explain_scores(analysis: dict, wardrobe_names: list[str]) -> dict:
+    """Write the per-score explanations for an analysis saved before they existed."""
+    scores = {k: v for k, v in (analysis.get("scores") or {}).items() if k in SCORE_KEYS and v is not None}
+    if not scores:
+        return {}
+    prompt = f"""Piece: {analysis.get('brand', '')} {analysis.get('product_name', '')}, {analysis.get('price', '')} {analysis.get('currency', '')}
+Scores (0 to 10): {json.dumps(scores)}
+Outfits it makes: {analysis.get('outfit_count', 0)}
+Verdict already given: {analysis.get('verdict', '')}
+Brand quality read: {analysis.get('brand_quality_note', '')}
+Style read: {analysis.get('style_expansion_note', '')}
+Their wardrobe: {', '.join(wardrobe_names[:80])}"""
+    response = await client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=900,
+        system=_SCORE_NOTES_SYSTEM,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    notes = _safe_json_loads(response.content[0].text.strip())
+    return {k: v for k, v in _without_em_dashes(notes).items() if k in scores and isinstance(v, str)}
 
 
 def _resolve_wardrobe_ref(ref: str, wardrobe: list) -> dict | None:
@@ -2035,7 +2073,7 @@ Analyse this purchase honestly."""
 
     response = await client.messages.create(
         model="claude-sonnet-4-6",
-        max_tokens=2000,
+        max_tokens=2800,
         system=PURCHASE_ANALYSIS_SYSTEM_PROMPT,
         messages=[{"role": "user", "content": content_blocks}],
     )

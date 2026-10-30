@@ -401,16 +401,30 @@ html, body {
   border-bottom: 0.5px solid var(--border);
 }
 
+.score-item {
+  border-bottom: 0.5px solid var(--border);
+}
+
+.score-item:last-child {
+  border-bottom: none;
+}
+
 .score-row {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-height: 36px;
   padding: 6px 0;
-  border-bottom: 0.5px solid var(--border);
+  cursor: pointer;
+  list-style: none;
 }
 
-.score-row:last-child {
-  border-bottom: none;
+.score-row::-webkit-details-marker {
+  display: none;
+}
+
+.score-row:hover .score-label {
+  color: var(--ink);
 }
 
 .score-label {
@@ -421,12 +435,14 @@ html, body {
   color: var(--ink-muted);
   width: 112px;
   flex-shrink: 0;
+  transition: color 0.15s;
 }
 
+/* Thin solid bars: a pale track with the score filled in ink */
 .score-bar-track {
   flex: 1;
-  height: 1.5px;
-  background: var(--border);
+  height: 5px;
+  background: var(--surface-2);
   position: relative;
 }
 
@@ -448,13 +464,38 @@ html, body {
   flex-shrink: 0;
 }
 
-.score-row.overall .score-label {
-  color: var(--ink);
-  font-weight: 500;
+.score-chevron {
+  flex-shrink: 0;
+  color: var(--ink-muted);
+  transition: transform 0.2s ease;
 }
 
-.score-row.overall .score-bar-fill {
-  background: var(--ink);
+.score-item[open] .score-chevron {
+  transform: rotate(180deg);
+}
+
+.score-item.overall .score-label {
+  color: var(--ink);
+}
+
+.score-detail {
+  padding: 2px 4px 12px 0;
+}
+
+.score-detail-label {
+  margin-top: 8px;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.score-detail-text {
+  margin-top: 3px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--ink-secondary);
 }
 
 /* ── Verdict ───────────────────────────────────────────────────────────── */

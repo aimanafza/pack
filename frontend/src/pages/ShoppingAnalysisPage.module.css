@@ -189,19 +189,39 @@
   border-bottom: var(--border-thin);
 }
 
+.scoreItem {
+  border-bottom: 0.5px solid var(--color-border-light);
+}
+
+.scoreItem:last-child {
+  border-bottom: none;
+}
+
+/* Each score is a button: tap it to read what it means for this piece */
 .scoreRow {
+  width: 100%;
+  min-height: 44px;
   display: flex;
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-2) 0;
-  border-bottom: 0.5px solid var(--color-border-light);
+  background: none;
+  border: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
-.scoreRow:last-child {
-  border-bottom: none;
+.scoreRow:hover .scoreLabel {
+  color: var(--color-text-primary);
 }
 
-.scoreRow.overall .scoreLabel {
+.scoreRow:focus-visible {
+  outline: 1px solid var(--color-text-primary);
+  outline-offset: 2px;
+}
+
+.overall .scoreLabel {
   color: var(--color-text-primary);
   font-weight: 500;
 }
@@ -215,13 +235,16 @@
   color: var(--color-text-tertiary);
   width: 130px;
   flex-shrink: 0;
+  transition: color 0.15s;
 }
 
+/* Thin solid bars: a pale track with the score filled in ink */
 .scoreTrack {
   flex: 1;
-  height: 1.5px;
-  background: var(--color-border-light);
+  height: 6px;
+  background: var(--color-bg-tertiary);
   position: relative;
+  display: block;
 }
 
 .scoreFill {
@@ -231,6 +254,42 @@
   height: 100%;
   background: var(--color-text-primary);
   transition: width 0.6s ease;
+}
+
+.scoreChevron {
+  flex-shrink: 0;
+  color: var(--color-text-tertiary);
+  transition: transform 0.2s ease;
+}
+
+.scoreChevronOpen {
+  transform: rotate(180deg);
+}
+
+.scoreDetail {
+  padding: var(--space-1) var(--space-6) var(--space-4) 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.scoreDetailLabel {
+  margin-top: var(--space-2);
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+}
+
+.scoreDetailText {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 300;
+  line-height: var(--leading-normal);
+  color: var(--color-text-secondary);
+  max-width: 60ch;
 }
 
 .scoreVal {

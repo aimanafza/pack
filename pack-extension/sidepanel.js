@@ -102,6 +102,7 @@ function resetProductState() {
   state.lookImages = {}
   state.dressing = {}
   state.lookErrors = {}
+  state.notesState = 'idle'
   state.error = null
 }
 
@@ -341,6 +342,27 @@ function productCardHtml(product) {
     </div>`
 }
 
+// What each score measures, shown when a score is opened
+const SCORE_MEANINGS = {
+  versatility:     'How many different outfits it makes with what you already own, across the occasions you dress for.',
+  style_alignment: 'How closely it matches your style profile: the colours, shapes and mood you wear most.',
+  gap_fill:        'Whether it covers something your wardrobe is missing, or repeats what you already have.',
+  quality:         "The brand's track record on fabric, construction, sizing and how its pieces wear over time.",
+  cost_per_outfit: 'The price divided by the outfits it makes. A higher score means each wear costs you less.',
+  color_harmony:   'How easily its colour works with the colours already in your wardrobe.',
+  overall:         "PACK's overall read, weighing the scores above against your wardrobe and how you shop.",
+}
+
+function scoreNoteText(key) {
+  const note = state.analysis?.score_notes?.[key]
+  if (note) return esc(note)
+  if (state.notesState === 'loading') return 'Reading your wardrobe…'
+  if (state.notesState === 'error') return "Couldn't explain this score right now. Close it and open it again to retry."
+  return ''
+}
+
+// Each score opens (native details/summary, so it works by keyboard too) to say
+// what it measures and why this piece got it
 function scoreBarsHtml(scores) {
   if (!scores) return ''
   const metrics = [
@@ -356,17 +378,49 @@ function scoreBarsHtml(scores) {
     .filter(({ key }) => scores[key] != null)
     .map(({ key, label }) => {
       const val = Math.min(10, Math.max(0, Number(scores[key]) || 0))
-      const pct = (val / 10) * 100
       return `
-        <div class="score-row ${key === 'overall' ? 'overall' : ''}">
-          <span class="score-label">${label}</span>
-          <div class="score-bar-track">
-            <div class="score-bar-fill" style="width: ${pct}%"></div>
+        <details class="score-item ${key === 'overall' ? 'overall' : ''}" data-score="${key}">
+          <summary class="score-row">
+            <span class="score-label">${label}</span>
+            <span class="score-bar-track"><span class="score-bar-fill" style="width: ${(val / 10) * 100}%"></span></span>
+            <span class="score-value">${val.toFixed(1)}</span>
+            <svg class="score-chevron" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+              <path d="M3 4.5 6 7.5l3-3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </summary>
+          <div class="score-detail">
+            <p class="score-detail-label">What it measures</p>
+            <p class="score-detail-text">${SCORE_MEANINGS[key]}</p>
+            <p class="score-detail-label">For this piece</p>
+            <p class="score-detail-text" data-score-note="${key}">${scoreNoteText(key)}</p>
           </div>
-          <span class="score-value">${val.toFixed(1)}</span>
-        </div>`
+        </details>`
     })
   return `<div class="scores-section">${rows.join('')}</div>`
+}
+
+// Older analyses don't have their score explanations yet: the first time one is
+// opened, ask the server to write them (it keeps them after that)
+async function loadScoreNotes() {
+  if (!state.analysisId || state.notesState === 'loading') return
+  if (Object.keys(state.analysis?.score_notes || {}).length) return
+  state.notesState = 'loading'
+  refreshScoreNotes()
+  try {
+    const res = await apiPost(`/purchase-analysis/${state.analysisId}/score-notes`, {})
+    state.analysis = { ...state.analysis, score_notes: res.data || {} }
+    state.notesState = 'idle'
+  } catch {
+    if (!state.token) return
+    state.notesState = 'error'
+  }
+  refreshScoreNotes()
+}
+
+function refreshScoreNotes() {
+  document.querySelectorAll('[data-score-note]').forEach((el) => {
+    el.innerHTML = scoreNoteText(el.dataset.scoreNote)
+  })
 }
 
 // One look: the avatar wearing it (or a way to get that), then the pieces it's made of
@@ -599,6 +653,9 @@ function bindResults() {
   document.getElementById('btn-impulse')?.addEventListener('click', () => sendExpansionAnswer('impulse'))
   document.getElementById('btn-save')?.addEventListener('click', saveToHistory)
   document.getElementById('btn-to-looks')?.addEventListener('click', startLooks)
+  document.querySelectorAll('.score-item').forEach((item) =>
+    item.addEventListener('toggle', () => { if (item.open) loadScoreNotes() })
+  )
 }
 
 // ── Looks ─────────────────────────────────────────────────────────────────────

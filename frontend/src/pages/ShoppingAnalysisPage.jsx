@@ -14,11 +14,24 @@ const SCORE_LABELS = {
   overall:         'Overall',
 }
 
+// What each score measures, shown when a score is opened
+const SCORE_MEANINGS = {
+  versatility:     'How many different outfits it makes with what you already own, across the occasions you dress for.',
+  style_alignment: 'How closely it matches your style profile: the colours, shapes and mood you wear most.',
+  gap_fill:        'Whether it covers something your wardrobe is missing, or repeats what you already have.',
+  quality:         "The brand's track record on fabric, construction, sizing and how its pieces wear over time.",
+  cost_per_outfit: 'The price divided by the outfits it makes. A higher score means each wear costs you less.',
+  color_harmony:   'How easily its colour works with the colours already in your wardrobe.',
+  overall:         "PACK's overall read, weighing the scores above against your wardrobe and how you shop.",
+}
+
 export default function ShoppingAnalysisPage() {
   const { analysis_id } = useParams()
   const [analysis, setAnalysis] = useState(null)
   const [loading, setLoading] = useState(true)
   const [addingToWardrobe, setAddingToWardrobe] = useState(false)
+  const [openScore, setOpenScore] = useState(null)       // the score whose explanation is showing
+  const [notesState, setNotesState] = useState('idle')    // idle | loading | error, for older analyses
   const [startErrors, setStartErrors] = useState({})  // look position -> why it couldn't start (e.g. no avatar yet)
 
   useEffect(() => {
@@ -62,6 +75,22 @@ export default function ShoppingAnalysisPage() {
       // swallow
     } finally {
       setAddingToWardrobe(false)
+    }
+  }
+
+  // Open or close a score. Older analyses don't have their explanations yet, so the
+  // first open asks the server to write them (once; they're kept after that).
+  async function toggleScore(key) {
+    const next = openScore === key ? null : key
+    setOpenScore(next)
+    if (!next || Object.keys(analysis.score_notes || {}).length || notesState === 'loading') return
+    setNotesState('loading')
+    try {
+      const { data } = await api.post(`/api/v1/purchase-analysis/${analysis_id}/score-notes`)
+      setAnalysis((prev) => ({ ...prev, score_notes: data.data || {} }))
+      setNotesState('idle')
+    } catch {
+      setNotesState('error')
     }
   }
 
@@ -160,13 +189,39 @@ export default function ShoppingAnalysisPage() {
             <p className={styles.sectionLabel}>Score breakdown</p>
             {scoreEntries.map(([key, label]) => {
               const val = Math.min(10, Math.max(0, Number(scores[key]) || 0))
+              const open = openScore === key
+              const note = analysis.score_notes?.[key]
               return (
-                <div key={key} className={`${styles.scoreRow} ${key === 'overall' ? styles.overall : ''}`}>
-                  <span className={styles.scoreLabel}>{label}</span>
-                  <div className={styles.scoreTrack}>
-                    <div className={styles.scoreFill} style={{ width: `${(val / 10) * 100}%` }} />
-                  </div>
-                  <span className={styles.scoreVal}>{val.toFixed(1)}</span>
+                <div key={key} className={`${styles.scoreItem} ${key === 'overall' ? styles.overall : ''}`}>
+                  <button
+                    type="button"
+                    className={styles.scoreRow}
+                    onClick={() => toggleScore(key)}
+                    aria-expanded={open}
+                    aria-controls={`score-${key}`}
+                  >
+                    <span className={styles.scoreLabel}>{label}</span>
+                    <span className={styles.scoreTrack}>
+                      <span className={styles.scoreFill} style={{ width: `${(val / 10) * 100}%` }} />
+                    </span>
+                    <span className={styles.scoreVal}>{val.toFixed(1)}</span>
+                    <svg className={`${styles.scoreChevron} ${open ? styles.scoreChevronOpen : ''}`} width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                      <path d="M3 4.5 6 7.5l3-3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                  {open && (
+                    <div id={`score-${key}`} className={styles.scoreDetail}>
+                      <p className={styles.scoreDetailLabel}>What it measures</p>
+                      <p className={styles.scoreDetailText}>{SCORE_MEANINGS[key]}</p>
+                      <p className={styles.scoreDetailLabel}>For this piece</p>
+                      <p className={styles.scoreDetailText}>
+                        {note
+                          || (notesState === 'loading' ? 'Reading your wardrobe…'
+                          : notesState === 'error' ? "Couldn't explain this score right now. Close it and open it again to retry."
+                          : '')}
+                      </p>
+                    </div>
+                  )}
                 </div>
               )
             })}

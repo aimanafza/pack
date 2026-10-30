@@ -14,6 +14,7 @@ from app.services.claude_service import (
     generate_lookbook_image,
     stage_product_image,
     _resolve_wardrobe_ref,
+    explain_scores,
     _without_em_dashes,
 )
 from app.api.deps import get_current_user
@@ -159,6 +160,10 @@ async def analyse_purchase_endpoint(
         style_expansion_note=result.get("style_expansion_note", ""),
         brand_quality_note=result.get("brand_quality_note", ""),
         outfit_count=result.get("outfit_count", 0),
+        score_notes={
+            k: v for k, v in (result.get("score_notes") or {}).items()
+            if k in ScoreBreakdown.model_fields and isinstance(v, str)
+        },
         outfit_combinations=outfit_combinations,
         outfit_collages=result.get("outfit_collages", []),
         expansion_question_asked=True,
@@ -300,6 +305,24 @@ async def get_analysis(
         raise HTTPException(status_code=404, detail="Analysis not found")
     analysis = await _with_pieces(analysis, current_user)
     return {"success": True, "data": _public(analysis)}
+
+
+@router.post("/{analysis_id}/score-notes")
+async def fill_score_notes(analysis_id: str, current_user: User = Depends(get_current_user)):
+    """Explanations for each score. New analyses come with them; older ones get
+    them written the first time someone opens a score, then kept."""
+    analysis = await PurchaseAnalysis.get(PydanticObjectId(analysis_id))
+    if not analysis or str(analysis.user_id) != str(current_user.id):
+        raise HTTPException(status_code=404, detail="Analysis not found")
+    if not analysis.score_notes:
+        wardrobe = await WardrobeItem.find(WardrobeItem.user_id == current_user.id).to_list()
+        try:
+            notes = await explain_scores(analysis.model_dump(mode="json"), [w.name for w in wardrobe])
+        except Exception:
+            raise HTTPException(status_code=502, detail="Couldn't explain the scores right now. Try again.")
+        await PurchaseAnalysis.get_motor_collection().update_one({"_id": analysis.id}, {"$set": {"score_notes": notes}})
+        analysis.score_notes = notes
+    return {"success": True, "data": _without_em_dashes(analysis.score_notes)}
 
 
 # A look that's been "dressing" this long was cut off (a restart, a crash), so it can be tried again
