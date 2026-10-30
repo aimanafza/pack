@@ -109,8 +109,7 @@ export default function ShoppingHistoryPage() {
             const isPassing = passingId === id
             return (
               <div key={id} className={styles.card}>
-                {/* The whole top of the card opens the analysis */}
-                <Link to={`/profile/shopping/${id}`} className={styles.cardTop}>
+                <div className={styles.cardTop}>
                   {analysis.product_image_url ? (
                     <img
                       src={analysis.product_image_url}
@@ -140,12 +139,17 @@ export default function ShoppingHistoryPage() {
                       </div>
                     )}
                   </div>
-                  <span className={styles.openSquare} aria-hidden="true">
-                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  {/* Only this square opens the analysis */}
+                  <Link
+                    to={`/profile/shopping/${id}`}
+                    className={styles.openSquare}
+                    aria-label={`Open the analysis of ${analysis.product_name || 'this piece'}`}
+                  >
+                    <svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14" fill="none">
                       <path d="M8.5 2.5h3v3M11.5 2.5 7.5 6.5M5.5 11.5h-3v-3M2.5 11.5l4-4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
-                  </span>
-                </Link>
+                  </Link>
+                </div>
 
                 {/* Pending: did you buy this? */}
                 {activeTab === 'pending' && !isPassing && (
