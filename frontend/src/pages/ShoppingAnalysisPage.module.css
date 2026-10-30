@@ -266,6 +266,12 @@
   transform: rotate(180deg);
 }
 
+/* The open score reads as the one you're looking at */
+.scoreRow[aria-expanded='true'] .scoreLabel,
+.scoreRow[aria-expanded='true'] .scoreChevron {
+  color: var(--color-text-primary);
+}
+
 .scoreDetail {
   padding: var(--space-1) var(--space-6) var(--space-4) 0;
   display: flex;

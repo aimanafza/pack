@@ -474,6 +474,12 @@ html, body {
   transform: rotate(180deg);
 }
 
+/* The open score reads as the one you're looking at */
+.score-item[open] .score-label,
+.score-item[open] .score-chevron {
+  color: var(--ink);
+}
+
 .score-item.overall .score-label {
   color: var(--ink);
 }
