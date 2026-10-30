@@ -272,6 +272,10 @@
   color: var(--color-text-primary);
 }
 
+.scoreRow[aria-expanded='true'] .scoreLabel {
+  font-weight: 500;
+}
+
 .scoreDetail {
   padding: var(--space-1) var(--space-6) var(--space-4) 0;
   display: flex;
