@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PACK Shop</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&amp;family=DM+Sans:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#FFFFFF}
+a{color:#1A1A18;text-decoration:none}a:hover{color:#6B6860}
+.lbl{font-family:'DM Sans',sans-serif;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#6B6860;margin:0}
+.tile{background:#EFECE7;display:flex;align-items:flex-end;padding:10px;box-sizing:border-box;font-family:'DM Sans',sans-serif;font-size:11px;letter-spacing:0.06em;text-transform:uppercase;color:#6B6860}
+.nav{display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;font-size:15px;color:#6B6860;text-decoration:none}
+.pill{min-height:44px;display:inline-flex;align-items:center;padding:0 18px;border:0.5px solid #D4CFC8;font-size:13px;color:#1A1A18;text-decoration:none}
+</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 2050px; font-family: 'DM Sans', sans-serif; color: #1A1A18; background: #FFFFFF">
+
+  <aside style="flex: 1 1 220px; max-width: 260px; border-right: 0.5px solid #E8E4DE; padding: 40px 24px; box-sizing: border-box; display: flex; flex-direction: column; gap: 40px">
+    <p style="margin: 0; font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 32px">pack</p>
+    <nav aria-label="Main" style="display: flex; flex-direction: column; gap: 4px">
+      <a class="nav" href="#">Dashboard</a>
+      <a class="nav" href="#">Wardrobe</a>
+      <a class="nav" href="Main.dc.html">Plan</a>
+      <a class="nav" href="#" aria-current="page" style="color: #1A1A18; background: #F7F5F2">Shop</a>
+      <a class="nav" href="#">Profile</a>
+    </nav>
+  </aside>
+
+  <main style="flex: 999 1 560px; min-width: 0; padding: 56px 56px 80px; box-sizing: border-box; display: flex; flex-direction: column; gap: 72px; max-width: 1180px">
+
+    <header style="display: flex; flex-direction: column; gap: 16px">
+      <p class="lbl">Shop</p>
+      <h1 style="margin: 0; font-family: 'Cormorant Garamond', serif; font-weight: 400; font-size: 52px; line-height: 1.1">Buy less. Buy what works.</h1>
+      <p style="margin: 0; font-size: 15px; color: #6B6860; max-width: 560px; line-height: 1.6">Every pick here is checked against the clothes you already own. Secondhand first, new when it earns its place.</p>
+      <nav aria-label="Shop sections" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px">
+        <a class="pill" href="#gaps" style="background: #1A1A18; color: #FFFFFF; border-color: #1A1A18">What's missing</a>
+        <a class="pill" href="#nearby">Secondhand nearby</a>
+        <a class="pill" href="#online">Online picks</a>
+        <a class="pill" href="#checks">Your checks</a>
+      </nav>
+    </header>
+
+    <section id="gaps" aria-label="What your wardrobe is missing" style="display: flex; flex-direction: column; gap: 24px">
+      <p class="lbl">What your wardrobe is missing</p>
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px">
+        <sc-for list="{{gaps}}" as="g" hint-placeholder-count="3">
+          <article style="border: 0.5px solid #E8E4DE; padding: 28px; display: flex; flex-direction: column; gap: 14px">
+            <p style="margin: 0; font-family: 'Cormorant Garamond', serif; font-size: 44px; line-height: 1; color: #6B6860">{{g.rank}}</p>
+            <h2 style="margin: 0; font-family: 'Cormorant Garamond', serif; font-weight: 400; font-size: 28px; line-height: 1.2">{{g.name}}</h2>
+            <p style="margin: 0; font-size: 15px; line-height: 1.6">{{g.why}}</p>
+            <p style="margin: 0; font-size: 13px; color: #6B6860">Works with {{g.count}} pieces you own</p>
+            <div style="display: flex; flex-wrap: wrap; gap: 16px; margin-top: 8px">
+              <a href="#nearby" style="font-size: 13px; min-height: 44px; display: inline-flex; align-items: center">Find it secondhand<svg aria-hidden="true" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" style="width: 12px; height: 12px; margin-left: 6px; vertical-align: middle"><path d="M4.5 2.5L8 6l-3.5 3.5"></path></svg></a>
+              <a href="#online" style="font-size: 13px; min-height: 44px; display: inline-flex; align-items: center; color: #6B6860">Shop online</a>
+            </div>
+          </article>
+        </sc-for>
+      </div>
+    </section>
+
+    <section id="nearby" aria-label="Secondhand near you" style="display: flex; flex-direction: column; gap: 24px">
+      <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 12px">
+        <p class="lbl">Secondhand near you</p>
+        <a href="#" style="font-size: 13px">Berlin · Change<svg aria-hidden="true" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" style="width: 12px; height: 12px; margin-left: 6px; vertical-align: middle"><path d="M4.5 2.5L8 6l-3.5 3.5"></path></svg></a>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px">
+        <sc-for list="{{stores}}" as="s" hint-placeholder-count="3">
+          <a href="#" style="text-decoration: none; color: #1A1A18; display: flex; flex-direction: column; gap: 12px">
+            <div class="tile" style="height: 240px">Store photo</div>
+            <p style="margin: 0; font-family: 'Cormorant Garamond', serif; font-size: 26px">{{s.name}}</p>
+            <p style="margin: 0; font-size: 13px; color: #6B6860">{{s.area}} · {{s.dist}}</p>
+            <p style="margin: 0; font-size: 13px">Good for your gap: {{s.match}}</p>
+          </a>
+        </sc-for>
+      </div>
+    </section>
+
+    <section id="online" aria-label="Online picks" style="display: flex; flex-direction: column; gap: 24px">
+      <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 12px">
+        <p class="lbl">Online picks for you</p>
+        <p style="margin: 0; font-size: 13px; color: #6B6860">Ranked by how many looks they unlock</p>
+      </div>
+      <ol style="list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 32px">
+        <sc-for list="{{picks}}" as="p" hint-placeholder-count="6">
+          <li style="display: flex; align-items: center; gap: 16px; border-bottom: 0.5px solid #E8E4DE; padding-bottom: 16px">
+            <span style="font-family: 'Cormorant Garamond', serif; font-size: 28px; width: 32px; color: #6B6860">{{p.rank}}</span>
+            <div class="tile" style="width: 64px; height: 80px; flex-shrink: 0; padding: 0"></div>
+            <div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px">
+              <p class="lbl">[BRAND]</p>
+              <p style="margin: 0; font-size: 15px">{{p.name}}</p>
+              <p style="margin: 0; font-size: 13px; color: #6B6860">[PRICE] · Unlocks {{p.looks}} new looks</p>
+            </div>
+            <a href="#" style="font-size: 13px; min-height: 44px; display: inline-flex; align-items: center">View<svg aria-hidden="true" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" style="width: 12px; height: 12px; margin-left: 6px; vertical-align: middle"><path d="M4.5 2.5L8 6l-3.5 3.5"></path></svg></a>
+          </li>
+        </sc-for>
+      </ol>
+    </section>
+
+    <section id="checks" aria-label="Your purchase checks" style="display: flex; flex-direction: column; gap: 24px">
+      <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 12px">
+        <p class="lbl">Your purchase checks</p>
+        <a href="#" style="font-size: 13px">Get the Chrome extension<svg aria-hidden="true" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" style="width: 12px; height: 12px; margin-left: 6px; vertical-align: middle"><path d="M4.5 2.5L8 6l-3.5 3.5"></path></svg></a>
+      </div>
+      <div style="border-top: 0.5px solid #1A1A18">
+        <sc-for list="{{checks}}" as="c" hint-placeholder-count="3">
+          <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 24px; padding: 18px 0; border-bottom: 0.5px solid #E8E4DE">
+            <div class="tile" style="width: 56px; height: 70px; padding: 0"></div>
+            <div style="flex: 1 1 240px; min-width: 0">
+              <p style="margin: 0; font-size: 15px">{{c.item}}</p>
+              <p style="margin: 4px 0 0; font-size: 13px; color: #6B6860">{{c.store}} · {{c.date}}</p>
+            </div>
+            <p style="margin: 0; font-family: 'Cormorant Garamond', serif; font-size: 24px; min-width: 160px">{{c.verdict}}</p>
+            <p style="margin: 0; font-size: 13px; color: #6B6860; flex: 1 1 220px">{{c.reason}}</p>
+            <a href="#" style="font-size: 13px; min-height: 44px; display: inline-flex; align-items: center">Details<svg aria-hidden="true" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" style="width: 12px; height: 12px; margin-left: 6px; vertical-align: middle"><path d="M4.5 2.5L8 6l-3.5 3.5"></path></svg></a>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":2050}}'>
+class Component extends DCLogic {
+renderVals() {
+return {
+gaps: [
+{ rank: '01', name: 'A neutral mid-layer', why: 'Most of your tops are summer weight. One knit or cardigan in grey or camel carries them into winter.', count: '14' },
+{ rank: '02', name: 'Weatherproof boots', why: 'You own three pairs of sneakers and one pair of loafers. Nothing handles rain.', count: '11' },
+{ rank: '03', name: 'Tailored trousers', why: 'Your office and dinner looks keep landing on the same black jeans.', count: '9' }
+],
+stores: [
+{ name: '[STORE NAME]', area: '[NEIGHBORHOOD]', dist: '[DISTANCE]', match: 'knitwear' },
+{ name: '[STORE NAME]', area: '[NEIGHBORHOOD]', dist: '[DISTANCE]', match: 'boots' },
+{ name: '[STORE NAME]', area: '[NEIGHBORHOOD]', dist: '[DISTANCE]', match: 'trousers' }
+],
+picks: [
+{ rank: '1', name: 'Merino crewneck, oatmeal', looks: '14' },
+{ rank: '2', name: 'Leather Chelsea boots, black', looks: '11' },
+{ rank: '3', name: 'Wide wool trousers, charcoal', looks: '9' },
+{ rank: '4', name: 'Cotton cardigan, camel', looks: '8' },
+{ rank: '5', name: 'Waxed jacket, olive', looks: '7' },
+{ rank: '6', name: 'Pleated trousers, cream', looks: '6' }
+],
+checks: [
+{ item: '[ITEM NAME]', store: '[STORE]', date: '[DATE]', verdict: 'Worth it', reason: 'Fills your mid-layer gap and pairs with 12 pieces.' },
+{ item: '[ITEM NAME]', store: '[STORE]', date: '[DATE]', verdict: 'Skip it', reason: 'Close to 2 tops you already own.' },
+{ item: '[ITEM NAME]', store: '[STORE]', date: '[DATE]', verdict: 'Sleep on it', reason: 'Works with 4 pieces. Wait for a sale or a secondhand find.' }
+]
+};
+}
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tweak today's look</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&amp;family=DM+Sans:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#FFFFFF}
+a{color:#1A1A18;text-decoration:none}a:hover{color:#6B6860}
+.lbl{font-family:'DM Sans',sans-serif;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#6B6860;margin:0}
+.tile{background:#EFECE7;display:flex;align-items:flex-end;padding:10px;box-sizing:border-box;font-family:'DM Sans',sans-serif;font-size:11px;letter-spacing:0.06em;text-transform:uppercase;color:#6B6860}
+.alt{min-width:44px;min-height:44px;border:0.5px solid #E8E4DE;background:#EFECE7;font-family:'DM Sans',sans-serif;font-size:11px;color:#6B6860;padding:8px;text-align:left;cursor:pointer;flex:1 1 0;height:84px;display:flex;align-items:flex-end}
+.chip{min-height:44px;padding:0 16px;border:0.5px solid #D4CFC8;background:#FFFFFF;font-family:'DM Sans',sans-serif;font-size:13px;color:#1A1A18;cursor:pointer}
+</style>
+</helmet>
+<div style="min-height: 1000px; font-family: 'DM Sans', sans-serif; color: #1A1A18; background: #FFFFFF; padding: 48px 56px; box-sizing: border-box; display: flex; flex-direction: column; gap: 40px">
+
+  <header style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 16px">
+    <div style="display: flex; flex-direction: column; gap: 12px">
+      <a href="Main.dc.html" style="font-size: 15px; color: #6B6860; min-height: 44px; display: inline-flex; align-items: center; gap: 8px"><svg aria-hidden="true" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" style="width: 12px; height: 12px"><path d="M7.5 2.5L4 6l3.5 3.5"></path></svg>Plan</a>
+      <h1 style="margin: 0; font-family: 'Cormorant Garamond', serif; font-weight: 400; font-size: 52px; line-height: 1.1">Make it yours</h1>
+    </div>
+    <button type="button" style="min-height: 48px; padding: 0 28px; border: none; background: #1A1A18; color: #FFFFFF; font-family: 'DM Sans', sans-serif; font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer">Wear this look</button>
+  </header>
+
+  <div style="display: flex; flex-wrap: wrap; gap: 48px; align-items: flex-start">
+
+    <section aria-label="Your look" style="flex: 1 1 420px; min-width: 0; background: #F7F5F2; padding: 32px; box-sizing: border-box; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; height: 620px">
+      <div class="tile" style="grid-row: span 2">{{outerName}}</div>
+      <div class="tile">{{topName}}</div>
+      <div class="tile">{{bottomName}}</div>
+      <div class="tile" style="grid-column: span 2; height: 130px">{{shoesName}}</div>
+    </section>
+
+    <section aria-label="Tweak" style="flex: 1 1 420px; min-width: 0; display: flex; flex-direction: column; gap: 28px">
+      <div role="tablist" aria-label="How to tweak" style="display: flex; border: 0.5px solid #1A1A18; width: fit-content">
+        <button type="button" role="tab" aria-selected="{{swapOn}}" onClick="{{toSwap}}" style="{{swapTabStyle}}">Swap pieces</button>
+        <button type="button" role="tab" aria-selected="{{chatOn}}" onClick="{{toChat}}" style="{{chatTabStyle}}">Tell PACK</button>
+      </div>
+
+      <sc-if value="{{swapOn}}" hint-placeholder-val="{{ true }}">
+        <div style="display: flex; flex-direction: column; gap: 24px">
+          <p style="margin: 0; font-size: 15px; color: #6B6860">Tap a piece to swap it in. PACK only shows options that work with the rest of the look and today's weather.</p>
+          <sc-for list="{{slots}}" as="s" hint-placeholder-count="4">
+            <div style="display: flex; flex-direction: column; gap: 10px">
+              <p class="lbl">{{s.label}}</p>
+              <div style="display: flex; gap: 10px">
+                <sc-for list="{{s.options}}" as="o" hint-placeholder-count="3">
+                  <button type="button" class="alt" aria-pressed="{{o.on}}" onClick="{{o.pick}}" style="{{o.ring}}">{{o.name}}</button>
+                </sc-for>
+                <a href="#" style="flex: 0 0 84px; height: 84px; border: 0.5px dashed #B8B2A8; display: flex; align-items: center; justify-content: center; font-size: 13px; color: #6B6860; text-decoration: none">All</a>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{chatOn}}" hint-placeholder-val="{{ false }}">
+        <div style="display: flex; flex-direction: column; gap: 16px; border: 0.5px solid #E8E4DE; padding: 24px; min-height: 460px; box-sizing: border-box">
+          <div style="display: flex; flex-direction: column; gap: 12px; flex-grow: 1">
+            <p style="margin: 0; max-width: 80%; background: #F7F5F2; padding: 14px 16px; font-size: 15px; line-height: 1.5">Want me to change anything about today's look?</p>
+            <p style="margin: 0; max-width: 80%; align-self: flex-end; background: #1A1A18; color: #FFFFFF; padding: 14px 16px; font-size: 15px; line-height: 1.5">I'm biking today and want to wear my black boots</p>
+            <p style="margin: 0; max-width: 80%; background: #F7F5F2; padding: 14px 16px; font-size: 15px; line-height: 1.5">Done. Black boots in, and I swapped the coat for your shorter wool jacket so it doesn't catch on the bike.</p>
+          </div>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px">
+            <button type="button" class="chip">Warmer</button>
+            <button type="button" class="chip">More dressed up</button>
+            <button type="button" class="chip">More comfortable</button>
+            <button type="button" class="chip">Use something I haven't worn lately</button>
+          </div>
+          <div style="display: flex; gap: 8px">
+            <label for="ask" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Tell PACK what to change</label>
+            <input id="ask" type="text" placeholder="Tell PACK what to change..." style="flex-grow: 1; min-height: 48px; border: 0.5px solid #D4CFC8; padding: 0 16px; font-family: 'DM Sans', sans-serif; font-size: 15px; color: #1A1A18; background: #FFFFFF">
+            <button type="button" style="min-height: 48px; padding: 0 20px; border: none; background: #1A1A18; color: #FFFFFF; font-family: 'DM Sans', sans-serif; font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer">Send</button>
+          </div>
+        </div>
+      </sc-if>
+    </section>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+constructor(props) {
+super(props);
+this.state = { mode: 'swap', picks: { outer: 0, top: 0, bottom: 0, shoes: 0 } };
+}
+renderVals() {
+const on = 'min-height: 44px; padding: 0 22px; border: none; background: #1A1A18; color: #FFFFFF; font-family: DM Sans, sans-serif; font-size: 13px; letter-spacing: 0.06em; cursor: pointer';
+const off = 'min-height: 44px; padding: 0 22px; border: none; background: #FFFFFF; color: #1A1A18; font-family: DM Sans, sans-serif; font-size: 13px; letter-spacing: 0.06em; cursor: pointer';
+const data = [
+{ key: 'outer', label: 'Outerwear', options: ['Camel wool coat', 'Short wool jacket', 'Black trench'] },
+{ key: 'top', label: 'Top', options: ['Grey knit', 'White oxford shirt', 'Black turtleneck'] },
+{ key: 'bottom', label: 'Bottom', options: ['Straight black jeans', 'Grey trousers', 'Dark wash denim'] },
+{ key: 'shoes', label: 'Shoes', options: ['Brown loafers', 'Black boots', 'White sneakers'] }
+];
+const picks = this.state.picks;
+const slots = data.map((s) => ({
+label: s.label,
+options: s.options.map((name, i) => ({
+name,
+on: picks[s.key] === i,
+ring: picks[s.key] === i ? 'border: 1.5px solid #1A1A18; color: #1A1A18' : '',
+pick: () => this.setState({ picks: Object.assign({}, picks, { [s.key]: i }) })
+}))
+}));
+const nameOf = (k) => data.find((d) => d.key === k).options[picks[k]];
+const swapOn = this.state.mode === 'swap';
+return {
+swapOn,
+chatOn: !swapOn,
+swapTabStyle: swapOn ? on : off,
+chatTabStyle: swapOn ? off : on,
+toSwap: () => this.setState({ mode: 'swap' }),
+toChat: () => this.setState({ mode: 'chat' }),
+slots,
+outerName: nameOf('outer'),
+topName: nameOf('top'),
+bottomName: nameOf('bottom'),
+shoesName: nameOf('shoes')
+};
+}
+}
+</script>
+</body>
+</html>

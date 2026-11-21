@@ -197,6 +197,8 @@ PRIORITY: [High / Medium / Low]
 - Don't suggest purple/teal gradients. If you're reaching for a gradient, ask first.
 - Don't crop or compress photography carelessly — images are the design, not decoration
 - Don't make it look like a landing page template. Every screen should feel art-directed.
+- No underlines on links or text buttons, ever, including on hover, unless I ask for one. Set `text-decoration: none` and change color on hover instead.
+- No text arrows (→ ←) in UI copy, ever. Forward and back use a thin stroke chevron icon beside a muted label: `BackLink` (components/ui/BackLink.jsx) for back, `ForwardLink` for forward.
 
 ### Code
 - Don't hardcode colors or spacing — check `theme.js` (or equivalent) first
